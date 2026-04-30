@@ -41,11 +41,11 @@ const menuItems = [
   { path: '/staff/my-classes', name: 'My Classes', icon: AcademicCapIcon, roles: ['staff'] },
   { path: '/staff/my-duties', name: 'My Duties', icon: CalendarIcon, roles: ['staff'] },
   { path: '/staff/mark', name: 'Mark Entry', icon: ClipboardDocumentListIcon, roles: ['staff'] },
-  { path: '/staff/exams', name: 'Exams', icon: BookOpenIcon, roles: ['staff'] },
+  // { path: '/staff/exams', name: 'Exams', icon: BookOpenIcon, roles: ['staff'] },
   { path: '/my-children', name: 'My Children', icon: UserGroupIcon, roles: ['parent'] },
   { path: '/my-child-attendance', name: 'Attendance', icon: CalendarIcon, roles: ['parent'] },
   { path: '/my-child-results', name: 'Results', icon: ChartBarIcon, roles: ['parent'] },
-  { path: '/fee-payment', name: 'Fee Payment', icon: CreditCardIcon, roles: ['parent'] },
+  // { path: '/fee-payment', name: 'Fee Payment', icon: CreditCardIcon, roles: ['parent'] },
   { path: '/notifications', name: 'Notifications', icon: BellIcon, roles: ['admin', 'staff', 'parent'] },
   { path: '/settings', name: 'Settings', icon: Cog6ToothIcon, roles: ['admin', 'staff', 'parent'] },
 ]
