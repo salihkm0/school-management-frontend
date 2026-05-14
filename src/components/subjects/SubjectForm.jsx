@@ -1,9 +1,12 @@
+// src/components/subjects/SubjectForm.jsx
 import React, { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
+import { ArrowLeftIcon, BookOpenIcon, CheckIcon } from '@heroicons/react/24/outline'
 import { createSubject, updateSubject, fetchSubjectById, clearCurrentSubject } from '../../store/slices/subjectSlice'
 import LoadingSpinner from '../common/LoadingSpinner'
+import toast from 'react-hot-toast'
 
 const SubjectForm = () => {
   const dispatch = useDispatch()
@@ -19,30 +22,103 @@ const SubjectForm = () => {
   }, [dispatch, id, isEditing])
 
   useEffect(() => {
-    if (isEditing && currentSubject) reset({ name: currentSubject.name, code: currentSubject.code, description: currentSubject.description, type: currentSubject.type, creditHours: currentSubject.creditHours, department: currentSubject.department, gradeLevel: currentSubject.gradeLevel })
+    if (isEditing && currentSubject) {
+      reset({ 
+        name: currentSubject.name, 
+        code: currentSubject.code, 
+        description: currentSubject.description, 
+        type: currentSubject.type, 
+        creditHours: currentSubject.creditHours, 
+        department: currentSubject.department, 
+        gradeLevel: currentSubject.gradeLevel 
+      })
+    }
   }, [isEditing, currentSubject, reset])
 
   const onSubmit = async (data) => {
     try {
       if (isEditing) await dispatch(updateSubject({ id, data })).unwrap()
       else await dispatch(createSubject(data)).unwrap()
+      toast.success(isEditing ? 'Subject updated' : 'Subject created')
       navigate('/subjects')
-    } catch (error) { console.error('Failed to save subject:', error) }
+    } catch (error) { 
+      toast.error(error.message || 'Failed to save subject')
+    }
   }
 
   if (isLoading) return <LoadingSpinner />
 
   return (
-    <div className="space-y-6"><div><h1 className="text-2xl font-bold text-gray-900">{isEditing ? 'Edit Subject' : 'Add New Subject'}</h1><p className="text-gray-500 mt-1">{isEditing ? 'Update subject information' : 'Enter subject details'}</p></div>
-      <form onSubmit={handleSubmit(onSubmit)} className="max-w-lg bg-white rounded-xl shadow-sm p-6 space-y-4">
-        <div><label className="block text-sm font-medium text-gray-700 mb-1">Subject Name *</label><input {...register('name', { required: 'Name required' })} className={`w-full px-4 py-2 border rounded-lg ${errors.name ? 'border-red-500' : 'border-gray-300'}`} /></div>
-        <div><label className="block text-sm font-medium text-gray-700 mb-1">Subject Code *</label><input {...register('code', { required: 'Code required' })} className={`w-full px-4 py-2 border rounded-lg ${errors.code ? 'border-red-500' : 'border-gray-300'}`} placeholder="e.g., MAT101" /></div>
-        <div><label className="block text-sm font-medium text-gray-700 mb-1">Description</label><textarea {...register('description')} rows={3} className="w-full px-4 py-2 border rounded-lg" /></div>
-        <div><label className="block text-sm font-medium text-gray-700 mb-1">Type</label><select {...register('type')} className="w-full px-4 py-2 border rounded-lg"><option value="core">Core</option><option value="elective">Elective</option><option value="optional">Optional</option></select></div>
-        <div><label className="block text-sm font-medium text-gray-700 mb-1">Department</label><input {...register('department')} className="w-full px-4 py-2 border rounded-lg" placeholder="e.g., Sciences, Languages, Mathematics" /></div>
-        <div><label className="block text-sm font-medium text-gray-700 mb-1">Credit Hours</label><input type="number" {...register('creditHours')} className="w-full px-4 py-2 border rounded-lg" placeholder="1-6" /></div>
-        <div><label className="block text-sm font-medium text-gray-700 mb-1">Grade Level</label><select {...register('gradeLevel')} className="w-full px-4 py-2 border rounded-lg"><option value="all">All Grades</option><option value="primary">Primary</option><option value="middle">Middle</option><option value="high">High</option></select></div>
-        <div className="flex justify-end space-x-3 pt-4"><button type="button" onClick={() => navigate('/subjects')} className="px-6 py-2 border rounded-lg">Cancel</button><button type="submit" disabled={isSubmitting} className="px-6 py-2 bg-primary-500 text-white rounded-lg">{isSubmitting ? 'Saving...' : (isEditing ? 'Update' : 'Create')}</button></div>
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <div className="flex items-center gap-3 mb-5">
+        <button onClick={() => navigate('/subjects')} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+          <ArrowLeftIcon className="w-5 h-5" />
+        </button>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">{isEditing ? 'Edit Subject' : 'Add New Subject'}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{isEditing ? 'Update subject information' : 'Enter subject details'}</p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <BookOpenIcon className="w-5 h-5 text-emerald-600" />
+            <h2 className="text-sm font-semibold text-gray-900">Subject Information</h2>
+          </div>
+        </div>
+        
+        <div className="p-5 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Subject Name <span className="text-rose-500">*</span></label>
+              <input {...register('name', { required: 'Name required' })} className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 ${errors.name ? 'border-rose-500' : 'border-gray-200'}`} placeholder="e.g., Mathematics" />
+              {errors.name && <p className="mt-1 text-xs text-rose-500">{errors.name.message}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Subject Code <span className="text-rose-500">*</span></label>
+              <input {...register('code', { required: 'Code required' })} className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 ${errors.code ? 'border-rose-500' : 'border-gray-200'}`} placeholder="e.g., MAT101" />
+              {errors.code && <p className="mt-1 text-xs text-rose-500">{errors.code.message}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+              <select {...register('type')} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                <option value="core">Core</option>
+                <option value="elective">Elective</option>
+                <option value="optional">Optional</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Credit Hours</label>
+              <input type="number" {...register('creditHours')} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="1-6" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+              <input {...register('department')} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="e.g., Sciences, Languages" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Grade Level</label>
+              <select {...register('gradeLevel')} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                <option value="all">All Grades</option>
+                <option value="primary">Primary</option>
+                <option value="middle">Middle</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea {...register('description')} rows={3} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none" placeholder="Subject description" />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 px-5 py-4 bg-gray-50 border-t border-gray-200">
+          <button type="button" onClick={() => navigate('/subjects')} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+          <button type="submit" disabled={isSubmitting} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+            <CheckIcon className="w-4 h-4" />
+            <span>{isSubmitting ? 'Saving...' : (isEditing ? 'Update' : 'Create')}</span>
+          </button>
+        </div>
       </form>
     </div>
   )

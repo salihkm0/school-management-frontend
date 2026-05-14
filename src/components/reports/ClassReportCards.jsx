@@ -1,7 +1,7 @@
 // src/components/reports/ClassReportCards.jsx
 import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { generateClassReportCardsPDF } from '../../services/analyticsService'
+import { generateClassReportCardsPDF, fetchExamsForDropdown } from '../../services/analyticsService'
 import { fetchClasses } from '../../store/slices/classSlice'
 import { fetchAcademicYears } from '../../store/slices/academicYearSlice'
 import { useDispatch, useSelector } from 'react-redux'
@@ -9,7 +9,8 @@ import {
   DocumentArrowDownIcon, 
   UserGroupIcon, 
   AcademicCapIcon,
-  InformationCircleIcon
+  InformationCircleIcon,
+  CalendarIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
@@ -17,15 +18,19 @@ const ClassReportCards = () => {
   const dispatch = useDispatch()
   const { classes } = useSelector((state) => state.classes)
   const { academicYears } = useSelector((state) => state.academicYears)
+  const [exams, setExams] = useState([])
+  const [isLoadingExams, setIsLoadingExams] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [selectedClassInfo, setSelectedClassInfo] = useState(null)
 
   const { register, handleSubmit, watch } = useForm()
   const selectedClassId = watch('classId')
+  const selectedExamId = watch('examId')
 
   useEffect(() => {
     dispatch(fetchClasses({ limit: 100 }))
     dispatch(fetchAcademicYears({ limit: 10 }))
+    loadExams()
   }, [dispatch])
 
   useEffect(() => {
@@ -37,6 +42,20 @@ const ClassReportCards = () => {
     }
   }, [selectedClassId, classes])
 
+  const loadExams = async () => {
+    setIsLoadingExams(true)
+    try {
+      const response = await fetchExamsForDropdown()
+      const examsData = response.data || []
+      setExams(examsData)
+    } catch (error) {
+      console.error('Failed to load exams:', error)
+      setExams([])
+    } finally {
+      setIsLoadingExams(false)
+    }
+  }
+
   const onSubmit = async (data) => {
     if (!data.classId) {
       toast.error('Please select a class')
@@ -44,12 +63,13 @@ const ClassReportCards = () => {
     }
     setIsGenerating(true)
     try {
-      const pdfBlob = await generateClassReportCardsPDF(data.classId, data.academicYearId)
+      const pdfBlob = await generateClassReportCardsPDF(data.classId, data.examId, data.academicYearId)
       const url = URL.createObjectURL(pdfBlob)
       window.open(url, '_blank')
       toast.success('Class report cards generated')
     } catch (error) {
-      toast.error('Failed to generate report cards')
+      console.error('Error generating class report cards:', error)
+      toast.error(error.message || 'Failed to generate report cards')
     } finally {
       setIsGenerating(false)
     }
@@ -86,6 +106,28 @@ const ClassReportCards = () => {
               </select>
               <p className="text-xs text-gray-400 mt-1">
                 This will generate separate report cards for each student in the selected class
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Select Exam <span className="text-gray-400 text-xs">(Optional - Latest if not selected)</span>
+              </label>
+              <select
+                {...register('examId')}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-gray-50 hover:bg-white transition-colors"
+                disabled={isLoadingExams}
+              >
+                <option value="">Latest Exam</option>
+                {exams.map(e => (
+                  <option key={e._id} value={e._id}>
+                    {e.displayName || e.name} ({e.examType})
+                  </option>
+                ))}
+              </select>
+              {isLoadingExams && <p className="text-xs text-gray-400 mt-1">Loading exams...</p>}
+              <p className="text-xs text-gray-400 mt-1">
+                Choose a specific exam to generate report cards based on that exam's marks
               </p>
             </div>
 
@@ -178,10 +220,17 @@ const ClassReportCards = () => {
                 
                 <div className="bg-blue-50 rounded-lg p-3 flex items-start gap-2">
                   <InformationCircleIcon className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-blue-700">
-                    This will generate individual report cards for all {selectedClassInfo.studentCount || 0} students in this class. 
-                    The PDF will contain separate pages for each student.
-                  </p>
+                  <div>
+                    <p className="text-xs text-blue-700">
+                      This will generate individual report cards for all students in this class. 
+                      The PDF will contain separate pages for each student, one per page.
+                    </p>
+                    {selectedExamId && (
+                      <p className="text-xs text-blue-700 mt-2">
+                        Using exam: {exams.find(e => e._id === selectedExamId)?.displayName || 'Selected Exam'}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : (

@@ -4,7 +4,7 @@ import api from './api'
 export const fetchDashboardStats = async () => {
   try {
     const response = await api.get('/analytics/dashboard')
-    return response.data.data
+    return response.data
   } catch (error) {
     console.error('Failed to fetch dashboard stats:', error)
     throw error
@@ -14,11 +14,10 @@ export const fetchDashboardStats = async () => {
 export const fetchRecentActivities = async (limit = 10) => {
   try {
     const response = await api.get(`/analytics/recent-activities?limit=${limit}`)
-    return response.data.data
+    return response.data
   } catch (error) {
     console.error('Failed to fetch recent activities:', error)
-    // Return empty array as fallback
-    return []
+    return { data: [] }
   }
 }
 
@@ -29,7 +28,7 @@ export const fetchPerformanceAnalytics = async (examId = null, classId = null, a
     if (classId) params.append('classId', classId)
     if (academicYearId) params.append('academicYearId', academicYearId)
     const response = await api.get(`/analytics/performance?${params}`)
-    return response.data.data
+    return response.data
   } catch (error) {
     console.error('Failed to fetch performance analytics:', error)
     throw error
@@ -44,7 +43,7 @@ export const fetchAttendanceAnalytics = async (classId = null, startDate = null,
     if (endDate) params.append('endDate', endDate)
     if (academicYearId) params.append('academicYearId', academicYearId)
     const response = await api.get(`/analytics/attendance?${params}`)
-    return response.data.data
+    return response.data
   } catch (error) {
     console.error('Failed to fetch attendance analytics:', error)
     throw error
@@ -58,7 +57,7 @@ export const fetchGradeAnalysis = async (examId = null, classId = null, academic
     if (classId) params.append('classId', classId)
     if (academicYearId) params.append('academicYearId', academicYearId)
     const response = await api.get(`/analytics/grade-analysis?${params}`)
-    return response.data.data
+    return response.data
   } catch (error) {
     console.error('Failed to fetch grade analysis:', error)
     throw error
@@ -72,7 +71,7 @@ export const fetchFullAPlusStudents = async (examId = null, classId = null, acad
     if (classId) params.append('classId', classId)
     if (academicYearId) params.append('academicYearId', academicYearId)
     const response = await api.get(`/analytics/full-aplus?${params}`)
-    return response.data.data
+    return response.data
   } catch (error) {
     console.error('Failed to fetch full A+ students:', error)
     throw error
@@ -87,7 +86,7 @@ export const fetchNearFullAPlusStudents = async (examId = null, classId = null, 
     if (missingSubject) params.append('missingSubject', missingSubject)
     if (academicYearId) params.append('academicYearId', academicYearId)
     const response = await api.get(`/analytics/near-full-aplus?${params}`)
-    return response.data.data
+    return response.data
   } catch (error) {
     console.error('Failed to fetch near full A+ students:', error)
     throw error
@@ -104,7 +103,7 @@ export const fetchTopPerformingClasses = async (examId = null, limit = 10, acade
     return response.data
   } catch (error) {
     console.error('Failed to fetch top performing classes:', error)
-    throw error
+    return [] // Return empty array on error
   }
 }
 
@@ -113,16 +112,29 @@ export const fetchStudentProgressTrend = async (studentId, academicYearId = null
     const params = new URLSearchParams()
     if (academicYearId) params.append('academicYearId', academicYearId)
     const response = await api.get(`/analytics/student-progress/${studentId}?${params}`)
-    return response.data.data
+    return response.data
   } catch (error) {
     console.error('Failed to fetch student progress trend:', error)
     throw error
   }
 }
 
-export const generateReportCardPDF = async (studentId, academicYearId = null) => {
+// Fetch exams for dropdown
+export const fetchExamsForDropdown = async () => {
   try {
-    let url = `/analytics/report-card/${studentId}`
+    const response = await api.get('/exams?limit=100&isActive=true')
+    return response.data
+  } catch (error) {
+    console.error('Failed to fetch exams:', error)
+    return { data: [] }
+  }
+}
+
+// Generate report card PDF with exam support
+export const generateReportCardPDF = async (studentId, examId = null, academicYearId = null) => {
+  try {
+    let url = `/pdf/report-card/view/${studentId}`
+    if (examId) url += `/${examId}`
     if (academicYearId) url += `/${academicYearId}`
     const response = await api.get(url, {
       responseType: 'blob',
@@ -134,9 +146,13 @@ export const generateReportCardPDF = async (studentId, academicYearId = null) =>
   }
 }
 
-export const generateClassReportCardsPDF = async (classId, academicYearId) => {
+// Generate class report cards PDF with exam support
+export const generateClassReportCardsPDF = async (classId, examId = null, academicYearId = null) => {
   try {
-    const response = await api.get(`/analytics/class-report-cards/${classId}/${academicYearId}`, {
+    let url = `/pdf/report-card/class/view/${classId}`
+    if (examId) url += `/${examId}`
+    if (academicYearId) url += `/${academicYearId}`
+    const response = await api.get(url, {
       responseType: 'blob',
     })
     return response.data
@@ -166,6 +182,7 @@ export default {
   fetchNearFullAPlusStudents,
   fetchTopPerformingClasses,
   fetchStudentProgressTrend,
+  fetchExamsForDropdown,
   generateReportCardPDF,
   generateClassReportCardsPDF,
   subscribeToDashboardUpdates,

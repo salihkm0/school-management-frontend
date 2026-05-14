@@ -1,3 +1,4 @@
+// src/pages/DashboardPage.jsx
 import React from 'react'
 import { useSelector } from 'react-redux'
 import AdminDashboard from '../components/dashboard/AdminDashboard'
@@ -8,7 +9,6 @@ const DashboardPage = () => {
   const { user } = useSelector((state) => state.auth || {})
   const userRole = user?.role || 'parent'
 
-  // Render role-specific dashboard
   const renderDashboard = () => {
     switch(userRole) {
       case 'admin':
@@ -22,7 +22,11 @@ const DashboardPage = () => {
     }
   }
 
-  return renderDashboard()
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {renderDashboard()}
+    </div>
+  )
 }
 
 export default DashboardPage

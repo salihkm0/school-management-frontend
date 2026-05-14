@@ -7,13 +7,14 @@ import {
   AcademicCapIcon,
   UserGroupIcon,
   CheckCircleIcon,
-  ExclamationTriangleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  EyeIcon,
   ChartBarIcon,
   LockClosedIcon,
-  PencilIcon
+  PencilIcon,
+  MagnifyingGlassIcon,
+  XMarkIcon,
+  ArrowLeftIcon
 } from "@heroicons/react/24/outline";
 import { fetchExams, fetchExamById } from "../../store/slices/examSlice";
 import { fetchClasses } from "../../store/slices/classSlice";
@@ -39,7 +40,6 @@ const StaffMarksEntry = () => {
   const { user } = useSelector((state) => state.auth);
   const { staff, isLoading: staffLoading } = useSelector((state) => state.staff);
   const { exams, isLoading: examsLoading } = useSelector((state) => state.exams);
-  const { classes } = useSelector((state) => state.classes);
   const { teacherClassTeacherClasses, isLoading: classesLoading } = useSelector((state) => state.classes);
   const { academicYears } = useSelector((state) => state.academicYears);
 
@@ -143,7 +143,6 @@ const StaffMarksEntry = () => {
     const staffId = currentStaff._id;
     
     try {
-      // Get classes where teacher is CLASS TEACHER
       const classTeacherResult = await dispatch(fetchTeacherClassTeacherClasses({ 
         teacherId: staffId, 
         academicYearId: currentAcademicYear?._id 
@@ -152,7 +151,6 @@ const StaffMarksEntry = () => {
       const classTeacherClasses = classTeacherResult?.data || [];
       setMyClasses(classTeacherClasses);
       
-      // Get classes where teacher is SUBJECT TEACHER from the classes list
       const allClassesResult = await dispatch(fetchClasses({ limit: 100 })).unwrap();
       const classesList = allClassesResult.data || [];
       
@@ -172,14 +170,9 @@ const StaffMarksEntry = () => {
       
       setMySubjectTeacherClasses(subjectTeacherClasses);
       
-      // Combine both sets of classes (unique)
       const allAssigned = [...classTeacherClasses, ...subjectTeacherClasses];
       const uniqueClasses = Array.from(new Map(allAssigned.map(c => [c._id, c])).values());
       setAllMyClasses(uniqueClasses);
-      
-      console.log('Class Teacher Classes:', classTeacherClasses.map(c => c.displayName || `${c.name}-${c.section}`));
-      console.log('Subject Teacher Classes:', subjectTeacherClasses.map(c => c.displayName || `${c.name}-${c.section}`));
-      console.log('All Classes:', uniqueClasses.map(c => c.displayName || `${c.name}-${c.section}`));
       
       if (classIdFromUrl && uniqueClasses.find(c => c._id === classIdFromUrl)) {
         setSelectedClass(classIdFromUrl);
@@ -202,8 +195,6 @@ const StaffMarksEntry = () => {
     relevantExams.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
     setAvailableExams(relevantExams);
     
-    console.log('Available Exams:', relevantExams.map(e => e.displayName || e.name));
-    
     if (examIdFromUrl && relevantExams.find(e => e._id === examIdFromUrl)) {
       setSelectedExam(examIdFromUrl);
     }
@@ -213,22 +204,16 @@ const StaffMarksEntry = () => {
     if (!selectedExam || !selectedClass) return;
     setIsLoading(true);
     try {
-      // Get permissions
       const permRes = await getTeacherPermissions(selectedExam, selectedClass);
       setPermissions(permRes.data);
-      
-      console.log('Permissions:', permRes.data);
 
-      // Get exam data with subjects
       const examDataResponse = await dispatch(fetchExamById(selectedExam)).unwrap();
       const examData = examDataResponse.data || examDataResponse;
 
-      // Get all marksheets for this class and exam
       const response = await getMarksheetsByClass(selectedExam, selectedClass);
       if (response.success && response.data) {
         let subjects = response.data.subjects || [];
         
-        // Enhance subjects with exam data
         if (examData && examData.schedule && examData.schedule.length > 0) {
           subjects = subjects.map(subject => {
             const scheduleItem = examData.schedule.find(
@@ -251,7 +236,6 @@ const StaffMarksEntry = () => {
         setExamSubjects(subjects);
         setStudents(response.data.students || []);
         
-        // Initialize temp marks with existing values
         const initialTempMarks = {};
         (response.data.students || []).forEach(student => {
           initialTempMarks[student.studentId] = {};
@@ -277,11 +261,8 @@ const StaffMarksEntry = () => {
   };
 
   const canEditSubject = (subjectId) => {
-    // Class teacher can edit all subjects
     if (permissions?.isClassTeacher) return true;
-    // Admin can edit all subjects
     if (permissions?.isAdmin) return true;
-    // Subject teacher can edit only their assigned subjects
     if (permissions?.allowedSubjects && permissions.allowedSubjects.length > 0) {
       return permissions.allowedSubjects.some(s => s.subjectId === subjectId);
     }
@@ -333,7 +314,6 @@ const StaffMarksEntry = () => {
       };
     });
 
-    // Update the actual student data for save operation
     setStudents((prev) =>
       prev.map((s) => {
         if (s.studentId === studentId) {
@@ -451,8 +431,6 @@ const StaffMarksEntry = () => {
   const selectedExamData = exams.find((e) => e._id === selectedExam);
   const isClassTeacher = permissions?.isClassTeacher === true;
   const isSubjectTeacher = permissions?.isSubjectTeacher === true;
-  const isClassTeacherClass = myClasses.some(c => c._id === selectedClass);
-  const isSubjectTeacherClass = mySubjectTeacherClasses.some(c => c._id === selectedClass);
 
   const getClassDisplayName = (classItem) => {
     if (!classItem) return "Unknown";
@@ -470,14 +448,14 @@ const StaffMarksEntry = () => {
 
   const getGradeBadge = (marks, maxMarks) => {
     const percentage = maxMarks > 0 ? (marks / maxMarks) * 100 : 0;
-    if (percentage >= 90) return { grade: "A+", color: "bg-emerald-100 text-emerald-800" };
-    if (percentage >= 80) return { grade: "A", color: "bg-green-100 text-green-800" };
-    if (percentage >= 70) return { grade: "B+", color: "bg-blue-100 text-blue-800" };
-    if (percentage >= 60) return { grade: "B", color: "bg-cyan-100 text-cyan-800" };
-    if (percentage >= 50) return { grade: "C+", color: "bg-yellow-100 text-yellow-800" };
-    if (percentage >= 40) return { grade: "C", color: "bg-orange-100 text-orange-800" };
-    if (percentage >= 33) return { grade: "D", color: "bg-red-100 text-red-800" };
-    return { grade: "F", color: "bg-gray-100 text-gray-800" };
+    if (percentage >= 90) return { grade: "A+", color: "bg-emerald-100 text-emerald-700" };
+    if (percentage >= 80) return { grade: "A", color: "bg-green-100 text-green-700" };
+    if (percentage >= 70) return { grade: "B+", color: "bg-blue-100 text-blue-700" };
+    if (percentage >= 60) return { grade: "B", color: "bg-cyan-100 text-cyan-700" };
+    if (percentage >= 50) return { grade: "C+", color: "bg-amber-100 text-amber-700" };
+    if (percentage >= 40) return { grade: "C", color: "bg-orange-100 text-orange-700" };
+    if (percentage >= 33) return { grade: "D", color: "bg-rose-100 text-rose-700" };
+    return { grade: "F", color: "bg-gray-100 text-gray-600" };
   };
 
   const getStudentTotalPercentage = (student) => {
@@ -505,19 +483,13 @@ const StaffMarksEntry = () => {
 
   if (allMyClasses.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AcademicCapIcon className="w-10 h-10 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">
-              No Classes Assigned
-            </h3>
-            <p className="text-gray-500">
-              You are not assigned to any classes as a class teacher or subject teacher.
-            </p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center max-w-md">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AcademicCapIcon className="w-8 h-8 text-gray-400" />
           </div>
+          <h3 className="text-base font-semibold text-gray-800 mb-1">No Classes Assigned</h3>
+          <p className="text-sm text-gray-500">You are not assigned to any classes as a class teacher or subject teacher.</p>
         </div>
       </div>
     );
@@ -525,152 +497,125 @@ const StaffMarksEntry = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-600 to-green-700 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="bg-white/20 rounded-xl p-3">
-                <BookOpenIcon className="w-8 h-8" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold">Marks Entry</h1>
-                <p className="text-emerald-100 mt-1">
-                  {isClassTeacher 
-                    ? "Enter marks for all subjects (Class Teacher)" 
-                    : isSubjectTeacher 
-                    ? "Enter marks for your assigned subjects (Subject Teacher)"
-                    : "View marks"}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => navigate("/staff-exams")}
-              className="px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
-            >
-              Back to Exams
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Exam Selection */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-          <div className="px-5 py-4 bg-gradient-to-r from-emerald-50 to-green-50 border-b border-gray-100">
-            <div className="flex items-center space-x-2">
-              <AcademicCapIcon className="w-5 h-5 text-emerald-600" />
-              <h3 className="font-semibold text-gray-800">Select Exam</h3>
-            </div>
-          </div>
-          <div className="p-5">
-            <select
-              value={selectedExam}
-              onChange={(e) => {
-                setSelectedExam(e.target.value);
-                setSelectedClass("");
-                setStudents([]);
-                setPermissions(null);
-                setExamSubjects([]);
-                setTempMarks({});
-                setAvailableClassesForExam([]);
-              }}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white"
-            >
-              <option value="">Choose an exam...</option>
-              {availableExams.map((e) => (
-                <option key={e._id} value={e._id}>
-                  {e.displayName || e.name}
-                </option>
-              ))}
-            </select>
-            {availableExams.length === 0 && allMyClasses.length > 0 && (
-              <p className="text-sm text-amber-600 mt-2">
-                No exams available for your classes. Please check back later.
-              </p>
-            )}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-6">
+          <button onClick={() => navigate("/staff-exams")} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+            <ArrowLeftIcon className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Marks Entry</h1>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {isClassTeacher ? "Enter marks for all subjects" : isSubjectTeacher ? "Enter marks for your assigned subjects" : "View marks"}
+            </p>
           </div>
         </div>
 
-        {/* Class Selection */}
-        {selectedExam && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-            <div className="px-5 py-4 bg-gradient-to-r from-emerald-50 to-green-50 border-b border-gray-100">
-              <div className="flex items-center space-x-2">
-                <UserGroupIcon className="w-5 h-5 text-emerald-600" />
-                <h3 className="font-semibold text-gray-800">Select Class</h3>
+        {/* Selection Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+          {/* Exam Selection */}
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <AcademicCapIcon className="w-4 h-4 text-emerald-600" />
+                <h3 className="text-sm font-medium text-gray-900">Select Exam</h3>
               </div>
             </div>
-            <div className="p-5">
+            <div className="p-4">
               <select
-                value={selectedClass}
+                value={selectedExam}
                 onChange={(e) => {
-                  setSelectedClass(e.target.value);
+                  setSelectedExam(e.target.value);
+                  setSelectedClass("");
                   setStudents([]);
                   setPermissions(null);
                   setExamSubjects([]);
                   setTempMarks({});
+                  setAvailableClassesForExam([]);
                 }}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white disabled:bg-gray-50 disabled:cursor-not-allowed"
-                disabled={availableClassesForExam.length === 0}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
               >
-                <option value="">Choose a class...</option>
-                {availableClassesForExam.map((cls) => {
-                  const isClassTeacherClass = myClasses.some(c => c._id === cls._id);
-                  const isSubjectTeacherClass = mySubjectTeacherClasses.some(c => c._id === cls._id);
-                  const roleLabel = isClassTeacherClass ? "(Class Teacher)" : isSubjectTeacherClass ? "(Subject Teacher)" : "";
-                  return (
-                    <option key={cls._id} value={cls._id}>
-                      {getClassDisplayName(cls)} {roleLabel}
-                    </option>
-                  );
-                })}
+                <option value="">Choose an exam...</option>
+                {availableExams.map((e) => (
+                  <option key={e._id} value={e._id}>
+                    {e.displayName || e.name}
+                  </option>
+                ))}
               </select>
-              {availableClassesForExam.length === 0 && selectedExam && (
-                <p className="text-sm text-amber-600 mt-2">
-                  This exam is not available for any of your classes.
-                </p>
+              {availableExams.length === 0 && allMyClasses.length > 0 && (
+                <p className="text-xs text-amber-600 mt-2">No exams available for your classes.</p>
               )}
             </div>
           </div>
-        )}
 
-        {/* Role Info Banner */}
+          {/* Class Selection */}
+          {selectedExam && (
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                <div className="flex items-center gap-2">
+                  <UserGroupIcon className="w-4 h-4 text-emerald-600" />
+                  <h3 className="text-sm font-medium text-gray-900">Select Class</h3>
+                </div>
+              </div>
+              <div className="p-4">
+                <select
+                  value={selectedClass}
+                  onChange={(e) => {
+                    setSelectedClass(e.target.value);
+                    setStudents([]);
+                    setPermissions(null);
+                    setExamSubjects([]);
+                    setTempMarks({});
+                  }}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white disabled:bg-gray-50 disabled:cursor-not-allowed"
+                  disabled={availableClassesForExam.length === 0}
+                >
+                  <option value="">Choose a class...</option>
+                  {availableClassesForExam.map((cls) => {
+                    const isClassTeacherClass = myClasses.some(c => c._id === cls._id);
+                    const isSubjectTeacherClass = mySubjectTeacherClasses.some(c => c._id === cls._id);
+                    const roleLabel = isClassTeacherClass ? "(Class Teacher)" : isSubjectTeacherClass ? "(Subject Teacher)" : "";
+                    return (
+                      <option key={cls._id} value={cls._id}>
+                        {getClassDisplayName(cls)} {roleLabel}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Permission Info Banner */}
         {permissions && selectedClass && (
-          <div className={`rounded-xl p-4 mb-6 flex items-center space-x-3 ${
-            isClassTeacher ? 'bg-emerald-50' : isSubjectTeacher ? 'bg-blue-50' : 'bg-gray-50'
+          <div className={`rounded-lg p-3 mb-6 flex items-center gap-3 ${
+            isClassTeacher ? 'bg-emerald-50 border border-emerald-200' : 
+            isSubjectTeacher ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-200'
           }`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
               isClassTeacher ? 'bg-emerald-100' : isSubjectTeacher ? 'bg-blue-100' : 'bg-gray-100'
             }`}>
-              <span className={`font-bold ${
-                isClassTeacher ? 'text-emerald-600' : isSubjectTeacher ? 'text-blue-600' : 'text-gray-600'
+              <span className={`text-xs font-bold ${
+                isClassTeacher ? 'text-emerald-700' : isSubjectTeacher ? 'text-blue-700' : 'text-gray-600'
               }`}>
                 {isClassTeacher ? 'CT' : isSubjectTeacher ? 'ST' : 'V'}
               </span>
             </div>
             <div className="flex-1">
-              <div className="flex flex-wrap gap-3 text-sm">
+              <div className="flex flex-wrap gap-3 text-xs">
                 <span className={isClassTeacher ? 'text-emerald-700' : isSubjectTeacher ? 'text-blue-700' : 'text-gray-700'}>
-                  <strong>Role:</strong> {isClassTeacher ? 'Class Teacher' : isSubjectTeacher ? 'Subject Teacher' : 'View Only'}
+                  Role: {isClassTeacher ? 'Class Teacher' : isSubjectTeacher ? 'Subject Teacher' : 'View Only'}
                 </span>
                 <span className={isClassTeacher ? 'text-emerald-700' : isSubjectTeacher ? 'text-blue-700' : 'text-gray-700'}>
-                  <strong>Can Edit:</strong> {hasEditPermission ? "Yes" : "No"}
+                  Edit: {hasEditPermission ? "Yes" : "No"}
                 </span>
-                {permissions?.canSubmit && (
-                  <span className="text-amber-700">
-                    <strong>Can Submit:</strong> Yes
-                  </span>
-                )}
+                {permissions?.canSubmit && <span className="text-amber-700">Submit: Yes</span>}
               </div>
               {isSubjectTeacher && permissions?.allowedSubjects && permissions.allowedSubjects.length > 0 && (
-                <div className="mt-2 text-xs text-blue-600">
-                  <strong>Your Subjects:</strong> {permissions.allowedSubjects.map(s => s.subjectName).join(', ')}
-                </div>
-              )}
-              {isSubjectTeacherClass && !isClassTeacher && (
-                <div className="mt-2 text-xs text-blue-600">
-                  📝 You are a subject teacher for this class. You can only edit your assigned subjects.
+                <div className="mt-1 text-xs text-blue-600">
+                  Your Subjects: {permissions.allowedSubjects.slice(0, 3).map(s => s.subjectName).join(', ')}
+                  {permissions.allowedSubjects.length > 3 && ` +${permissions.allowedSubjects.length - 3}`}
                 </div>
               )}
             </div>
@@ -679,37 +624,20 @@ const StaffMarksEntry = () => {
 
         {/* Subjects Info */}
         {examSubjects.length > 0 && selectedClass && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-sm font-medium text-gray-700">
-                Subjects for this Exam
-              </h3>
-              <span className="text-xs text-gray-500">
-                {examSubjects.length} subjects
-              </span>
-            </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-3 mb-6 overflow-x-auto">
             <div className="flex flex-wrap gap-2">
               {examSubjects.map((subject) => {
                 const canEdit = canEditSubject(subject.subjectId);
                 return (
-                  <div key={subject.subjectId} className="group relative">
-                    <span className={`px-3 py-1 rounded-full text-sm cursor-help flex items-center gap-1 ${
+                  <div key={subject.subjectId} className="relative group">
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-md ${
                       canEdit 
                         ? 'bg-emerald-50 text-emerald-700' 
                         : 'bg-gray-100 text-gray-500'
                     }`}>
                       {!canEdit && <LockClosedIcon className="w-3 h-3" />}
                       {subject.subjectName}
-                      {!canEdit && <span className="text-xs ml-1">(View Only)</span>}
-                      {canEdit && !isClassTeacher && <span className="text-xs ml-1">(Editable)</span>}
                     </span>
-                    <div className="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap z-10">
-                      Theory: {subject.theoryMaxMarks || subject.maxMarks} | 
-                      {subject.hasPractical && ` Practical: ${subject.practicalMaxMarks} | `}
-                      Total: {subject.maxMarks} | Pass: {subject.passingMarks}
-                      {!canEdit && " | You cannot edit this subject"}
-                      {canEdit && !isClassTeacher && " | You can edit this subject"}
-                    </div>
                   </div>
                 );
               })}
@@ -717,352 +645,209 @@ const StaffMarksEntry = () => {
           </div>
         )}
 
-        {/* Search and Actions Bar */}
+        {/* Search and Actions */}
         {selectedClass && students.length > 0 && hasEditPermission && (
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-3 mb-6">
             <div className="flex-1 relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by name, roll number, or admission number..."
+                placeholder="Search by name, roll number..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-5 py-3 pl-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white"
+                className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
               />
-              <svg
-                className="absolute left-4 top-3.5 w-5 h-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
+              {searchTerm && (
+                <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <XMarkIcon className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={expandAll}
-                className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-              >
-                Expand All
-              </button>
-              <button
-                onClick={collapseAll}
-                className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-              >
-                Collapse All
-              </button>
+              <button onClick={expandAll} className="px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">Expand All</button>
+              <button onClick={collapseAll} className="px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">Collapse All</button>
             </div>
           </div>
         )}
 
-        {/* Marks Entry Table */}
-        {selectedClass &&
-          filteredStudents.length > 0 &&
-          hasEditPermission &&
-          examSubjects.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-6 py-4 bg-gradient-to-r from-emerald-50 to-green-50 border-b border-gray-100 flex justify-between items-center flex-wrap gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-800">
-                    Enter Marks for {selectedExamData?.displayName || selectedExamData?.name}
-                  </h2>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    Class: {getClassDisplayName(availableClassesForExam.find(c => c._id === selectedClass))} |
-                    Total Students: {filteredStudents.length}
-                  </p>
-                </div>
-                <div className="flex space-x-3">
-                  <button
-                    onClick={handleSave}
-                    disabled={isSubmitting}
-                    className="px-5 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Saving...</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircleIcon className="w-4 h-4" />
-                        <span>Save All Marks</span>
-                      </>
-                    )}
-                  </button>
-                  {permissions?.canSubmit && (
-                    <button
-                      onClick={handleSubmitForReview}
-                      disabled={isSubmitting}
-                      className="px-5 py-2 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition-all duration-200 disabled:opacity-50 flex items-center space-x-2"
-                    >
-                      <ChartBarIcon className="w-4 h-4" />
-                      <span>Submit for Review</span>
-                    </button>
-                  )}
-                </div>
-              </div>
+        {/* Student Cards */}
+        {selectedClass && filteredStudents.length > 0 && hasEditPermission && examSubjects.length > 0 && (
+          <div className="space-y-4">
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={handleSave}
+                disabled={isSubmitting}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50"
+              >
+                <CheckCircleIcon className="w-4 h-4" />
+                <span>{isSubmitting ? 'Saving...' : 'Save All'}</span>
+              </button>
+              {permissions?.canSubmit && (
+                <button
+                  onClick={handleSubmitForReview}
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-amber-600 text-white rounded-md hover:bg-amber-700 disabled:opacity-50"
+                >
+                  <ChartBarIcon className="w-4 h-4" />
+                  <span>Submit</span>
+                </button>
+              )}
+            </div>
 
-              <div className="divide-y divide-gray-100">
-                {filteredStudents.map((student, idx) => {
-                  const totalPercentage = getStudentTotalPercentage(student);
-                  const totalGradeInfo = getGradeBadge(totalPercentage, 100);
-                  const isExpanded = expandedStudents[student.studentId];
-
-                  return (
+            {/* Student Cards */}
+            <div className="space-y-3">
+              {filteredStudents.map((student) => {
+                const totalPercentage = getStudentTotalPercentage(student);
+                const totalGradeInfo = getGradeBadge(totalPercentage, 100);
+                const isExpanded = expandedStudents[student.studentId];
+                
+                return (
+                  <div key={student.studentId} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    {/* Student Header */}
                     <div
-                      key={student.studentId}
-                      className="hover:bg-gray-50 transition-colors"
+                      className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => toggleStudentExpand(student.studentId)}
                     >
-                      <div
-                        className="px-6 py-4 flex items-center justify-between cursor-pointer"
-                        onClick={() => toggleStudentExpand(student.studentId)}
-                      >
-                        <div className="flex items-center space-x-4 flex-1">
-                          <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-green-500 rounded-xl flex items-center justify-center text-white font-bold shadow-sm">
-                            {student.studentName?.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3">
-                              <h3 className="font-semibold text-gray-800">
-                                {student.studentName}
-                              </h3>
-                              <span className="text-xs text-gray-400">
-                                #{student.rollNumber || "N/A"}
-                              </span>
-                            </div>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                              Admission: {student.admissionNo || student.studentCode}
-                            </p>
-                          </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-semibold text-sm flex-shrink-0">
+                          {student.studentName?.charAt(0).toUpperCase()}
                         </div>
-                        <div className="flex items-center space-x-6">
-                          <div className="text-right">
-                            <div className="text-sm font-semibold text-gray-700">
-                              {totalPercentage.toFixed(1)}%
-                            </div>
-                            <span
-                              className={`px-2 py-0.5 text-xs font-semibold rounded-full ${totalGradeInfo.color}`}
-                            >
-                              {totalGradeInfo.grade}
-                            </span>
-                          </div>
-                          <button className="p-1 text-gray-400 hover:text-gray-600">
-                            {isExpanded ? <ChevronUpIcon className="w-5 h-5" /> : <ChevronDownIcon className="w-5 h-5" />}
-                          </button>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{student.studentName}</p>
+                          <p className="text-xs text-gray-500">Roll: {student.rollNumber || '-'} | Adm: {student.admissionNo || student.studentCode}</p>
                         </div>
                       </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <div className="text-sm font-semibold text-gray-900">{totalPercentage.toFixed(0)}%</div>
+                          <span className={`inline-block px-1.5 py-0.5 text-xs rounded ${totalGradeInfo.color}`}>
+                            {totalGradeInfo.grade}
+                          </span>
+                        </div>
+                        {isExpanded ? (
+                          <ChevronUpIcon className="w-5 h-5 text-gray-400" />
+                        ) : (
+                          <ChevronDownIcon className="w-5 h-5 text-gray-400" />
+                        )}
+                      </div>
+                    </div>
 
-                      {isExpanded && (
-                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {examSubjects.map((subject) => {
-                              const canEdit = canEditSubject(subject.subjectId);
-                              const theoryMarks = tempMarks[student.studentId]?.[subject.subjectId]?.theoryScore ?? 
-                                (student.subjects?.find(s => s.subjectId === subject.subjectId)?.theoryScore || 0);
-                              const practicalMarks = tempMarks[student.studentId]?.[subject.subjectId]?.practicalScore ??
-                                (student.subjects?.find(s => s.subjectId === subject.subjectId)?.practicalScore || 0);
-                              const totalMarks = (theoryMarks === "" ? 0 : theoryMarks) + (practicalMarks === "" ? 0 : practicalMarks);
-                              const percentage = subject.maxMarks > 0 ? (totalMarks / subject.maxMarks) * 100 : 0;
-                              const gradeInfo = getGradeBadge(totalMarks, subject.maxMarks);
-                              const theoryMax = subject.theoryMaxMarks || subject.maxMarks;
-                              const practicalMax = subject.practicalMaxMarks || 0;
-
-                              return (
-                                <div
-                                  key={subject.subjectId}
-                                  className={`bg-white rounded-xl p-4 shadow-sm border ${
-                                    canEdit ? 'border-gray-100' : 'border-gray-200 bg-gray-50'
-                                  }`}
-                                >
-                                  <div className="flex justify-between items-start mb-3">
-                                    <div>
-                                      <div className="flex items-center gap-2">
-                                        <h4 className="font-semibold text-gray-800">
-                                          {subject.subjectName}
-                                        </h4>
-                                        {!canEdit && (
-                                          <span className="text-xs text-gray-400 flex items-center gap-1">
-                                            <LockClosedIcon className="w-3 h-3" />
-                                            View Only
-                                          </span>
-                                        )}
-                                        {canEdit && !isClassTeacher && (
-                                          <span className="text-xs text-emerald-600 flex items-center gap-1">
-                                            <PencilIcon className="w-3 h-3" />
-                                            Editable
-                                          </span>
-                                        )}
-                                      </div>
-                                      <p className="text-xs text-gray-400">
-                                        Total: {subject.maxMarks} | Pass: {subject.passingMarks}
-                                      </p>
-                                      {subject.hasPractical && (
-                                        <p className="text-xs text-gray-400">
-                                          Theory: {theoryMax} | Practical: {practicalMax}
-                                        </p>
-                                      )}
-                                    </div>
-                                    <span
-                                      className={`px-2 py-1 text-xs font-semibold rounded-full ${gradeInfo.color}`}
-                                    >
-                                      {gradeInfo.grade}
-                                    </span>
+                    {/* Expanded Content */}
+                    {isExpanded && (
+                      <div className="px-4 pb-4 pt-1 bg-gray-50">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {examSubjects.map((subject) => {
+                            const canEdit = canEditSubject(subject.subjectId);
+                            const theoryMarks = tempMarks[student.studentId]?.[subject.subjectId]?.theoryScore ?? 
+                              (student.subjects?.find(s => s.subjectId === subject.subjectId)?.theoryScore || 0);
+                            const practicalMarks = tempMarks[student.studentId]?.[subject.subjectId]?.practicalScore ??
+                              (student.subjects?.find(s => s.subjectId === subject.subjectId)?.practicalScore || 0);
+                            const totalMarks = (theoryMarks === "" ? 0 : theoryMarks) + (practicalMarks === "" ? 0 : practicalMarks);
+                            const percentage = subject.maxMarks > 0 ? (totalMarks / subject.maxMarks) * 100 : 0;
+                            const gradeInfo = getGradeBadge(totalMarks, subject.maxMarks);
+                            const theoryMax = subject.theoryMaxMarks || subject.maxMarks;
+                            const practicalMax = subject.practicalMaxMarks || 0;
+                            
+                            return (
+                              <div key={subject.subjectId} className="bg-white rounded-md border border-gray-200 p-3">
+                                <div className="flex justify-between items-center mb-2 pb-1 border-b border-gray-100">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-sm font-medium text-gray-900">{subject.subjectName}</span>
+                                    {!canEdit && <LockClosedIcon className="w-3 h-3 text-gray-400" />}
                                   </div>
-
-                                  <div className="space-y-2">
+                                  <span className={`px-1.5 py-0.5 text-xs rounded ${gradeInfo.color}`}>
+                                    {gradeInfo.grade}
+                                  </span>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                  <div>
+                                    <label className="text-xs text-gray-500">Theory (Max: {theoryMax})</label>
+                                    <input
+                                      type="number"
+                                      value={theoryMarks || ''}
+                                      onChange={(e) => handleMarkChange(student.studentId, subject.subjectId, "theoryScore", e.target.value)}
+                                      disabled={!canEdit}
+                                      className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50 disabled:text-gray-500"
+                                      min="0"
+                                      max={theoryMax}
+                                      placeholder="0"
+                                    />
+                                  </div>
+                                  
+                                  {subject.hasPractical && practicalMax > 0 && (
                                     <div>
-                                      <label className="text-xs text-gray-500">
-                                        Theory Marks (Max: {theoryMax})
-                                      </label>
+                                      <label className="text-xs text-gray-500">Practical (Max: {practicalMax})</label>
                                       <input
                                         type="number"
-                                        value={getCurrentMarkValue(student.studentId, subject.subjectId, "theoryScore")}
-                                        onChange={(e) =>
-                                          handleMarkChange(
-                                            student.studentId,
-                                            subject.subjectId,
-                                            "theoryScore",
-                                            e.target.value,
-                                          )
-                                        }
+                                        value={practicalMarks || ''}
+                                        onChange={(e) => handleMarkChange(student.studentId, subject.subjectId, "practicalScore", e.target.value)}
                                         disabled={!canEdit}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none ${
-                                          canEdit 
-                                            ? 'border-gray-200 bg-white' 
-                                            : 'border-gray-200 bg-gray-100 text-gray-500'
-                                        }`}
+                                        className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50 disabled:text-gray-500"
                                         min="0"
-                                        max={theoryMax}
-                                        placeholder="Enter marks"
+                                        max={practicalMax}
+                                        placeholder="0"
                                       />
                                     </div>
-                                    
-                                    {subject.hasPractical && practicalMax > 0 && (
-                                      <div>
-                                        <label className="text-xs text-gray-500">
-                                          Practical Marks (Max: {practicalMax})
-                                        </label>
-                                        <input
-                                          type="number"
-                                          value={getCurrentMarkValue(student.studentId, subject.subjectId, "practicalScore")}
-                                          onChange={(e) =>
-                                            handleMarkChange(
-                                              student.studentId,
-                                              subject.subjectId,
-                                              "practicalScore",
-                                              e.target.value,
-                                            )
-                                          }
-                                          disabled={!canEdit}
-                                          onClick={(e) => e.stopPropagation()}
-                                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none ${
-                                            canEdit 
-                                              ? 'border-gray-200 bg-white' 
-                                              : 'border-gray-200 bg-gray-100 text-gray-500'
-                                          }`}
-                                          min="0"
-                                          max={practicalMax}
-                                          placeholder="Enter marks"
-                                        />
-                                      </div>
-                                    )}
-                                    
-                                    <div className="flex justify-between items-center pt-2 border-t">
-                                      <span className="text-sm font-medium">
-                                        Total: {totalMarks} / {subject.maxMarks}
-                                      </span>
-                                      <span className="text-xs text-gray-500">
-                                        {percentage.toFixed(1)}%
-                                      </span>
-                                    </div>
+                                  )}
+                                  
+                                  <div className="flex justify-between items-center pt-1 text-xs">
+                                    <span className="text-gray-500">Total</span>
+                                    <span className="font-semibold text-gray-900">{totalMarks} / {subject.maxMarks}</span>
+                                    <span className="text-gray-400">{percentage.toFixed(0)}%</span>
                                   </div>
                                 </div>
-                              );
-                            })}
-                          </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
-                <button
-                  onClick={handleSave}
-                  disabled={isSubmitting}
-                  className="px-6 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all duration-200 disabled:opacity-50 flex items-center space-x-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Saving All Marks...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircleIcon className="w-4 h-4" />
-                      <span>Save All Records</span>
-                    </>
-                  )}
-                </button>
-              </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          )}
 
-        {selectedClass && !hasEditPermission && examSubjects.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <LockClosedIcon className="w-10 h-10 text-gray-400" />
+            {/* Sticky Save Button */}
+            <div className="sticky bottom-4 bg-white rounded-lg border border-gray-200 p-3 shadow-lg">
+              <button
+                onClick={handleSave}
+                disabled={isSubmitting}
+                className="w-full inline-flex items-center justify-center gap-2 py-2.5 text-sm font-medium bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50"
+              >
+                <CheckCircleIcon className="w-4 h-4" />
+                <span>{isSubmitting ? 'Saving...' : 'Save All Marks'}</span>
+              </button>
             </div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">
-              View Only Mode
-            </h3>
-            <p className="text-gray-500">
-              You don't have permission to edit marks for this exam and class.
-            </p>
           </div>
         )}
 
-        {selectedClass &&
-          filteredStudents.length === 0 &&
-          !isLoading &&
-          examSubjects.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <UserGroupIcon className="w-10 h-10 text-gray-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                No Students Found
-              </h3>
-              <p className="text-gray-500">
-                No students found matching your search criteria
-              </p>
-            </div>
-          )}
+        {/* No Permission State */}
+        {selectedClass && !hasEditPermission && examSubjects.length > 0 && (
+          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+            <LockClosedIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <h3 className="text-base font-semibold text-gray-800 mb-1">View Only Mode</h3>
+            <p className="text-sm text-gray-500">You don't have permission to edit marks for this exam.</p>
+          </div>
+        )}
 
-        {selectedExam &&
-          selectedClass &&
-          examSubjects.length === 0 &&
-          !isLoading && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-              <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <BookOpenIcon className="w-10 h-10 text-amber-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                No Subjects Found
-              </h3>
-              <p className="text-gray-500">
-                This exam doesn't have any subjects configured. Please contact the administrator.
-              </p>
-            </div>
-          )}
+        {/* Empty States */}
+        {selectedClass && filteredStudents.length === 0 && examSubjects.length > 0 && !isLoading && (
+          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+            <UserGroupIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <h3 className="text-base font-semibold text-gray-800 mb-1">No Students Found</h3>
+            <p className="text-sm text-gray-500">No students match your search criteria.</p>
+          </div>
+        )}
 
-        {isLoading && <LoadingSpinner />}
+        {selectedExam && selectedClass && examSubjects.length === 0 && !isLoading && (
+          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+            <BookOpenIcon className="w-12 h-12 text-amber-300 mx-auto mb-3" />
+            <h3 className="text-base font-semibold text-gray-800 mb-1">No Subjects Found</h3>
+            <p className="text-sm text-gray-500">This exam has no subjects configured.</p>
+          </div>
+        )}
       </div>
     </div>
   );

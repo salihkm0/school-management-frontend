@@ -15,63 +15,46 @@ const NotificationsPage = () => {
   const location = useLocation()
   const { user } = useSelector((state) => state.auth)
   const userRole = user?.role || 'parent'
+  const unreadCount = useSelector((state) => state.notifications?.unreadCount || 0)
   
-  // Only admin and staff can send notifications
-  const canSendNotifications = userRole === 'admin'
+  const canSendNotifications = userRole === 'admin' || userRole === 'staff'
   
   const tabs = [
-    { 
-      id: 'inbox', 
-      name: 'Inbox', 
-      icon: InboxIcon, 
-      path: '/notifications',
-      description: 'View all notifications'
-    }
+    { id: 'inbox', name: 'Inbox', icon: InboxIcon, path: '/notifications' }
   ]
   
-  // Add send tab only for admin and staff
   if (canSendNotifications) {
-    tabs.push({
-      id: 'send', 
-      name: 'Send Notification', 
-      icon: PaperAirplaneIcon, 
-      path: '/notifications/send',
-      description: 'Send announcements to users'
-    })
+    tabs.push({ id: 'send', name: 'Send', icon: PaperAirplaneIcon, path: '/notifications/send' })
   }
 
   const currentPath = location.pathname
-  const unreadCount = 5 // You can get this from Redux store
 
   return (
-    <div className="space-y-6">
-      {/* Header with actions */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-5 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
-          <p className="text-gray-500 mt-1">
-            {canSendNotifications 
-              ? 'Manage and send notifications to users' 
-              : 'View your notifications'}
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Notifications</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {canSendNotifications ? 'Manage and send notifications to users' : 'View your notifications'}
           </p>
         </div>
         
-        {/* Quick action button for sending - only for admin/staff */}
         {canSendNotifications && currentPath !== '/notifications/send' && (
           <button
             onClick={() => navigate('/notifications/send')}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all shadow-sm"
           >
-            <PaperAirplaneIcon className="w-5 h-5" />
+            <PaperAirplaneIcon className="w-4 h-4" />
             <span>New Notification</span>
           </button>
         )}
       </div>
 
-      {/* Tabs Navigation - Only show if there are multiple tabs */}
+      {/* Tabs Navigation */}
       {tabs.length > 1 ? (
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8" aria-label="Tabs">
+        <div className="border-b border-gray-200 overflow-x-auto">
+          <nav className="flex gap-4 sm:gap-6 min-w-max">
             {tabs.map((tab) => {
               const isActive = location.pathname === tab.path || 
                 (tab.path === '/notifications' && location.pathname === '/notifications')
@@ -80,21 +63,17 @@ const NotificationsPage = () => {
                 <button
                   key={tab.id}
                   onClick={() => navigate(tab.path)}
-                  className={`
-                    group inline-flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors
-                    ${isActive 
-                      ? 'border-primary-500 text-primary-600' 
+                  className={`flex items-center gap-2 py-2 px-0 border-b-2 text-sm font-medium transition-all ${
+                    isActive 
+                      ? 'border-emerald-500 text-emerald-600' 
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }
-                  `}
+                  }`}
                 >
-                  <tab.icon className={`w-5 h-5 ${isActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'}`} />
+                  <tab.icon className="w-4 h-4" />
                   <span>{tab.name}</span>
-                  
-                  {/* Unread badge for inbox */}
                   {tab.id === 'inbox' && unreadCount > 0 && (
-                    <span className="ml-1 bg-primary-100 text-primary-600 text-xs px-2 py-0.5 rounded-full">
-                      {unreadCount}
+                    <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium bg-emerald-100 text-emerald-700 rounded-full">
+                      {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                   )}
                 </button>
@@ -103,27 +82,22 @@ const NotificationsPage = () => {
           </nav>
         </div>
       ) : (
-        /* Single tab - just show a header without tabs */
-        <div className="border-b border-gray-200 pb-2">
-          <div className="flex items-center gap-2">
-            <InboxIcon className="w-5 h-5 text-primary-500" />
-            <h2 className="font-medium text-gray-700">Inbox</h2>
-            {unreadCount > 0 && (
-              <span className="bg-primary-100 text-primary-600 text-xs px-2 py-0.5 rounded-full">
-                {unreadCount} unread
-              </span>
-            )}
-          </div>
+        <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+          <InboxIcon className="w-4 h-4 text-emerald-600" />
+          <span className="text-sm font-medium text-gray-700">Inbox</span>
+          {unreadCount > 0 && (
+            <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium bg-emerald-100 text-emerald-700 rounded-full">
+              {unreadCount} unread
+            </span>
+          )}
         </div>
       )}
 
-      {/* Tab Content */}
-      <div className="mt-6">
+      {/* Content */}
+      <div className="mt-5">
         <Routes>
           <Route index element={<NotificationList />} />
-          {canSendNotifications && (
-            <Route path="send" element={<SendNotification />} />
-          )}
+          {canSendNotifications && <Route path="send" element={<SendNotification />} />}
         </Routes>
       </div>
     </div>

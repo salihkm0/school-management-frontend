@@ -1,7 +1,9 @@
+// src/components/duties/ManualAssignDuty.jsx
 import React, { useState, useEffect } from 'react'
 import { useDispatch } from 'react-redux'
 import { assignManualDuty } from '../../store/slices/dutySlice'
 import { fetchStaff } from '../../store/slices/staffSlice'
+import { PlusIcon, XMarkIcon, UserIcon, CalendarIcon, ClockIcon, MapPinIcon } from '@heroicons/react/24/outline'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
 
@@ -38,187 +40,93 @@ const ManualAssignDuty = () => {
   }
 
   const addDate = () => {
-    if (!selectedDate) {
-      toast.error('Please select a date')
-      return
-    }
-    if (dates.includes(selectedDate)) {
-      toast.error('Date already added')
-      return
-    }
+    if (!selectedDate) { toast.error('Please select a date'); return }
+    if (dates.includes(selectedDate)) { toast.error('Date already added'); return }
     setDates([...dates, selectedDate])
     setSelectedDate('')
   }
 
-  const removeDate = (dateToRemove) => {
-    setDates(dates.filter(d => d !== dateToRemove))
-  }
+  const removeDate = (dateToRemove) => setDates(dates.filter(d => d !== dateToRemove))
 
   const handleSubmit = async () => {
-    if (!selectedStaff) {
-      toast.error('Please select a staff member')
-      return
-    }
-    if (dates.length === 0) {
-      toast.error('Please add at least one date')
-      return
-    }
+    if (!selectedStaff) { toast.error('Please select a staff member'); return }
+    if (dates.length === 0) { toast.error('Please add at least one date'); return }
 
     setIsLoading(true)
     try {
-      const dutyData = {
-        staffId: selectedStaff,
-        dutyType,
-        dates,
-        shift,
-        duration,
-        location,
-        remarks,
-        className: dutyType
-      }
-      
+      const dutyData = { staffId: selectedStaff, dutyType, dates, shift, duration, location, remarks, className: dutyType }
       const res = await dispatch(assignManualDuty(dutyData)).unwrap()
       toast.success(res.message || 'Duty assigned successfully')
-      
-      // Reset form
-      setSelectedStaff('')
-      setDutyType('exam')
-      setDates([])
-      setShift('full')
-      setDuration(8)
-      setLocation('')
-      setRemarks('')
+      setSelectedStaff(''); setDutyType('exam'); setDates([]); setShift('full'); setDuration(8); setLocation(''); setRemarks('')
     } catch (error) {
-      console.error('Assignment error:', error)
       toast.error(error.message || 'Failed to assign duty')
-    } finally {
-      setIsLoading(false)
-    }
+    } finally { setIsLoading(false) }
   }
 
-  const getStaffName = (staffId) => {
-    const staff = staffList.find(s => s._id === staffId)
-    return staff?.name || ''
-  }
+  const getStaffName = (staffId) => staffList.find(s => s._id === staffId)?.name || ''
+
+  if (isLoading && staffList.length === 0) return <LoadingSpinner />
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Manual Duty Assignment</h1>
-        <p className="text-gray-500 mt-1">Manually assign duties to individual staff members</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold mb-4">Assignment Details</h2>
-          <div className="space-y-4">
-            {/* Staff Selection */}
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Left Panel */}
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <h2 className="text-sm font-semibold text-gray-900">Assignment Details</h2>
+          </div>
+          <div className="p-4 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Staff Member *</label>
-              <select 
-                value={selectedStaff} 
-                onChange={(e) => setSelectedStaff(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500"
-              >
+              <select value={selectedStaff} onChange={(e) => setSelectedStaff(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500">
                 <option value="">Select Staff Member</option>
-                {staffList.map(staff => (
-                  <option key={staff._id} value={staff._id}>{staff.name}</option>
-                ))}
+                {staffList.map(staff => (<option key={staff._id} value={staff._id}>{staff.name}</option>))}
               </select>
             </div>
 
-            {/* Duty Type */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Duty Type *</label>
-              <select 
-                value={dutyType} 
-                onChange={(e) => setDutyType(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 capitalize"
-              >
-                {dutyTypes.map(type => (
-                  <option key={type} value={type} className="capitalize">
-                    {type.replace('_', ' ')}
-                  </option>
-                ))}
+              <select value={dutyType} onChange={(e) => setDutyType(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 capitalize">
+                {dutyTypes.map(type => (<option key={type} value={type} className="capitalize">{type.replace('_', ' ')}</option>))}
               </select>
             </div>
 
-            {/* Shift and Duration */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Shift</label>
-                <select 
-                  value={shift} 
-                  onChange={(e) => setShift(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="full">Full Day</option>
-                  <option value="morning">Morning</option>
-                  <option value="afternoon">Afternoon</option>
+                <select value={shift} onChange={(e) => setShift(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg">
+                  <option value="full">Full Day</option><option value="morning">Morning</option><option value="afternoon">Afternoon</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Duration (hours)</label>
-                <input 
-                  type="number" 
-                  value={duration} 
-                  onChange={(e) => setDuration(parseInt(e.target.value))}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500"
-                  min="1"
-                  max="12"
-                />
+                <input type="number" value={duration} onChange={(e) => setDuration(parseInt(e.target.value))} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg" min="1" max="12" />
               </div>
             </div>
 
-            {/* Location */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Location (Optional)</label>
-              <input 
-                type="text" 
-                value={location} 
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g., Main Hall, Room 101, etc."
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500"
-              />
+              <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g., Main Hall, Room 101" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg" />
             </div>
 
-            {/* Remarks */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Remarks (Optional)</label>
-              <textarea 
-                value={remarks} 
-                onChange={(e) => setRemarks(e.target.value)}
-                rows="2"
-                placeholder="Any additional notes..."
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500"
-              />
+              <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={2} placeholder="Any additional notes..." className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold mb-4">Select Dates</h2>
-          <div className="space-y-4">
-            {/* Date Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Add Date</label>
-              <div className="flex gap-2">
-                <input 
-                  type="date" 
-                  value={selectedDate} 
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500"
-                />
-                <button
-                  onClick={addDate}
-                  className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
-                >
-                  Add
-                </button>
-              </div>
+        {/* Right Panel - Dates */}
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <h2 className="text-sm font-semibold text-gray-900">Select Dates</h2>
+          </div>
+          <div className="p-4 space-y-4">
+            <div className="flex gap-2">
+              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+              <button onClick={addDate} className="px-3 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">Add</button>
             </div>
 
-            {/* Selected Dates List */}
             {dates.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Selected Dates ({dates.length})</label>
@@ -226,12 +134,7 @@ const ManualAssignDuty = () => {
                   {dates.map(date => (
                     <div key={date} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
                       <span className="text-sm">{new Date(date).toLocaleDateString()}</span>
-                      <button
-                        onClick={() => removeDate(date)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        Remove
-                      </button>
+                      <button onClick={() => removeDate(date)} className="text-rose-500 hover:text-rose-700">Remove</button>
                     </div>
                   ))}
                 </div>
@@ -241,31 +144,21 @@ const ManualAssignDuty = () => {
         </div>
       </div>
 
-      {/* Summary and Submit */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-semibold mb-4">Assignment Summary</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <p className="text-xs text-gray-500">Staff Member</p>
-            <p className="font-medium text-gray-900">{getStaffName(selectedStaff) || 'Not selected'}</p>
-          </div>
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <p className="text-xs text-gray-500">Duty Type</p>
-            <p className="font-medium text-gray-900 capitalize">{dutyType.replace('_', ' ')}</p>
-          </div>
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <p className="text-xs text-gray-500">Total Days</p>
-            <p className="font-medium text-gray-900">{dates.length} day{dates.length !== 1 ? 's' : ''}</p>
-          </div>
+      {/* Summary & Submit */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <h3 className="text-sm font-semibold text-gray-900">Assignment Summary</h3>
         </div>
-        
-        <button
-          onClick={handleSubmit}
-          disabled={isLoading || !selectedStaff || dates.length === 0}
-          className="w-full py-3 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-        >
-          {isLoading ? 'Assigning Duty...' : 'Assign Duty'}
-        </button>
+        <div className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div className="p-3 bg-gray-50 rounded-lg"><p className="text-xs text-gray-500">Staff Member</p><p className="text-sm font-medium text-gray-900">{getStaffName(selectedStaff) || 'Not selected'}</p></div>
+            <div className="p-3 bg-gray-50 rounded-lg"><p className="text-xs text-gray-500">Duty Type</p><p className="text-sm font-medium text-gray-900 capitalize">{dutyType.replace('_', ' ')}</p></div>
+            <div className="p-3 bg-gray-50 rounded-lg"><p className="text-xs text-gray-500">Total Days</p><p className="text-sm font-medium text-gray-900">{dates.length} day{dates.length !== 1 ? 's' : ''}</p></div>
+          </div>
+          <button onClick={handleSubmit} disabled={isLoading || !selectedStaff || dates.length === 0} className="w-full py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+            {isLoading ? 'Assigning...' : 'Assign Duty'}
+          </button>
+        </div>
       </div>
     </div>
   )

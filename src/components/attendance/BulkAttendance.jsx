@@ -10,7 +10,10 @@ import {
   ArrowPathIcon, 
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  XMarkIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
@@ -33,13 +36,14 @@ const BulkAttendance = () => {
   const [result, setResult] = useState(null)
   const [template, setTemplate] = useState(null)
   const [loadingStudents, setLoadingStudents] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(15)
 
   useEffect(() => {
     dispatch(fetchClasses({ limit: 100 }))
     dispatch(fetchAcademicYears({ limit: 100 }))
   }, [dispatch])
 
-  // Load students when class changes
   useEffect(() => {
     if (selectedClass) {
       setLoadingStudents(true)
@@ -48,10 +52,10 @@ const BulkAttendance = () => {
       })
       setAttendanceData({})
       setTemplate(null)
+      setCurrentPage(1)
     }
   }, [dispatch, selectedClass])
 
-  // Load existing attendance data when class/month/year changes AND students are loaded
   useEffect(() => {
     if (selectedClass && selectedMonth && selectedYear && students.length > 0) {
       loadExistingAttendance()
@@ -67,9 +71,6 @@ const BulkAttendance = () => {
         month: selectedMonth 
       })).unwrap()
       
-      console.log('API Response:', response)
-      
-      // Get template info from response root
       if (response.template) {
         setTemplate(response.template)
         setTotalWorkingDays(response.template.totalWorkingDays)
@@ -81,19 +82,14 @@ const BulkAttendance = () => {
       
       const workingDaysVal = response.workingDays || totalWorkingDays || 25
       
-      // Create a map of existing attendance records
       const existingData = {}
       if (response.attendance && response.attendance.length > 0) {
         response.attendance.forEach(record => {
           const studentId = record.studentId?._id || record.studentId
           if (studentId) {
-            // Use absentDays from record (which should be 0 if not entered)
-            let absentDays = record.absentDays || 0
-            let presentDays = record.presentDays || 0
-            
             existingData[studentId] = {
-              absentDays: absentDays,
-              presentDays: presentDays,
+              absentDays: record.absentDays || 0,
+              presentDays: record.presentDays || 0,
               totalWorkingDays: record.totalWorkingDays || workingDaysVal,
               isNewRecord: record.isNewRecord || false
             }
@@ -101,14 +97,11 @@ const BulkAttendance = () => {
         })
       }
       
-      // Initialize data for ALL students
       const completeData = {}
       students.forEach(student => {
         if (existingData[student._id]) {
-          // Use existing data if available
           completeData[student._id] = existingData[student._id]
         } else {
-          // Default: ALL PRESENT (0 absent, workingDays present) for new entries
           completeData[student._id] = {
             absentDays: 0,
             presentDays: workingDaysVal,
@@ -118,12 +111,8 @@ const BulkAttendance = () => {
       })
       
       setAttendanceData(completeData)
-      const dataCount = Object.keys(existingData).length
-      console.log(`Loaded ${dataCount} existing records, initialized ${students.length} total students`)
     } catch (error) {
       console.error('Failed to load existing attendance:', error)
-      toast.error('Failed to load attendance data')
-      // Initialize with default values even on error
       const defaultData = {}
       students.forEach(student => {
         defaultData[student._id] = {
@@ -139,11 +128,7 @@ const BulkAttendance = () => {
   }
 
   const handleAbsentChange = (studentId, value) => {
-    let absentDays = 0
-    if (value !== '' && value !== null && value !== undefined) {
-      absentDays = parseInt(value) || 0
-    }
-    // Ensure absentDays does not exceed totalWorkingDays
+    let absentDays = value !== '' && value !== null ? parseInt(value) || 0 : 0
     const validAbsent = Math.min(Math.max(absentDays, 0), totalWorkingDays)
     const presentDays = totalWorkingDays - validAbsent
     
@@ -162,11 +147,7 @@ const BulkAttendance = () => {
     const presentDays = totalWorkingDays - validAbsent
     const newData = {}
     students.forEach(student => {
-      newData[student._id] = { 
-        absentDays: validAbsent, 
-        presentDays: presentDays,
-        totalWorkingDays
-      }
+      newData[student._id] = { absentDays: validAbsent, presentDays: presentDays, totalWorkingDays }
     })
     setAttendanceData(newData)
     toast.success(`Set all students to ${validAbsent} absent days, ${presentDays} present days`)
@@ -178,25 +159,17 @@ const BulkAttendance = () => {
       return
     }
 
-    if (totalWorkingDays < 1 || totalWorkingDays > 31) {
-      toast.error('Total working days must be between 1 and 31')
-      return
-    }
-
-    const currentAcademicYear = academicYears.find(y => y.isCurrent);
-    const selectedClassData = classes.find(c => c._id === selectedClass);
-    const academicYearId = currentAcademicYear?._id || selectedClassData?.academicYearId;
+    const currentAcademicYear = academicYears.find(y => y.isCurrent)
+    const selectedClassData = classes.find(c => c._id === selectedClass)
+    const academicYearId = currentAcademicYear?._id || selectedClassData?.academicYearId
 
     if (!academicYearId) {
-      toast.error('Academic year not found. Please set up an academic year first.')
+      toast.error('Academic year not found')
       return
     }
 
-    // Build attendance list - use the actual absentDays from state
     const attendanceList = students.map(s => {
       const absentDays = attendanceData[s._id]?.absentDays !== undefined ? attendanceData[s._id].absentDays : 0
-      const presentDays = totalWorkingDays - absentDays
-      
       return {
         studentId: s._id,
         studentName: s.fullName,
@@ -206,12 +179,10 @@ const BulkAttendance = () => {
         month: selectedMonth,
         totalWorkingDays: totalWorkingDays,
         absentDays: absentDays,
-        presentDays: presentDays,
+        presentDays: totalWorkingDays - absentDays,
         holidays: holidays.filter(h => h.name && h.date)
       }
     })
-    
-    console.log('Sending attendance list:', attendanceList)
     
     setIsSubmitting(true)
     setResult(null)
@@ -225,15 +196,12 @@ const BulkAttendance = () => {
       }
       if (response.results?.failed?.length > 0) {
         toast.error(`${response.results.failed.length} records failed`)
-        console.error('Failed records:', response.results.failed)
       }
       
-      // Reload data after save
       await loadExistingAttendance()
     } catch (error) { 
       console.error('Failed to save attendance:', error)
       toast.error(error.response?.data?.message || 'Failed to save attendance')
-      setResult({ success: [], failed: [], warnings: [] })
     } finally { 
       setIsSubmitting(false) 
     }
@@ -241,18 +209,8 @@ const BulkAttendance = () => {
 
   const downloadTemplate = () => {
     const headers = ['Student Code', 'Student Name', 'Roll Number', 'Absent Days']
-    const rows = students.map(s => [
-      s.studentCode || '',
-      s.fullName || '',
-      s.rollNumber || '',
-      attendanceData[s._id]?.absentDays !== undefined ? attendanceData[s._id].absentDays : 0
-    ])
-    
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n')
-    
+    const rows = students.map(s => [s.studentCode || '', s.fullName || '', s.rollNumber || '', attendanceData[s._id]?.absentDays || 0])
+    const csvContent = [headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\n')
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -269,11 +227,12 @@ const BulkAttendance = () => {
     student.studentCode?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const months = Array.from({ length: 12 }, (_, i) => ({ 
-    value: i + 1, 
-    name: new Date(2000, i, 1).toLocaleString('default', { month: 'long' }) 
-  }))
-  
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentStudents = filteredStudents.slice(indexOfFirstItem, indexOfLastItem)
+  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage)
+
+  const months = Array.from({ length: 12 }, (_, i) => ({ value: i + 1, name: new Date(2000, i, 1).toLocaleString('default', { month: 'long' }) }))
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i)
 
   const getStats = () => {
@@ -292,277 +251,238 @@ const BulkAttendance = () => {
 
   const stats = getStats()
 
-  // Show loading while students are being fetched
-  if (loadingStudents || (selectedClass && studentsLoading)) {
-    return <LoadingSpinner />
-  }
+  if (loadingStudents || (selectedClass && studentsLoading)) return <LoadingSpinner />
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Bulk Attendance Entry</h1>
-          <p className="text-gray-500 mt-1">Enter monthly attendance for all students in a class</p>
-        </div>
-        <div className="flex space-x-3">
-          <button
-            onClick={() => {
-              setSelectedClass('')
-              setAttendanceData({})
-              setResult(null)
-              setSearchTerm('')
-              setHolidays([])
-              setTemplate(null)
-            }}
-            className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-          >
-            <ArrowPathIcon className="w-4 h-4" />
-            <span>Reset</span>
-          </button>
-          <button
-            onClick={downloadTemplate}
-            disabled={!selectedClass || students.length === 0}
-            className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            <ArrowDownTrayIcon className="w-4 h-4" />
-            <span>Download Template</span>
-          </button>
-        </div>
+    <div className="space-y-5">
+      {/* Header Actions */}
+      <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+        <button
+          onClick={() => { setSelectedClass(''); setAttendanceData({}); setResult(null); setSearchTerm(''); setCurrentPage(1); }}
+          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          <ArrowPathIcon className="w-4 h-4" />
+          <span>Reset</span>
+        </button>
+        <button
+          onClick={downloadTemplate}
+          disabled={!selectedClass || students.length === 0}
+          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
+        >
+          <ArrowDownTrayIcon className="w-4 h-4" />
+          <span>Download Template</span>
+        </button>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Filters Grid */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Select Class *</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Class *</label>
             <select 
               value={selectedClass} 
-              onChange={(e) => {
-                setSelectedClass(e.target.value)
-                setAttendanceData({})
-                setTemplate(null)
-              }} 
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500"
+              onChange={(e) => { setSelectedClass(e.target.value); setCurrentPage(1); }} 
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
             >
               <option value="">Select Class</option>
-              {classes.map(c => (
-                <option key={c._id} value={c._id}>
-                  {c.displayName || c.name}
-                </option>
-              ))}
+              {classes.map(c => (<option key={c._id} value={c._id}>{c.displayName || c.name}</option>))}
             </select>
           </div>
-          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Month</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Month</label>
             <select 
               value={selectedMonth} 
               onChange={(e) => setSelectedMonth(parseInt(e.target.value))} 
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
             >
-              {months.map(m => (
-                <option key={m.value} value={m.value}>{m.name}</option>
-              ))}
+              {months.map(m => (<option key={m.value} value={m.value}>{m.name}</option>))}
             </select>
           </div>
-          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Year</label>
             <select 
               value={selectedYear} 
               onChange={(e) => setSelectedYear(parseInt(e.target.value))} 
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
             >
-              {years.map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
+              {years.map(y => (<option key={y} value={y}>{y}</option>))}
             </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Working Days</label>
-            <input 
-              type="number" 
-              value={totalWorkingDays} 
-              disabled
-              className="w-full px-4 py-2 border rounded-lg bg-gray-50"
-            />
           </div>
         </div>
 
+        {/* Working Days Display */}
+        {selectedClass && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-500">Working Days:</span>
+              <span className="font-semibold text-gray-900">{totalWorkingDays} days</span>
+            </div>
+          </div>
+        )}
+
         {/* Quick Actions */}
         {selectedClass && students.length > 0 && (
-          <div className="mt-4 pt-4 border-t">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Quick Actions</label>
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <label className="block text-xs font-medium text-gray-600 mb-2">Quick Actions</label>
             <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => handleSetAll(0)}
-                className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm hover:bg-green-200"
-              >
-                All Present (0 absent)
-              </button>
-              <button
-                onClick={() => handleSetAll(2)}
-                className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-lg text-sm hover:bg-yellow-200"
-              >
-                2 Days Absent
-              </button>
-              <button
-                onClick={() => handleSetAll(5)}
-                className="px-3 py-1 bg-orange-100 text-orange-700 rounded-lg text-sm hover:bg-orange-200"
-              >
-                5 Days Absent
-              </button>
-              <button
-                onClick={() => handleSetAll(10)}
-                className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200"
-              >
-                10 Days Absent
-              </button>
-              <button
-                onClick={() => handleSetAll(totalWorkingDays)}
-                className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200"
-              >
-                All Absent ({totalWorkingDays} days)
-              </button>
+              <button onClick={() => handleSetAll(0)} className="px-3 py-1 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200 transition-colors">All Present</button>
+              <button onClick={() => handleSetAll(2)} className="px-3 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-md hover:bg-amber-200 transition-colors">2 Days Absent</button>
+              <button onClick={() => handleSetAll(5)} className="px-3 py-1 text-xs font-medium bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors">5 Days Absent</button>
+              <button onClick={() => handleSetAll(10)} className="px-3 py-1 text-xs font-medium bg-rose-100 text-rose-700 rounded-md hover:bg-rose-200 transition-colors">10 Days Absent</button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Statistics Summary */}
+      {/* Stats Cards */}
       {selectedClass && students.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-blue-50 rounded-xl p-4">
-            <p className="text-sm text-blue-600">Total Students</p>
-            <p className="text-2xl font-bold text-blue-700">{students.length}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="bg-white rounded-lg border border-gray-200 p-3">
+            <p className="text-xs text-gray-500">Total Students</p>
+            <p className="text-xl font-bold text-gray-900">{students.length}</p>
           </div>
-          <div className="bg-green-50 rounded-xl p-4">
-            <p className="text-sm text-green-600">Students with Data</p>
-            <p className="text-2xl font-bold text-green-700">{stats.totalStudentsWithData}</p>
+          <div className="bg-white rounded-lg border border-gray-200 p-3">
+            <p className="text-xs text-gray-500">With Data</p>
+            <p className="text-xl font-bold text-gray-900">{stats.totalStudentsWithData}</p>
           </div>
-          <div className="bg-purple-50 rounded-xl p-4">
-            <p className="text-sm text-purple-600">Average Attendance</p>
-            <p className="text-2xl font-bold text-purple-700">{stats.avgAttendance.toFixed(1)}%</p>
+          <div className="bg-white rounded-lg border border-gray-200 p-3">
+            <p className="text-xs text-gray-500">Avg Attendance</p>
+            <p className="text-xl font-bold text-emerald-600">{stats.avgAttendance.toFixed(1)}%</p>
           </div>
         </div>
       )}
 
       {/* Search */}
       {selectedClass && students.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by name, roll number, or student code..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 pl-10 border rounded-lg focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
+        <div className="relative">
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by name, roll number, or student code..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <XMarkIcon className="w-4 h-4" />
+            </button>
+          )}
         </div>
       )}
 
       {/* Result Summary */}
       {result && (result.success?.length > 0 || result.failed?.length > 0) && (
-        <div className={`rounded-xl p-4 ${result.failed?.length > 0 ? 'bg-yellow-50 border border-yellow-200' : 'bg-green-50 border border-green-200'}`}>
-          <div className="flex items-center space-x-2">
+        <div className={`rounded-lg p-3 ${result.failed?.length > 0 ? 'bg-amber-50 border border-amber-200' : 'bg-emerald-50 border border-emerald-200'}`}>
+          <div className="flex items-center gap-2">
             {result.failed?.length > 0 ? (
-              <ExclamationTriangleIcon className="w-5 h-5 text-yellow-600" />
+              <ExclamationTriangleIcon className="w-4 h-4 text-amber-600" />
             ) : (
-              <CheckCircleIcon className="w-5 h-5 text-green-600" />
+              <CheckCircleIcon className="w-4 h-4 text-emerald-600" />
             )}
-            <span className="font-medium">
-              {result.success?.length || 0} records saved successfully
+            <span className="text-sm font-medium">
+              {result.success?.length || 0} records saved
               {result.failed?.length > 0 && `, ${result.failed.length} failed`}
-              {result.warnings?.length > 0 && `, ${result.warnings.length} warnings`}
             </span>
           </div>
         </div>
       )}
 
       {/* Attendance Table */}
-      {selectedClass && students.length === 0 && !loadingStudents && (
-        <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-          <p className="text-gray-500">No students found in this class. Please add students first.</p>
-        </div>
-      )}
-
-      {selectedClass && students.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      {selectedClass && students.length > 0 ? (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Roll No</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Absent Days</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Present Days</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Attendance %</th>
+                <tr className="border-b border-gray-200">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
+                  <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Absent Days</th>
+                  <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Present Days</th>
+                  <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">%</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredStudents.map((student, idx) => {
+              <tbody className="divide-y divide-gray-100">
+                {currentStudents.map((student, idx) => {
                   const absent = attendanceData[student._id]?.absentDays !== undefined ? attendanceData[student._id].absentDays : 0
                   const present = totalWorkingDays - absent
                   const percentage = totalWorkingDays > 0 ? (present / totalWorkingDays) * 100 : 0
-                  const percentageColor = percentage >= 75 ? 'text-green-600' : percentage >= 60 ? 'text-yellow-600' : 'text-red-600'
+                  const percentageColor = percentage >= 75 ? 'text-emerald-600' : percentage >= 60 ? 'text-amber-600' : 'text-rose-600'
                   
                   return (
-                    <tr key={student._id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                        {idx + 1}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                    <tr key={student._id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-3 py-2 text-sm text-gray-500">{indexOfFirstItem + idx + 1}</td>
+                      <td className="px-3 py-2">
                         <div className="text-sm font-medium text-gray-900">{student.fullName}</div>
                         <div className="text-xs text-gray-500">{student.studentCode}</div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{student.rollNumber || '-'}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-center">
+                      <td className="px-3 py-2 text-center">
                         <input
                           type="number"
                           value={absent}
                           onChange={(e) => handleAbsentChange(student._id, e.target.value)}
-                          className="w-20 px-2 py-1 border rounded text-center focus:ring-2 focus:ring-primary-500"
+                          className="w-20 px-2 py-1 text-sm border border-gray-200 rounded text-center focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           min="0"
                           max={totalWorkingDays}
                         />
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-center text-green-600 font-medium">{present}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-center">
-                        <span className={`font-medium ${percentageColor}`}>
-                          {percentage.toFixed(1)}%
-                        </span>
-                       </td>
-                     </tr>
+                      <td className="px-3 py-2 text-center text-emerald-600 font-medium">{present}</td>
+                      <td className="px-3 py-2 text-center">
+                        <span className={`text-sm font-medium ${percentageColor}`}>{percentage.toFixed(1)}%</span>
+                      </td>
+                    </tr>
                   )
                 })}
               </tbody>
             </table>
           </div>
-          
-          {/* Submit Bar */}
-          <div className="px-6 py-4 bg-gray-50 border-t flex justify-end">
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="px-3 py-2 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="text-xs text-gray-500 text-center sm:text-left">
+                Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredStudents.length)} of {filteredStudents.length}
+              </div>
+              <div className="flex items-center justify-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="p-1 text-gray-400 hover:text-gray-600 rounded disabled:opacity-50 transition-colors"
+                >
+                  <ChevronLeftIcon className="w-4 h-4" />
+                </button>
+                <span className="text-xs text-gray-600">Page {currentPage} of {totalPages}</span>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-1 text-gray-400 hover:text-gray-600 rounded disabled:opacity-50 transition-colors"
+                >
+                  <ChevronRightIcon className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Submit Button */}
+          <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex justify-end">
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
             >
               {isSubmitting ? (
-                <span className="flex items-center space-x-2">
-                  <LoadingSpinner size="sm" />
-                  <span>Saving...</span>
-                </span>
+                <span className="flex items-center gap-2"><LoadingSpinner size="sm" /> Saving...</span>
               ) : (
                 'Save All Records'
               )}
             </button>
           </div>
         </div>
-      )}
+      ) : selectedClass ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+          <p className="text-sm text-gray-500">No students found in this class</p>
+        </div>
+      ) : null}
 
       {isLoading && <LoadingSpinner />}
     </div>

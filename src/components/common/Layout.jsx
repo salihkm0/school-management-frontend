@@ -12,40 +12,30 @@ const Layout = () => {
   const { isAuthenticated, isLoading } = useSelector((state) => state.auth)
   const dispatch = useDispatch()
 
-  // Check if mobile on mount and resize
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth < 1024
       setIsMobile(mobile)
-      if (mobile) {
-        setSidebarOpen(false)
-      } else {
-        setSidebarOpen(true)
-      }
+      if (mobile) setSidebarOpen(false)
+      else setSidebarOpen(true)
     }
-    
     checkMobile()
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Load notifications when authenticated
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
-      console.log('Layout: Loading initial notifications')
       dispatch(fetchNotifications({ limit: 20 }))
     }
   }, [isAuthenticated, isLoading, dispatch])
 
-  // Refresh notifications when window gains focus
   useEffect(() => {
     const handleFocus = () => {
       if (isAuthenticated && document.hasFocus() && !isLoading) {
-        console.log('Window focused, refreshing notifications')
         dispatch(fetchNotifications({ limit: 20 }))
       }
     }
-    
     window.addEventListener('focus', handleFocus)
     return () => window.removeEventListener('focus', handleFocus)
   }, [isAuthenticated, isLoading, dispatch])
@@ -54,14 +44,13 @@ const Layout = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="w-10 h-10 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+          <p className="text-sm text-gray-500">Loading...</p>
         </div>
       </div>
     )
   }
 
-  // Calculate margin based on sidebar state and device
   const getMarginLeft = () => {
     if (isMobile) return 'ml-0'
     return sidebarOpen ? 'ml-64' : 'ml-20'
@@ -70,11 +59,7 @@ const Layout = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} isMobile={isMobile} />
-      <Header 
-        toggleSidebar={() => setSidebarOpen(!sidebarOpen)} 
-        isSidebarOpen={sidebarOpen}
-        isMobile={isMobile}
-      />
+      <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} isSidebarOpen={sidebarOpen} isMobile={isMobile} />
       <main className={`pt-16 transition-all duration-300 ${getMarginLeft()}`}>
         <div className="p-4 sm:p-6">
           <Outlet />

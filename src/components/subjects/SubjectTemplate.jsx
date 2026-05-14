@@ -1,12 +1,16 @@
+// src/components/subjects/SubjectTemplate.jsx
 import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useForm, useFieldArray } from 'react-hook-form'
+import { ArrowLeftIcon, PlusIcon, TrashIcon, CheckIcon, AcademicCapIcon } from '@heroicons/react/24/outline'
 import { fetchSubjects } from '../../store/slices/subjectSlice'
-import subjectService from '../../services/subjectService'  // Changed to default import
+import subjectService from '../../services/subjectService'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
+import { useNavigate } from 'react-router-dom'
 
 const SubjectTemplate = () => {
+  const navigate = useNavigate()
   const dispatch = useDispatch()
   const { subjects } = useSelector((state) => state.subjects)
   const [classNames, setClassNames] = useState([])
@@ -26,7 +30,7 @@ const SubjectTemplate = () => {
   const loadClassNames = async () => {
     setIsLoading(true)
     try {
-      const res = await subjectService.getClassNames()  // Changed to subjectService
+      const res = await subjectService.getClassNames()
       setClassNames(res || [])
     } catch (error) {
       console.error('Failed to load class names:', error)
@@ -37,21 +41,17 @@ const SubjectTemplate = () => {
   }
 
   useEffect(() => {
-    if (selectedClass) {
-      loadTemplate()
-    }
+    if (selectedClass) loadTemplate()
   }, [selectedClass])
 
   const loadTemplate = async () => {
     setIsLoading(true)
     try {
-      const template = await subjectService.getTemplateByClassName(selectedClass)  // Changed to subjectService
+      const template = await subjectService.getTemplateByClassName(selectedClass)
       if (template) {
         setValue('subjects', template.subjects.map(s => ({ subjectId: s._id || s })))
         setValue('sectionSpecific', template.sectionSpecific || false)
-        if (template.sectionSubjects) {
-          setValue('sectionSubjects', template.sectionSubjects)
-        }
+        if (template.sectionSubjects) setValue('sectionSubjects', template.sectionSubjects)
       } else {
         reset({ subjects: [], sectionSpecific: false, sectionSubjects: {} })
       }
@@ -63,19 +63,16 @@ const SubjectTemplate = () => {
   }
 
   const onSubmit = async (data) => {
-    if (!selectedClass) {
-      toast.error('Please select a class')
-      return
-    }
+    if (!selectedClass) { toast.error('Please select a class'); return }
     setIsLoading(true)
     try {
-      const templateData = {
+      await subjectService.upsertTemplateByClassName(selectedClass, {
         subjects: data.subjects.map(s => s.subjectId),
         sectionSpecific: data.sectionSpecific,
         sectionSubjects: data.sectionSubjects
-      }
-      await subjectService.upsertTemplateByClassName(selectedClass, templateData)  // Changed to subjectService
+      })
       toast.success('Template saved successfully')
+      loadClassNames() // Refresh to update "Has Template" indicators
     } catch (error) {
       console.error('Failed to save template:', error)
       toast.error(error.response?.data?.message || 'Failed to save template')
@@ -84,104 +81,93 @@ const SubjectTemplate = () => {
     }
   }
 
+  if (isLoading && !selectedClass) return <LoadingSpinner />
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Subject Templates</h1>
-        <p className="text-gray-500 mt-1">Define subject templates for each class</p>
+    <div className="space-y-5 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <div className="flex items-center gap-3">
+        <button onClick={() => navigate('/subjects')} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100">
+          <ArrowLeftIcon className="w-5 h-5" />
+        </button>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Subject Templates</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Define subject templates for each class</p>
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
         <label className="block text-sm font-medium text-gray-700 mb-1">Select Class</label>
         <select 
           value={selectedClass} 
           onChange={(e) => setSelectedClass(e.target.value)} 
-          className="px-4 py-2 border rounded-lg w-64 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+          className="w-full sm:w-80 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
         >
           <option value="">Select Class</option>
           {classNames.map(c => (
             <option key={c.className} value={c.className}>
-              {c.className} {c.hasTemplate ? '(Has Template)' : ''}
+              {c.className} {c.hasTemplate && '(Has Template)'}
             </option>
           ))}
         </select>
       </div>
 
       {selectedClass && (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold mb-4">Subjects for {selectedClass}</h2>
-            <div className="space-y-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <AcademicCapIcon className="w-5 h-5 text-emerald-600" />
+                <h2 className="text-sm font-semibold text-gray-900">Subjects for {selectedClass}</h2>
+              </div>
+            </div>
+            <div className="p-5 space-y-3">
               {fields.map((field, index) => (
-                <div key={field.id} className="flex gap-3">
-                  <select 
-                    {...register(`subjects.${index}.subjectId`)} 
-                    className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                  >
+                <div key={field.id} className="flex gap-2">
+                  <select {...register(`subjects.${index}.subjectId`)} className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white">
                     <option value="">Select Subject</option>
-                    {subjects.map(s => (
-                      <option key={s._id} value={s._id}>{s.name} ({s.code})</option>
-                    ))}
+                    {subjects.map(s => <option key={s._id} value={s._id}>{s.name} ({s.code})</option>)}
                   </select>
-                  <button 
-                    type="button" 
-                    onClick={() => remove(index)} 
-                    className="px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                  >
-                    Remove
+                  <button type="button" onClick={() => remove(index)} className="px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                    <TrashIcon className="w-4 h-4" />
                   </button>
                 </div>
               ))}
-              <button 
-                type="button" 
-                onClick={() => append({})} 
-                className="text-primary-600 hover:text-primary-700 text-sm font-medium"
-              >
-                + Add Subject
+              <button type="button" onClick={() => append({})} className="inline-flex items-center gap-1 text-sm text-emerald-600 hover:text-emerald-700 font-medium">
+                <PlusIcon className="w-4 h-4" /> Add Subject
               </button>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input 
-                type="checkbox" 
-                {...register('sectionSpecific')} 
-                className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-              />
-              <span className="font-medium text-gray-700">Section-specific subjects</span>
-            </label>
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" {...register('sectionSpecific')} className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500" />
+                <span className="text-sm font-medium text-gray-900">Section-specific subjects</span>
+              </label>
+            </div>
             
             {sectionSpecific && (
-              <div className="mt-4">
-                <p className="text-sm text-gray-500 mb-2">Configure subjects per section</p>
-                {['A', 'B', 'C', 'D', 'E'].map(section => (
-                  <div key={section} className="mt-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Section {section}</label>
-                    <select 
-                      {...register(`sectionSubjects.${section}`)} 
-                      multiple 
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none h-24"
-                    >
-                      <option value="">Select Subjects (Ctrl+Click for multiple)</option>
-                      {subjects.map(s => (
-                        <option key={s._id} value={s._id}>{s.name} ({s.code})</option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-gray-400 mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select multiple subjects</p>
-                  </div>
-                ))}
+              <div className="p-5">
+                <p className="text-sm text-gray-500 mb-3">Configure subjects per section (Ctrl/Cmd + Click for multiple)</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {['A', 'B', 'C', 'D', 'E'].map(section => (
+                    <div key={section}>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Section {section}</label>
+                      <select {...register(`sectionSubjects.${section}`)} multiple className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 h-32">
+                        {subjects.map(s => <option key={s._id} value={s._id}>{s.name} ({s.code})</option>)}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-3">💡 Hold Ctrl (Windows) or Cmd (Mac) to select multiple subjects</p>
               </div>
             )}
           </div>
 
           <div className="flex justify-end">
-            <button 
-              type="submit" 
-              disabled={isLoading} 
-              className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50"
-            >
-              {isLoading ? 'Saving...' : 'Save Template'}
+            <button type="submit" disabled={isLoading} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+              <CheckIcon className="w-4 h-4" />
+              <span>{isLoading ? 'Saving...' : 'Save Template'}</span>
             </button>
           </div>
         </form>

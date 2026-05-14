@@ -1,16 +1,16 @@
 // src/components/reports/ReportCard.jsx
 import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { generateReportCardPDF } from '../../services/analyticsService'
+import { generateReportCardPDF, fetchExamsForDropdown } from '../../services/analyticsService'
 import { fetchStudents } from '../../store/slices/studentSlice'
 import { fetchAcademicYears } from '../../store/slices/academicYearSlice'
+import { fetchClasses } from '../../store/slices/classSlice'
 import { useDispatch, useSelector } from 'react-redux'
 import { 
   DocumentArrowDownIcon, 
   UserIcon, 
-  CalendarIcon,
-  AcademicCapIcon,
-  EyeIcon
+  EyeIcon,
+  AcademicCapIcon
 } from '@heroicons/react/24/outline'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
@@ -19,26 +19,54 @@ const ReportCard = () => {
   const dispatch = useDispatch()
   const { students, isLoading: studentsLoading } = useSelector((state) => state.students)
   const { academicYears } = useSelector((state) => state.academicYears)
+  const { classes } = useSelector((state) => state.classes)
+  const [exams, setExams] = useState([])
+  const [isLoadingExams, setIsLoadingExams] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [previewStudent, setPreviewStudent] = useState(null)
 
   const { register, handleSubmit, watch, setValue } = useForm()
   const selectedStudentId = watch('studentId')
+  const selectedExamId = watch('examId')
   const selectedYearId = watch('academicYearId')
+  const selectedClassId = watch('classId')
+
+  // Load exams when class is selected or on mount
+  useEffect(() => {
+    loadExams()
+  }, [selectedClassId])
 
   useEffect(() => {
     dispatch(fetchStudents({ limit: 1000 }))
     dispatch(fetchAcademicYears({ limit: 10 }))
+    dispatch(fetchClasses({ limit: 100 }))
   }, [dispatch])
 
   useEffect(() => {
     if (selectedStudentId) {
       const student = students.find(s => s._id === selectedStudentId)
       setPreviewStudent(student)
+      if (student) {
+        setValue('classId', student.classId?._id || student.classId)
+      }
     } else {
       setPreviewStudent(null)
     }
-  }, [selectedStudentId, students])
+  }, [selectedStudentId, students, setValue])
+
+  const loadExams = async () => {
+    setIsLoadingExams(true)
+    try {
+      const response = await fetchExamsForDropdown()
+      const examsData = response.data || []
+      setExams(examsData)
+    } catch (error) {
+      console.error('Failed to load exams:', error)
+      setExams([])
+    } finally {
+      setIsLoadingExams(false)
+    }
+  }
 
   const onSubmit = async (data) => {
     if (!data.studentId) {
@@ -47,12 +75,13 @@ const ReportCard = () => {
     }
     setIsGenerating(true)
     try {
-      const pdfBlob = await generateReportCardPDF(data.studentId, data.academicYearId)
+      const pdfBlob = await generateReportCardPDF(data.studentId, data.examId, data.academicYearId)
       const url = URL.createObjectURL(pdfBlob)
       window.open(url, '_blank')
       toast.success('Report card generated')
     } catch (error) {
-      toast.error('Failed to generate report card')
+      console.error('Error generating report card:', error)
+      toast.error(error.message || 'Failed to generate report card')
     } finally {
       setIsGenerating(false)
     }
@@ -76,19 +105,62 @@ const ReportCard = () => {
           <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
+                Select Class <span className="text-red-500">*</span>
+              </label>
+              <select
+                {...register('classId', { required: 'Class is required' })}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-gray-50 hover:bg-white transition-colors"
+                onChange={(e) => {
+                  setValue('classId', e.target.value)
+                  setValue('studentId', '')
+                }}
+              >
+                <option value="">Choose a class...</option>
+                {classes.map(c => (
+                  <option key={c._id} value={c._id}>
+                    {c.displayName || c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Select Student <span className="text-red-500">*</span>
               </label>
               <select
                 {...register('studentId', { required: 'Student is required' })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-gray-50 hover:bg-white transition-colors"
+                disabled={!selectedClassId}
               >
                 <option value="">Choose a student...</option>
-                {students.map(s => (
-                  <option key={s._id} value={s._id}>
-                    {s.fullName} ({s.admissionNo || s.studentCode})
+                {students
+                  .filter(s => selectedClassId ? (s.classId === selectedClassId || s.classId?._id === selectedClassId) : true)
+                  .map(s => (
+                    <option key={s._id} value={s._id}>
+                      {s.fullName} ({s.admissionNo || s.studentCode})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Select Exam <span className="text-gray-400 text-xs">(Optional - Latest if not selected)</span>
+              </label>
+              <select
+                {...register('examId')}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-gray-50 hover:bg-white transition-colors"
+                disabled={isLoadingExams}
+              >
+                <option value="">Latest Exam</option>
+                {exams.map(e => (
+                  <option key={e._id} value={e._id}>
+                    {e.displayName || e.name} ({e.examType})
                   </option>
                 ))}
               </select>
+              {isLoadingExams && <p className="text-xs text-gray-400 mt-1">Loading exams...</p>}
             </div>
 
             <div>
@@ -179,13 +251,10 @@ const ReportCard = () => {
                   </div>
                 </div>
                 
-                {previewStudent.parentName && (
+                {previewStudent.fatherFullName && (
                   <div className="pt-3 border-t border-gray-100">
-                    <p className="text-xs text-gray-500">Parent/Guardian</p>
-                    <p className="text-sm font-medium text-gray-800">{previewStudent.parentName}</p>
-                    {previewStudent.parentPhone && (
-                      <p className="text-xs text-gray-500 mt-1">{previewStudent.parentPhone}</p>
-                    )}
+                    <p className="text-xs text-gray-500">Father's Name</p>
+                    <p className="text-sm font-medium text-gray-800">{previewStudent.fatherFullName}</p>
                   </div>
                 )}
               </div>

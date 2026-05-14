@@ -42,6 +42,13 @@
   --radius-2xl: 1rem;
 }
 
+*{
+  box-sizing: border-box;
+  /* margin: 0; */
+  /* padding: 0; */
+  font-family: 'Inter', sans-serif;
+}
+
 /* Keyframes */
 @keyframes fadeIn {
   0% { opacity: 0; }

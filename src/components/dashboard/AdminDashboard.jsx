@@ -5,50 +5,52 @@ import StatsCards from './StatsCards'
 import RecentActivities from './RecentActivities'
 import AdminCharts from './AdminCharts'
 import QuickActions from './QuickActions'
-import { fetchDashboardStats, updateStats, addActivity } from '../../store/slices/dashboardSlice'
+import { fetchAdminDashboard, updateStats, addActivity } from '../../store/slices/dashboardSlice'
 import useSocket from '../../hooks/useSocket'
 import { 
-  UserGroupIcon, 
-  AcademicCapIcon, 
-  ChartBarIcon,
   ExclamationTriangleIcon,
-  CheckCircleIcon,
-  ClockIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
   CalendarIcon,
-  BookOpenIcon,
-  TrophyIcon
+  TrophyIcon,
+  ChartBarIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline'
+import LoadingSpinner from '../common/LoadingSpinner'
+
+const safeNumber = (value, defaultValue = 0, decimals = 1) => {
+  if (value === null || value === undefined) return defaultValue
+  const num = typeof value === 'string' ? parseFloat(value) : value
+  if (isNaN(num)) return defaultValue
+  return decimals ? num.toFixed(decimals) : num
+}
+
+const safeNumberValue = (value, defaultValue = 0) => {
+  if (value === null || value === undefined) return defaultValue
+  const num = typeof value === 'string' ? parseFloat(value) : value
+  return isNaN(num) ? defaultValue : num
+}
 
 const AdminDashboard = () => {
   const dispatch = useDispatch()
-  const { stats, isLoading } = useSelector((state) => state.dashboard || { stats: {}, isLoading: false })
+  const { adminData: dashboardData, isLoading, error, lastUpdated } = useSelector((state) => state.dashboard || {})
   const { user } = useSelector((state) => state.auth || {})
   const { socket, isConnected } = useSocket()
   
-  const [pendingApprovals, setPendingApprovals] = useState({
-    staffRequests: 3,
-    parentRequests: 5,
-    pendingPayments: 12
-  })
-
-  // School performance metrics
-  const [schoolMetrics, setSchoolMetrics] = useState({
-    averageAttendance: { value: 89, change: 5, trend: 'up' },
-    passPercentage: { value: 87, change: 3, trend: 'up' },
-    topPerformers: { value: 145, change: 12, trend: 'up' }
-  })
+  const [showRefreshIndicator, setShowRefreshIndicator] = useState(false)
 
   useEffect(() => {
-    dispatch(fetchDashboardStats())
+    loadDashboardData()
+    const interval = setInterval(() => loadDashboardData(true), 5 * 60 * 1000)
+    return () => clearInterval(interval)
   }, [dispatch])
 
-  // Socket listeners for real-time dashboard updates
   useEffect(() => {
     if (socket && isConnected) {
       const handleDashboardUpdate = (data) => {
         dispatch(updateStats(data))
+        setShowRefreshIndicator(true)
+        setTimeout(() => setShowRefreshIndicator(false), 3000)
       }
 
       const handleNewActivity = (activity) => {
@@ -57,7 +59,9 @@ const AdminDashboard = () => {
           title: activity.title,
           description: activity.description,
           type: activity.activityType || activity.type,
+          severity: activity.severity,
           timestamp: activity.createdAt || activity.timestamp,
+          performedBy: activity.performedBy,
           performedByRole: activity.performedByRole
         }
         dispatch(addActivity(formattedActivity))
@@ -74,6 +78,20 @@ const AdminDashboard = () => {
     }
   }, [socket, isConnected, dispatch])
 
+  const loadDashboardData = async (silent = false) => {
+    if (!silent) {
+      await dispatch(fetchAdminDashboard())
+    } else {
+      try {
+        await dispatch(fetchAdminDashboard()).unwrap()
+        setShowRefreshIndicator(true)
+        setTimeout(() => setShowRefreshIndicator(false), 2000)
+      } catch (error) {
+        console.error('Silent refresh failed:', error)
+      }
+    }
+  }
+
   const greeting = () => {
     const hour = new Date().getHours()
     if (hour < 12) return 'Good Morning'
@@ -81,191 +99,167 @@ const AdminDashboard = () => {
     return 'Good Evening'
   }
 
-  const safeStats = stats || {
-    totalStudents: 0,
-    totalStaff: 0,
-    totalClasses: 0,
-    currentExams: 0,
-    attendanceToday: 0,
-    fullAPlusCount: 0,
-    academicYear: null,
+  if (isLoading && !dashboardData) return <LoadingSpinner />
+
+  if (error) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center">
+          <ExclamationTriangleIcon className="w-12 h-12 text-rose-500 mx-auto mb-3" />
+          <h3 className="text-base font-semibold text-gray-800 mb-1">Unable to Load Dashboard</h3>
+          <p className="text-sm text-gray-500">{error}</p>
+          <button onClick={() => loadDashboardData()} className="mt-3 px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700">
+            Try Again
+          </button>
+        </div>
+      </div>
+    )
   }
 
-  // Upcoming events data
-  const upcomingEvents = [
-    { id: 1, title: 'Parent-Teacher Meeting', date: '2024-01-20', type: 'Meeting', priority: 'high' },
-    { id: 2, title: 'Final Exams Begin', date: '2024-01-25', type: 'Exam', priority: 'high' },
-    { id: 3, title: 'Sports Day', date: '2024-01-30', type: 'Event', priority: 'medium' },
-    { id: 4, title: 'Holiday - Republic Day', date: '2024-01-26', type: 'Holiday', priority: 'low' },
-  ]
+  const summary = dashboardData?.summary || {
+    totalStudents: 0, totalStaff: 0, totalClasses: 0, currentExams: 0,
+    attendancePercentage: 0, fullAPlusCount: 0
+  }
+
+  const attendancePercentage = safeNumberValue(summary.attendancePercentage, 0)
+  const attendancePercentageFormatted = safeNumber(summary.attendancePercentage, 0, 1)
+  const examPerformance = dashboardData?.examPerformance || { passPercentage: 0, trend: 'stable', topPerformers: 0 }
+  const topClasses = dashboardData?.topClasses || []
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="p-6 space-y-6">
-        {/* Welcome Section */}
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {greeting()}, {user?.name?.split(' ')[0] || 'Admin'}!
-            </h1>
-            <p className="text-gray-500 mt-1">
-              Here's what's happening with your school today.
-            </p>
-          </div>
+    <div className="space-y-5 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      {/* Refresh Indicator */}
+      {showRefreshIndicator && (
+        <div className="fixed bottom-4 right-4 bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs shadow-lg z-50 animate-in fade-in slide-in-from-bottom-2">
+          Dashboard updated
+        </div>
+      )}
+
+      {/* Welcome Section */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
+            {greeting()}, {user?.name?.split(' ')[0] || 'Admin'}!
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5">Here's what's happening with your school today.</p>
+          {lastUpdated && (
+            <p className="text-xs text-gray-400 mt-1">Last updated: {new Date(lastUpdated).toLocaleTimeString()}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => loadDashboardData(true)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+            <ArrowPathIcon className="w-4 h-4" />
+          </button>
           {!isConnected && (
-            <div className="bg-yellow-50 text-yellow-700 px-3 py-1 rounded-lg text-sm flex items-center gap-2">
-              <ExclamationTriangleIcon className="w-4 h-4" />
+            <div className="bg-amber-50 text-amber-700 px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+              <ExclamationTriangleIcon className="w-3 h-3" />
               Reconnecting...
             </div>
           )}
         </div>
+      </div>
 
-        {/* Stats Cards */}
-        <StatsCards stats={safeStats} isLoading={isLoading} />
+      {/* Stats Cards */}
+      <StatsCards stats={{
+        totalStudents: safeNumberValue(summary.totalStudents),
+        totalStaff: safeNumberValue(summary.totalStaff),
+        totalClasses: safeNumberValue(summary.totalClasses),
+        currentExams: safeNumberValue(summary.currentExams),
+        attendanceToday: attendancePercentageFormatted,
+        fullAPlusCount: safeNumberValue(summary.fullAPlusCount),
+      }} isLoading={isLoading} />
 
-        {/* School Performance Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Average Attendance */}
-          <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-500">Average Attendance</p>
-              <CalendarIcon className="w-5 h-5 text-gray-400" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">
-              {schoolMetrics.averageAttendance.value}%
-            </p>
-            <div className="flex items-center gap-2 mt-2">
-              {schoolMetrics.averageAttendance.trend === 'up' ? (
-                <ArrowTrendingUpIcon className="w-4 h-4 text-green-500" />
-              ) : (
-                <ArrowTrendingDownIcon className="w-4 h-4 text-red-500" />
-              )}
-              <span className={`text-sm font-medium ${schoolMetrics.averageAttendance.trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                {schoolMetrics.averageAttendance.change}%
-              </span>
-              <span className="text-xs text-gray-400">vs last month</span>
-            </div>
-            <div className="mt-3">
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-green-500 rounded-full h-2 transition-all duration-500"
-                  style={{ width: `${schoolMetrics.averageAttendance.value}%` }}
-                />
-              </div>
-            </div>
+      {/* Performance Metrics - Mobile responsive grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-gray-500">Average Attendance</p>
+            <CalendarIcon className="w-4 h-4 text-gray-400" />
           </div>
-
-          {/* Pass Percentage */}
-          <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-500">Pass Percentage</p>
-              <ChartBarIcon className="w-5 h-5 text-gray-400" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">
-              {schoolMetrics.passPercentage.value}%
-            </p>
-            <div className="flex items-center gap-2 mt-2">
-              {schoolMetrics.passPercentage.trend === 'up' ? (
-                <ArrowTrendingUpIcon className="w-4 h-4 text-green-500" />
-              ) : (
-                <ArrowTrendingDownIcon className="w-4 h-4 text-red-500" />
-              )}
-              <span className={`text-sm font-medium ${schoolMetrics.passPercentage.trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                {schoolMetrics.passPercentage.change}%
-              </span>
-              <span className="text-xs text-gray-400">vs last term</span>
-            </div>
-            <div className="mt-3">
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-blue-500 rounded-full h-2 transition-all duration-500"
-                  style={{ width: `${schoolMetrics.passPercentage.value}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Top Performers */}
-          <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-500">Top Performers (A+)</p>
-              <TrophyIcon className="w-5 h-5 text-gray-400" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">
-              {schoolMetrics.topPerformers.value}
-            </p>
-            <div className="flex items-center gap-2 mt-2">
-              {schoolMetrics.topPerformers.trend === 'up' ? (
-                <ArrowTrendingUpIcon className="w-4 h-4 text-green-500" />
-              ) : (
-                <ArrowTrendingDownIcon className="w-4 h-4 text-red-500" />
-              )}
-              <span className={`text-sm font-medium ${schoolMetrics.topPerformers.trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                {schoolMetrics.topPerformers.change}%
-              </span>
-              <span className="text-xs text-gray-400">vs last term</span>
+          <p className="text-xl font-bold text-gray-900">{attendancePercentageFormatted}%</p>
+          <div className="mt-2">
+            <div className="w-full bg-gray-100 rounded-full h-1.5">
+              <div className="bg-emerald-500 rounded-full h-1.5 transition-all" style={{ width: `${Math.min(attendancePercentage, 100)}%` }} />
             </div>
           </div>
         </div>
 
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <AdminCharts />
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-gray-500">Pass Percentage</p>
+            <ChartBarIcon className="w-4 h-4 text-gray-400" />
           </div>
-          <div className="lg:col-span-1">
-            <QuickActions userRole="admin" />
+          <p className="text-xl font-bold text-gray-900">{safeNumber(examPerformance.passPercentage, 0, 1)}%</p>
+          <div className="flex items-center gap-1 mt-1">
+            {examPerformance.trend === 'up' ? (
+              <ArrowTrendingUpIcon className="w-3 h-3 text-emerald-500" />
+            ) : examPerformance.trend === 'down' ? (
+              <ArrowTrendingDownIcon className="w-3 h-3 text-rose-500" />
+            ) : null}
+            <span className={`text-xs ${examPerformance.trend === 'up' ? 'text-emerald-600' : examPerformance.trend === 'down' ? 'text-rose-600' : 'text-gray-500'}`}>
+              vs last term
+            </span>
+          </div>
+          <div className="mt-2">
+            <div className="w-full bg-gray-100 rounded-full h-1.5">
+              <div className="bg-blue-500 rounded-full h-1.5 transition-all" style={{ width: `${Math.min(safeNumberValue(examPerformance.passPercentage), 100)}%` }} />
+            </div>
           </div>
         </div>
 
-        {/* Upcoming Events & Recent Activities */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Upcoming Events */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Upcoming Events</h2>
-                  <p className="text-sm text-gray-500 mt-0.5">Important dates and deadlines</p>
-                </div>
-                <button className="text-sm text-primary-600 hover:text-primary-700 font-medium">
-                  View Calendar →
-                </button>
-              </div>
-            </div>
-            <div className="divide-y divide-gray-100">
-              {upcomingEvents.map((event) => (
-                <div key={event.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-gray-900">{event.title}</h3>
-                        <span className={`px-2 py-0.5 text-xs rounded-full ${
-                          event.priority === 'high' ? 'bg-red-100 text-red-700' :
-                          event.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-gray-100 text-gray-700'
-                        }`}>
-                          {event.priority}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-gray-500">{event.type}</span>
-                        <span className="text-xs text-gray-300">•</span>
-                        <span className="text-xs text-gray-500">{new Date(event.date).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                    <button className="text-primary-600 hover:text-primary-700">
-                      <span className="text-sm">Details →</span>
-                    </button>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-gray-500">Top Performers (A+)</p>
+            <TrophyIcon className="w-4 h-4 text-gray-400" />
+          </div>
+          <p className="text-xl font-bold text-gray-900">{safeNumberValue(examPerformance.topPerformers)}</p>
+          <p className="text-xs text-gray-400 mt-2">students achieved A+ grade</p>
+        </div>
+      </div>
+
+      {/* Charts and Quick Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2">
+          <AdminCharts />
+        </div>
+        <div className="lg:col-span-1">
+          <QuickActions userRole="admin" />
+        </div>
+      </div>
+
+      {/* Top Performing Classes */}
+      {topClasses && topClasses.length > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <h2 className="text-sm font-semibold text-gray-900">Top Performing Classes</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Based on exam results</p>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {topClasses.slice(0, 5).map((classItem, index) => (
+              <div key={classItem.classId || index} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg font-bold text-gray-300 w-6">#{index + 1}</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{classItem.className}</p>
+                    <p className="text-xs text-gray-500">{safeNumberValue(classItem.studentCount)} students</p>
                   </div>
                 </div>
-              ))}
-            </div>
+                <div className="text-right">
+                  <p className="text-base font-semibold text-emerald-600">{safeNumber(classItem.averagePercentage, 0, 1)}%</p>
+                  <div className="w-24 bg-gray-100 rounded-full h-1 mt-1">
+                    <div className="bg-emerald-500 rounded-full h-1" style={{ width: `${Math.min(safeNumberValue(classItem.averagePercentage), 100)}%` }} />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-
-          {/* Recent Activities */}
-          <RecentActivities />
         </div>
+      )}
+
+      {/* Upcoming Events & Recent Activities */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Upcoming Events */}
+        <RecentActivities />
       </div>
     </div>
   )

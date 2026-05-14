@@ -9,11 +9,9 @@ import {
   ChartBarIcon,
   CreditCardIcon,
   EyeIcon,
-  ArrowPathIcon,
-  ExclamationCircleIcon,
   UserPlusIcon,
   XMarkIcon,
-  CheckCircleIcon
+  ChevronRightIcon
 } from '@heroicons/react/24/outline'
 import { fetchMyChildren, fetchMyParentProfile, connectStudent } from '../../store/slices/parentSlice'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
@@ -134,253 +132,192 @@ const MyChildrenPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-6 text-white">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <h1 className="text-2xl font-bold">My Children</h1>
-                <p className="text-primary-100 mt-1">
-                  View and manage your children's academic information
-                </p>
-              </div>
-              <button
-                onClick={() => setShowConnectModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
-              >
-                <UserPlusIcon className="w-5 h-5" />
-                <span>Add Child</span>
-              </button>
-            </div>
-          </div>
+    <div className="space-y-5 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">My Children</h1>
+          <p className="text-sm text-gray-500 mt-0.5">View and manage your children's academic information</p>
         </div>
+        <button
+          onClick={() => setShowConnectModal(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
+        >
+          <UserPlusIcon className="w-4 h-4" />
+          <span>Add Child</span>
+        </button>
+      </div>
 
-        {/* Children List */}
-        {myChildren.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-            <div className="w-24 h-24 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <UserGroupIcon className="w-12 h-12 text-primary-500" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">No Children Connected</h3>
-            <p className="text-gray-500 max-w-md mx-auto mb-6">
-              You haven't connected any children to your account yet. Add your child using their student code and date of birth.
-            </p>
-            <button
-              onClick={() => setShowConnectModal(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-all"
-            >
-              <UserPlusIcon className="w-5 h-5" />
-              <span>Connect Your Child</span>
-            </button>
+      {/* Children List */}
+      {myChildren.length === 0 ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <UserGroupIcon className="w-8 h-8 text-emerald-600" />
           </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {myChildren.map((child) => {
-              const attendancePercentage = child.attendancePercentage || 85
-              const performanceGrade = child.performanceGrade || 'B+'
-              
-              return (
-                <div key={child._id || child.studentId} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
-                  {/* Card Header */}
-                  <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
-                    <div className="flex items-start justify-between">
+          <h3 className="text-base font-semibold text-gray-800 mb-1">No Children Connected</h3>
+          <p className="text-sm text-gray-500 max-w-md mx-auto mb-5">
+            You haven't connected any children to your account yet.
+          </p>
+          <button
+            onClick={() => setShowConnectModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors"
+          >
+            <UserPlusIcon className="w-4 h-4" />
+            <span>Connect Your Child</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {myChildren.map((child) => {
+            const attendancePercentage = child.attendancePercentage || 85
+            const performanceGrade = child.performanceGrade || 'B+'
+            const childId = child._id || child.studentId
+            
+            return (
+              <div key={childId} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-all">
+                {/* Card Header */}
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                        <span className="text-emerald-700 font-semibold text-base">
+                          {child.fullName?.charAt(0) || child.studentName?.charAt(0) || 'S'}
+                        </span>
+                      </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-800">{child.fullName || child.studentName}</h3>
-                        <div className="flex flex-wrap gap-3 mt-1">
-                          <span className="text-sm text-gray-500">Class: {child.className || child.class?.displayName || 'N/A'}</span>
-                          <span className="text-sm text-gray-500">•</span>
-                          <span className="text-sm text-gray-500">Roll No: {child.rollNumber || 'N/A'}</span>
-                          <span className="text-sm text-gray-500">•</span>
-                          <span className="text-sm text-gray-500 capitalize">Relation: {child.relation || 'Guardian'}</span>
+                        <h3 className="text-sm font-semibold text-gray-900">{child.fullName || child.studentName}</h3>
+                        <div className="flex flex-wrap gap-2 text-xs text-gray-500 mt-0.5">
+                          <span>Class: {child.className || 'N/A'}</span>
+                          <span>•</span>
+                          <span>Roll: {child.rollNumber || 'N/A'}</span>
+                          <span>•</span>
+                          <span className="capitalize">Relation: {child.relation || 'Guardian'}</span>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => navigate(`/my-child-attendance?studentId=${child._id || child.studentId}&name=${encodeURIComponent(child.fullName || child.studentName)}`)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="View Attendance"
-                        >
-                          <CalendarIcon className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => navigate(`/my-child-results?studentId=${child._id || child.studentId}&name=${encodeURIComponent(child.fullName || child.studentName)}`)}
-                          className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                          title="View Results"
-                        >
-                          <ChartBarIcon className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => navigate(`/fee-payment?studentId=${child._id || child.studentId}`)}
-                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                          title="Pay Fees"
-                        >
-                          <CreditCardIcon className="w-5 h-5" />
-                        </button>
-                      </div>
                     </div>
-                  </div>
-
-                  {/* Stats Grid */}
-                  <div className="p-6">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-gray-50 rounded-xl p-4 text-center">
-                        <p className="text-xs text-gray-500 mb-1">Attendance</p>
-                        <p className={`text-2xl font-bold ${getAttendanceColor(attendancePercentage)}`}>
-                          {attendancePercentage}%
-                        </p>
-                        <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                          <div 
-                            className={`h-1.5 rounded-full ${attendancePercentage >= 75 ? 'bg-emerald-500' : attendancePercentage >= 60 ? 'bg-amber-500' : 'bg-rose-500'}`}
-                            style={{ width: `${attendancePercentage}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="bg-gray-50 rounded-xl p-4 text-center">
-                        <p className="text-xs text-gray-500 mb-1">Performance</p>
-                        <p className={`text-2xl font-bold inline-block px-3 py-1 rounded-lg ${
-                          performanceGrade.startsWith('A') ? 'text-emerald-600 bg-emerald-50' :
-                          performanceGrade.startsWith('B') ? 'text-blue-600 bg-blue-50' :
-                          'text-amber-600 bg-amber-50'
-                        }`}>
-                          {performanceGrade}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Quick Actions */}
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => navigate(`/my-child-attendance?studentId=${child._id || child.studentId}`)}
-                          className="px-3 py-2 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                        >
-                          View Full Attendance
-                        </button>
-                        <button
-                          onClick={() => navigate(`/my-child-results?studentId=${child._id || child.studentId}`)}
-                          className="px-3 py-2 text-sm bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
-                        >
-                          View Results
-                        </button>
-                      </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => navigate(`/my-child-attendance?studentId=${childId}&name=${encodeURIComponent(child.fullName || child.studentName)}`)}
+                        className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                        title="View Attendance"
+                      >
+                        <CalendarIcon className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => navigate(`/my-child-results?studentId=${childId}&name=${encodeURIComponent(child.fullName || child.studentName)}`)}
+                        className="p-1.5 text-gray-400 hover:text-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
+                        title="View Results"
+                      >
+                        <ChartBarIcon className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => navigate(`/fee-payment?studentId=${childId}`)}
+                        className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors"
+                        title="Pay Fees"
+                      >
+                        <CreditCardIcon className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+
+                {/* Stats Grid */}
+                <div className="p-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-xs text-gray-500">Attendance</p>
+                      <p className={`text-lg font-bold ${getAttendanceColor(attendancePercentage)}`}>
+                        {attendancePercentage}%
+                      </p>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                        <div 
+                          className={`h-1.5 rounded-full ${attendancePercentage >= 75 ? 'bg-emerald-500' : attendancePercentage >= 60 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                          style={{ width: `${attendancePercentage}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-3 text-center">
+                      <p className="text-xs text-gray-500">Performance</p>
+                      <p className={`text-lg font-bold inline-block px-2 py-0.5 rounded-md ${
+                        performanceGrade.startsWith('A') ? 'bg-emerald-100 text-emerald-700' :
+                        performanceGrade.startsWith('B') ? 'bg-blue-100 text-blue-700' :
+                        'bg-amber-100 text-amber-700'
+                      }`}>
+                        {performanceGrade}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => navigate(`/my-child-attendance?studentId=${childId}`)}
+                        className="px-2 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors"
+                      >
+                        View Attendance
+                      </button>
+                      <button
+                        onClick={() => navigate(`/my-child-results?studentId=${childId}`)}
+                        className="px-2 py-1.5 text-xs bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 transition-colors"
+                      >
+                        View Results
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Connect Student Modal */}
       {showConnectModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                  <UserPlusIcon className="w-5 h-5 text-primary-600" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowConnectModal(false)} />
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-auto overflow-hidden">
+            <div className="flex justify-between items-center px-5 py-4 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                  <UserPlusIcon className="w-4 h-4 text-emerald-600" />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900">Connect Your Child</h2>
+                <h2 className="text-base font-semibold text-gray-900">Connect Your Child</h2>
               </div>
-              <button
-                onClick={() => setShowConnectModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <XMarkIcon className="w-6 h-6" />
+              <button onClick={() => setShowConnectModal(false)} className="text-gray-400 hover:text-gray-600">
+                <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
-
-            <div className="p-6 space-y-4">
-              <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-700">
-                <p className="font-medium">Need help?</p>
-                <p className="text-xs mt-1">Enter your child's student code and date of birth as provided by the school.</p>
+            <div className="p-5 space-y-4">
+              <div className="bg-blue-50 rounded-lg p-3">
+                <p className="text-sm font-medium text-blue-800">Need help?</p>
+                <p className="text-xs text-blue-700 mt-1">Enter your child's student code and date of birth.</p>
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Student Code *
-                </label>
-                <input
-                  type="text"
-                  name="studentCode"
-                  value={connectForm.studentCode}
-                  onChange={handleConnectChange}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none ${
-                    formErrors.studentCode ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter student code"
-                />
-                {formErrors.studentCode && (
-                  <p className="mt-1 text-xs text-red-500">{formErrors.studentCode}</p>
-                )}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Student Code *</label>
+                <input type="text" name="studentCode" value={connectForm.studentCode} onChange={handleConnectChange} className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 ${formErrors.studentCode ? 'border-rose-500' : 'border-gray-200'}`} placeholder="Enter student code" />
+                {formErrors.studentCode && <p className="mt-1 text-xs text-rose-500">{formErrors.studentCode}</p>}
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Date of Birth *
-                </label>
-                <input
-                  type="date"
-                  name="dateOfBirth"
-                  value={connectForm.dateOfBirth}
-                  onChange={handleConnectChange}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none ${
-                    formErrors.dateOfBirth ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-                {formErrors.dateOfBirth && (
-                  <p className="mt-1 text-xs text-red-500">{formErrors.dateOfBirth}</p>
-                )}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
+                <input type="date" name="dateOfBirth" value={connectForm.dateOfBirth} onChange={handleConnectChange} className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 ${formErrors.dateOfBirth ? 'border-rose-500' : 'border-gray-200'}`} />
+                {formErrors.dateOfBirth && <p className="mt-1 text-xs text-rose-500">{formErrors.dateOfBirth}</p>}
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Relationship *
-                </label>
-                <select
-                  name="relation"
-                  value={connectForm.relation}
-                  onChange={handleConnectChange}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none ${
-                    formErrors.relation ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                >
+                <label className="block text-sm font-medium text-gray-700 mb-1">Relationship *</label>
+                <select name="relation" value={connectForm.relation} onChange={handleConnectChange} className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 ${formErrors.relation ? 'border-rose-500' : 'border-gray-200'}`}>
                   <option value="father">Father</option>
                   <option value="mother">Mother</option>
                   <option value="guardian">Guardian</option>
                 </select>
-                {formErrors.relation && (
-                  <p className="mt-1 text-xs text-red-500">{formErrors.relation}</p>
-                )}
+                {formErrors.relation && <p className="mt-1 text-xs text-rose-500">{formErrors.relation}</p>}
               </div>
             </div>
-
-            <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
-              <button
-                onClick={() => setShowConnectModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConnectStudent}
-                disabled={isConnecting}
-                className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                {isConnecting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Connecting...</span>
-                  </>
-                ) : (
-                  <>
-                    <UserPlusIcon className="w-4 h-4" />
-                    <span>Connect Child</span>
-                  </>
-                )}
+            <div className="flex justify-end gap-3 px-5 py-4 border-t border-gray-200 bg-gray-50">
+              <button onClick={() => setShowConnectModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={handleConnectStudent} disabled={isConnecting} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+                {isConnecting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <UserPlusIcon className="w-4 h-4" />}
+                <span>Connect</span>
               </button>
             </div>
           </div>
