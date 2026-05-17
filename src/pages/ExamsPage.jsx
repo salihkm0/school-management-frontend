@@ -7,6 +7,7 @@ import ExamDetails from '../components/exams/ExamDetails'
 import ExamSchedule from '../components/exams/ExamSchedule'
 import MarksEntry from '../components/exams/MarksEntry'
 import ExamReview from '../components/exams/ExamReview'
+import StudentFilter from '../components/exams/StudentFilter' 
 
 const ExamsPage = () => {
   return (
@@ -19,6 +20,7 @@ const ExamsPage = () => {
       <Route path="marks" element={<MarksEntry />} />
       <Route path=":examId/marks/:classId" element={<MarksEntry />} />
       <Route path=":examId/review" element={<ExamReview />} />
+      <Route path="filter" element={<StudentFilter />} /> 
     </Routes>
   )
 }

@@ -13,6 +13,7 @@ import academicYearReducer from './slices/academicYearSlice'
 import dashboardReducer from './slices/dashboardSlice'  // Add this import
 import uiReducer from './slices/uiSlice'
 import socketReducer from './slices/socketSlice' 
+import studentFilterReducer from './slices/studentSlice'
 
 export const store = configureStore({
   reducer: {
@@ -30,6 +31,7 @@ export const store = configureStore({
     dashboard: dashboardReducer,
     ui: uiReducer,
     socket: socketReducer, 
+    studentFilter: studentFilterReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -1,3 +1,4 @@
+// src/services/markService.js
 import api from './api'
 
 export const getTeacherPermissions = async (examId, classId) => {
@@ -5,7 +6,7 @@ export const getTeacherPermissions = async (examId, classId) => {
   return response.data
 }
 
-// Get all marksheets for a class (NEW STRUCTURE)
+// Get all marksheets for a class (NEW STRUCTURE with dynamic language mapping)
 export const getMarksheetsByClass = async (examId, classId) => {
   const response = await api.get(`/marks/class/${examId}/${classId}`)
   return response.data
@@ -23,9 +24,9 @@ export const updateStudentMarks = async (examId, classId, studentId, data) => {
   return response.data
 }
 
-// Bulk update marks for all students - FIXED ENDPOINT
+// Bulk update marks for all students
 export const bulkUpdateMarks = async (examId, classId, studentsData) => {
-  // The correct endpoint from your routes: POST /marks/bulk/:examId/:classId
+  // The endpoint expects { studentsData } in the body
   const response = await api.post(`/marks/bulk/${examId}/${classId}`, { studentsData })
   return response.data
 }
@@ -36,7 +37,7 @@ export const submitMarksForReview = async (examId, classId) => {
   return response.data
 }
 
-// Review marks - FIXED to accept comments
+// Review marks
 export const reviewMarks = async (examId, classId, reviewData = {}) => {
   const response = await api.post('/marks/review', { examId, classId, ...reviewData })
   return response.data
@@ -60,7 +61,7 @@ export const publishResults = async (examId, classId) => {
   return response.data
 }
 
-// Keep these for backward compatibility if needed
+// Legacy/compatibility methods
 export const getMarks = async (examId, classId, subjectId) => {
   const response = await api.get(`/marks?examId=${examId}&classId=${classId}&subjectId=${subjectId}`)
   return response.data
@@ -72,7 +73,6 @@ export const enterMarks = async (examId, classId, subjectId, marks) => {
 }
 
 export const enterMarksBulk = async (examId, classId, marksData) => {
-  // This endpoint doesn't exist - use bulkUpdateMarks instead
   console.warn('enterMarksBulk is deprecated, use bulkUpdateMarks instead')
   return bulkUpdateMarks(examId, classId, marksData)
 }

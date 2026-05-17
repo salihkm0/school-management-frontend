@@ -4,7 +4,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   BookOpenIcon,
-  AcademicCapIcon,
   UserGroupIcon,
   CheckCircleIcon,
   ChevronDownIcon,
@@ -45,6 +44,7 @@ const MarksEntry = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [examSubjects, setExamSubjects] = useState([]);
   const [tempMarks, setTempMarks] = useState({});
+  const [languageMapping, setLanguageMapping] = useState({});
   
   const debouncedSearch = useDebounce(searchTerm, 300);
 
@@ -61,6 +61,7 @@ const MarksEntry = () => {
       setPermissions(null);
       setExamSubjects([]);
       setTempMarks({});
+      setLanguageMapping({});
     }
   }, [selectedExam, selectedClass]);
 
@@ -73,44 +74,23 @@ const MarksEntry = () => {
 
       const response = await getMarksheetsByClass(selectedExam, selectedClass);
       if (response.success && response.data) {
-        const examData = exams.find(e => e._id === selectedExam);
-        let subjects = response.data.subjects || [];
-        
-        if (examData && examData.schedule && examData.schedule.length > 0) {
-          subjects = subjects.map(subject => {
-            const scheduleItem = examData.schedule.find(
-              s => s.subjectId === subject.subjectId || s.subjectId?._id === subject.subjectId
-            );
-            if (scheduleItem) {
-              return {
-                ...subject,
-                theoryMaxMarks: scheduleItem.theoryMarks || scheduleItem.maxMarks || subject.maxMarks,
-                practicalMaxMarks: scheduleItem.practicalMarks || 0,
-                hasPractical: scheduleItem.practicalMarks > 0,
-                ceEnabled: scheduleItem.ceEnabled || false,
-                ceMaxMarks: scheduleItem.ceMaxMarks || 0,
-                maxMarks: (subject.maxMarks || scheduleItem.maxMarks) + (scheduleItem.ceMaxMarks || 0),
-              };
-            }
-            return subject;
-          });
-        }
-        
-        setExamSubjects(subjects);
+        // Set subjects - these already have displayName (actual subject names)
+        setExamSubjects(response.data.subjects || []);
         setStudents(response.data.students || []);
+        setLanguageMapping(response.data.languageMapping || {});
         
+        // Initialize temp marks
         const initialTempMarks = {};
         (response.data.students || []).forEach(student => {
           initialTempMarks[student.studentId] = {};
-          (subjects || []).forEach(subject => {
-            const studentSubject = student.subjects?.find(
-              s => s.subjectId === subject.subjectId
-            );
-            initialTempMarks[student.studentId][subject.subjectId] = {
-              theoryScore: studentSubject?.theoryScore || 0,
-              practicalScore: studentSubject?.practicalScore || 0,
-              ceMarks: studentSubject?.ceMarks || 0,
-              totalScore: studentSubject?.totalScore || 0,
+          (student.subjects || []).forEach(subject => {
+            // Use examSubjectId as the key for consistency
+            const subjectKey = subject.examSubjectId || subject.subjectId;
+            initialTempMarks[student.studentId][subjectKey] = {
+              theoryScore: subject.theoryScore || 0,
+              practicalScore: subject.practicalScore || 0,
+              ceMarks: subject.ceScore || subject.ceMarks || 0,
+              totalScore: subject.totalScore || 0,
             };
           });
         });
@@ -124,17 +104,20 @@ const MarksEntry = () => {
     }
   };
 
-  const handleMarkChange = (studentId, subjectId, field, value) => {
+  const handleMarkChange = (studentId, examSubjectId, field, value) => {
     let marks = value === "" || value === null ? "" : parseInt(value) || 0;
     
-    const subject = examSubjects.find((s) => s.subjectId === subjectId);
+    // Find the subject configuration from examSubjects
+    const subject = examSubjects.find((s) => s.examSubjectId === examSubjectId);
+    if (!subject) return;
+    
     let maxMarks = 0;
     if (field === "theoryScore") {
-      maxMarks = subject?.theoryMaxMarks || subject?.maxMarks || 100;
+      maxMarks = subject.theoryMaxMarks || subject.maxMarks || 100;
     } else if (field === "practicalScore") {
-      maxMarks = subject?.practicalMaxMarks || 0;
+      maxMarks = subject.practicalMaxMarks || 0;
     } else if (field === "ceMarks") {
-      maxMarks = subject?.ceMaxMarks || 0;
+      maxMarks = subject.ceMaxMarks || 0;
     }
     
     if (marks !== "" && marks !== null) {
@@ -142,9 +125,10 @@ const MarksEntry = () => {
       if (marks < 0) marks = 0;
     }
 
+    // Update temp marks
     setTempMarks((prev) => {
       const studentMarks = prev[studentId] || {};
-      const subjectMarks = studentMarks[subjectId] || { theoryScore: 0, practicalScore: 0, ceMarks: 0 };
+      const subjectMarks = studentMarks[examSubjectId] || { theoryScore: 0, practicalScore: 0, ceMarks: 0 };
       
       const updatedSubjectMarks = {
         ...subjectMarks,
@@ -160,19 +144,21 @@ const MarksEntry = () => {
         ...prev,
         [studentId]: {
           ...studentMarks,
-          [subjectId]: updatedSubjectMarks,
+          [examSubjectId]: updatedSubjectMarks,
         },
       };
     });
 
+    // Update students state for real-time display
     setStudents((prev) =>
       prev.map((s) => {
         if (s.studentId === studentId) {
           const updatedSubjects = s.subjects?.map((sub) => {
-            if (sub.subjectId === subjectId) {
+            const subKey = sub.examSubjectId || sub.subjectId;
+            if (subKey === examSubjectId) {
               const theoryVal = field === "theoryScore" ? (marks === "" ? 0 : marks) : (sub.theoryScore || 0);
               const practicalVal = field === "practicalScore" ? (marks === "" ? 0 : marks) : (sub.practicalScore || 0);
-              const ceVal = field === "ceMarks" ? (marks === "" ? 0 : marks) : (sub.ceMarks || 0);
+              const ceVal = field === "ceMarks" ? (marks === "" ? 0 : marks) : (sub.ceMarks || sub.ceScore || 0);
               return {
                 ...sub,
                 [field]: marks === "" ? 0 : marks,
@@ -181,19 +167,6 @@ const MarksEntry = () => {
             }
             return sub;
           }) || [];
-
-          if (!updatedSubjects.find(sub => sub.subjectId === subjectId)) {
-            const theoryVal = field === "theoryScore" ? (marks === "" ? 0 : marks) : 0;
-            const practicalVal = field === "practicalScore" ? (marks === "" ? 0 : marks) : 0;
-            const ceVal = field === "ceMarks" ? (marks === "" ? 0 : marks) : 0;
-            updatedSubjects.push({
-              subjectId: subjectId,
-              theoryScore: theoryVal,
-              practicalScore: practicalVal,
-              ceMarks: ceVal,
-              totalScore: theoryVal + practicalVal + ceVal,
-            });
-          }
 
           return {
             ...s,
@@ -211,18 +184,19 @@ const MarksEntry = () => {
       return;
     }
 
+    // Prepare data for bulk update - use the student's actual subject structure
     const studentsData = students.map((student) => ({
       studentId: student.studentId,
-      subjects: examSubjects.map((subject) => {
-        const studentSubject = student.subjects?.find(
-          (s) => s.subjectId === subject.subjectId
-        );
+      subjects: student.subjects.map((subject) => {
+        const tempMark = tempMarks[student.studentId]?.[subject.examSubjectId || subject.subjectId] || {};
         return {
-          subjectId: subject.subjectId,
-          theoryScore: studentSubject?.theoryScore || 0,
-          practicalScore: studentSubject?.practicalScore || 0,
-          ceMarks: studentSubject?.ceMarks || 0,
-          remarks: studentSubject?.remarks || "",
+          examSubjectId: subject.examSubjectId || subject.subjectId,
+          subjectId: subject.actualSubjectId || subject.subjectId,
+          theoryScore: tempMark.theoryScore ?? subject.theoryScore ?? 0,
+          practicalScore: tempMark.practicalScore ?? subject.practicalScore ?? 0,
+          ceMarks: tempMark.ceMarks ?? (subject.ceMarks || subject.ceScore) ?? 0,
+          remarks: subject.remarks || "",
+          isAbsent: subject.isAbsent || false,
         };
       }),
       remarks: student.remarks || "",
@@ -232,7 +206,7 @@ const MarksEntry = () => {
     try {
       await bulkUpdateMarks(selectedExam, selectedClass, studentsData);
       toast.success("Marks saved successfully");
-      await loadData();
+      await loadData(); // Reload to get updated totals
     } catch (error) {
       console.error("Failed to save marks:", error);
       toast.error(error.response?.data?.message || "Failed to save marks");
@@ -305,13 +279,10 @@ const MarksEntry = () => {
   const getStudentTotalPercentage = (student) => {
     let totalObtained = 0;
     let totalMax = 0;
-    examSubjects.forEach((subject) => {
-      const studentSubject = student.subjects?.find(
-        (s) => s.subjectId === subject.subjectId,
-      );
-      const marks = studentSubject?.totalScore || 0;
+    student.subjects?.forEach((subject) => {
+      const marks = subject.totalScore || 0;
       totalObtained += marks;
-      totalMax += subject.maxMarks;
+      totalMax += subject.maxMarks || 0;
     });
     return totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
   };
@@ -421,15 +392,26 @@ const MarksEntry = () => {
         </div>
       </div>
 
-      {/* Subjects Info - Horizontal scroll on mobile */}
+      {/* Subjects Info - Shows actual subject names */}
       {examSubjects.length > 0 && selectedClass && (
         <div className="bg-white rounded-lg border border-gray-200 p-3 mb-5 overflow-x-auto">
-          <div className="flex gap-2 min-w-max">
+          <div className="flex flex-wrap gap-2">
             {examSubjects.map((subject) => (
-              <div key={subject.subjectId} className="px-2.5 py-1 bg-gray-100 text-gray-700 text-xs rounded-full whitespace-nowrap">
-                {subject.subjectName}
-                {subject.ceEnabled && <span className="ml-1 text-gray-500">(CE)</span>}
-                {subject.hasPractical && <span className="ml-1 text-gray-500">(P)</span>}
+              <div 
+                key={subject.examSubjectId} 
+                className="px-2.5 py-1 bg-gray-100 text-gray-700 text-xs rounded-full whitespace-nowrap"
+                title={subject.paperType || (subject.isLanguageSubject ? 'Language Subject' : 'Core Subject')}
+              >
+                {subject.displayName || subject.subjectName}
+                {subject.ceEnabled && subject.ceMaxMarks > 0 && (
+                  <span className="ml-1 text-emerald-600">(CE: {subject.ceMaxMarks})</span>
+                )}
+                {subject.hasPractical && subject.practicalMaxMarks > 0 && (
+                  <span className="ml-1 text-blue-600">(P: {subject.practicalMaxMarks})</span>
+                )}
+                {subject.isLanguageSubject && (
+                  <span className="ml-1 text-purple-500 text-[10px]">📖</span>
+                )}
               </div>
             ))}
           </div>
@@ -497,7 +479,7 @@ const MarksEntry = () => {
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50"
               >
                 <PaperAirplaneIcon className="w-4 h-4" />
-                <span>Submit</span>
+                <span>Submit for Review</span>
               </button>
             )}
           </div>
@@ -523,7 +505,9 @@ const MarksEntry = () => {
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-gray-900 truncate">{student.studentName}</p>
-                          <p className="text-xs text-gray-500">Roll: {student.rollNumber || '-'}</p>
+                          <p className="text-xs text-gray-500">
+                            Roll: {student.rollNumber || '-'} | Admission: {student.admissionNo || '-'}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -546,27 +530,36 @@ const MarksEntry = () => {
                   {isExpanded && (
                     <div className="px-3 pb-3 pt-1 bg-gray-50">
                       <div className="space-y-2">
-                        {examSubjects.map((subject) => {
-                          const theoryMarks = tempMarks[student.studentId]?.[subject.subjectId]?.theoryScore ?? 
-                            (student.subjects?.find(s => s.subjectId === subject.subjectId)?.theoryScore || 0);
-                          const practicalMarks = tempMarks[student.studentId]?.[subject.subjectId]?.practicalScore ??
-                            (student.subjects?.find(s => s.subjectId === subject.subjectId)?.practicalScore || 0);
-                          const ceMarks = subject.ceEnabled ? (tempMarks[student.studentId]?.[subject.subjectId]?.ceMarks ??
-                            (student.subjects?.find(s => s.subjectId === subject.subjectId)?.ceMarks || 0)) : 0;
+                        {student.subjects?.map((subject) => {
+                          const examSubjectId = subject.examSubjectId || subject.subjectId;
+                          const tempMark = tempMarks[student.studentId]?.[examSubjectId] || {};
+                          
+                          const theoryMarks = tempMark.theoryScore ?? subject.theoryScore ?? 0;
+                          const practicalMarks = tempMark.practicalScore ?? subject.practicalScore ?? 0;
+                          const ceMarks = tempMark.ceMarks ?? (subject.ceMarks || subject.ceScore) ?? 0;
                           const totalMarks = theoryMarks + practicalMarks + ceMarks;
-                          const percentage = subject.maxMarks > 0 ? (totalMarks / subject.maxMarks) * 100 : 0;
-                          const gradeInfo = getGradeBadge(totalMarks, subject.maxMarks);
-                          const theoryMax = subject.theoryMaxMarks || subject.maxMarks;
+                          const maxMarks = subject.maxMarks || 100;
+                          const percentage = maxMarks > 0 ? (totalMarks / maxMarks) * 100 : 0;
+                          const gradeInfo = getGradeBadge(totalMarks, maxMarks);
+                          const theoryMax = subject.theoryMaxMarks || subject.termMaxMarks || maxMarks;
                           const practicalMax = subject.practicalMaxMarks || 0;
                           const ceMax = subject.ceMaxMarks || 0;
                           const hasCE = subject.ceEnabled && ceMax > 0;
                           const hasPractical = subject.hasPractical && practicalMax > 0;
                           
+                          // Get the display name (actual subject name)
+                          const displayName = subject.displayName || subject.actualSubjectName || subject.subjectName;
+                          
                           return (
-                            <div key={subject.subjectId} className="bg-white rounded-lg border border-gray-200 p-3">
+                            <div key={examSubjectId} className="bg-white rounded-lg border border-gray-200 p-3">
                               {/* Subject Title */}
                               <div className="flex justify-between items-center mb-2 pb-1 border-b border-gray-100">
-                                <span className="text-sm font-medium text-gray-900">{subject.subjectName}</span>
+                                <div>
+                                  <span className="text-sm font-medium text-gray-900">{displayName}</span>
+                                  {subject.paperType && subject.isLanguageSubject && (
+                                    <span className="ml-2 text-xs text-purple-500">{subject.paperType}</span>
+                                  )}
+                                </div>
                                 <span className={`px-2 py-0.5 text-xs rounded-full ${gradeInfo.color}`}>
                                   {gradeInfo.grade}
                                 </span>
@@ -580,7 +573,7 @@ const MarksEntry = () => {
                                   <input
                                     type="number"
                                     value={theoryMarks || ''}
-                                    onChange={(e) => handleMarkChange(student.studentId, subject.subjectId, "theoryScore", e.target.value)}
+                                    onChange={(e) => handleMarkChange(student.studentId, examSubjectId, "theoryScore", e.target.value)}
                                     className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                     min="0"
                                     max={theoryMax}
@@ -596,7 +589,7 @@ const MarksEntry = () => {
                                     <input
                                       type="number"
                                       value={practicalMarks || ''}
-                                      onChange={(e) => handleMarkChange(student.studentId, subject.subjectId, "practicalScore", e.target.value)}
+                                      onChange={(e) => handleMarkChange(student.studentId, examSubjectId, "practicalScore", e.target.value)}
                                       className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                       min="0"
                                       max={practicalMax}
@@ -606,14 +599,14 @@ const MarksEntry = () => {
                                   </div>
                                 )}
                                 
-                                {/* CE Row - Inline like theory/practical */}
+                                {/* CE Row */}
                                 {hasCE && (
                                   <div className="flex items-center gap-2">
                                     <label className="text-xs text-gray-500 w-14 flex-shrink-0">CE</label>
                                     <input
                                       type="number"
                                       value={ceMarks || ''}
-                                      onChange={(e) => handleMarkChange(student.studentId, subject.subjectId, "ceMarks", e.target.value)}
+                                      onChange={(e) => handleMarkChange(student.studentId, examSubjectId, "ceMarks", e.target.value)}
                                       className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                       min="0"
                                       max={ceMax}
@@ -627,7 +620,7 @@ const MarksEntry = () => {
                                 <div className="flex justify-between items-center pt-1 text-xs border-t border-gray-100">
                                   <span className="text-gray-500">Total</span>
                                   <div className="text-right">
-                                    <span className="font-semibold text-gray-900">{totalMarks} / {subject.maxMarks}</span>
+                                    <span className="font-semibold text-gray-900">{totalMarks} / {maxMarks}</span>
                                     <span className="text-gray-400 ml-2">({percentage.toFixed(1)}%)</span>
                                   </div>
                                 </div>
