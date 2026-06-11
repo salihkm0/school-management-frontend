@@ -1,8 +1,9 @@
 // src/components/duties/DutyList.jsx
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchDuties, deleteDuty, updateDuty } from '../../store/slices/dutySlice'
 import { fetchStaff } from '../../store/slices/staffSlice'
+import pdfService, { downloadPDF } from '../../services/pdfService'
 import { 
   TrashIcon, 
   CalendarIcon, 
@@ -15,7 +16,6 @@ import {
   MagnifyingGlassIcon,
   XMarkIcon,
   ClipboardDocumentListIcon,
-  EllipsisVerticalIcon,
   ChevronLeftIcon,
   ChevronRightIcon
 } from '@heroicons/react/24/outline'
@@ -24,7 +24,7 @@ import toast from 'react-hot-toast'
 
 const DutyList = () => {
   const dispatch = useDispatch()
-  const { duties, isLoading, pagination } = useSelector((state) => state.duties)
+  const { duties, isLoading } = useSelector((state) => state.duties)
   const { staff } = useSelector((state) => state.staff)
   
   const [startDate, setStartDate] = useState('')
@@ -37,28 +37,56 @@ const DutyList = () => {
   const [selectedDutyDetails, setSelectedDutyDetails] = useState(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(10)
-  const [openMenuId, setOpenMenuId] = useState(null)
-  const menuRef = useRef(null)
+  const [expandedGroupKey, setExpandedGroupKey] = useState(null)
+  const [groupPage, setGroupPage] = useState(1)
+  const groupsPerPage = 10
 
   useEffect(() => {
     dispatch(fetchStaff({ limit: 100 }))
     loadDuties()
   }, [dispatch])
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setOpenMenuId(null)
-      }
+  const handleDownloadPDF = async () => {
+    try {
+      toast.loading('Generating PDF...', { id: 'pdf-gen' });
+      const params = {};
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+      if (filterStaff) params.staffId = filterStaff;
+      if (filterType) params.dutyType = filterType;
+      
+      const blob = await pdfService.downloadStaffDutyPDF(params);
+      downloadPDF(blob, `Staff_Duty_List_${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success('PDF downloaded successfully', { id: 'pdf-gen' });
+    } catch (error) {
+      console.error('Failed to generate PDF:', error);
+      toast.error('Failed to generate PDF report', { id: 'pdf-gen' });
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  };
+
+  const handleDownloadGroupPDF = async (group) => {
+    try {
+      toast.loading('Generating PDF for this batch...', { id: 'pdf-gen' });
+      const params = {
+        startDate: group.startDate.toISOString().split('T')[0],
+        endDate: group.endDate.toISOString().split('T')[0],
+        dutyType: group.dutyType
+      };
+      if (group.location && group.location !== 'Standard') {
+        params.location = group.location;
+      }
+      
+      const blob = await pdfService.downloadStaffDutyPDF(params);
+      downloadPDF(blob, `Staff_Duty_Group_${group.location}_${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success('Group PDF downloaded successfully', { id: 'pdf-gen' });
+    } catch (error) {
+      console.error('Failed to generate group PDF:', error);
+      toast.error('Failed to generate group PDF report', { id: 'pdf-gen' });
+    }
+  };
 
   const loadDuties = () => {
-    const params = { page: currentPage, limit: itemsPerPage }
+    const params = { page: 1, limit: 1000 }
     if (startDate) params.startDate = startDate
     if (endDate) params.endDate = endDate
     if (filterStaff) params.staffId = filterStaff
@@ -68,14 +96,17 @@ const DutyList = () => {
 
   useEffect(() => {
     loadDuties()
-  }, [startDate, endDate, filterStaff, filterType, currentPage])
+  }, [startDate, endDate, filterStaff, filterType])
+
+  useEffect(() => {
+    setGroupPage(1)
+  }, [startDate, endDate, filterStaff, filterType, searchTerm])
 
   const handleDelete = async () => {
     if (selectedDuty) {
       await dispatch(deleteDuty(selectedDuty._id))
       setShowDeleteModal(false)
       setSelectedDuty(null)
-      setOpenMenuId(null)
       loadDuties()
       toast.success('Duty deleted successfully')
     }
@@ -86,18 +117,27 @@ const DutyList = () => {
       await dispatch(updateDuty({ id: dutyId, data: { status: newStatus } })).unwrap()
       toast.success(`Duty marked as ${newStatus}`)
       loadDuties()
-      setOpenMenuId(null)
     } catch (error) {
       toast.error('Failed to update duty status')
     }
   }
 
   const getStaffName = (staffId) => {
+    if (!staffId) return 'Unknown'
+    if (typeof staffId === 'object') {
+      if (staffId.name) return staffId.name
+      if (staffId._id) staffId = staffId._id
+    }
     const s = staff.find(s => s._id === staffId)
     return s?.name || 'Unknown'
   }
 
   const getStaffShortName = (staffId) => {
+    if (!staffId) return 'U'
+    if (typeof staffId === 'object') {
+      if (staffId.name) return staffId.name.split(' ')[0]
+      if (staffId._id) staffId = staffId._id
+    }
     const s = staff.find(s => s._id === staffId)
     return s?.name?.split(' ')[0] || 'U'
   }
@@ -110,7 +150,7 @@ const DutyList = () => {
       cancelled: { color: 'bg-rose-50 text-rose-700 ring-1 ring-rose-600/20', label: 'Cancelled' }
     }
     const { color, label } = config[status] || config.assigned
-    return <span className={`inline-flex px-2 py-0.5 text-xs rounded-full ${color}`}>{label}</span>
+    return <span className={`inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full ${color}`}>{label}</span>
   }
 
   const getDutyTypeName = (type) => {
@@ -127,17 +167,67 @@ const DutyList = () => {
     return names[type] || type
   }
 
-  const filteredDuties = duties.filter(duty => {
-    if (!searchTerm) return true
-    const staffName = getStaffName(duty.staffId).toLowerCase()
-    const dutyType = duty.dutyType.toLowerCase()
-    return staffName.includes(searchTerm.toLowerCase()) || dutyType.includes(searchTerm.toLowerCase())
-  })
+  const filteredDuties = useMemo(() => {
+    return duties.filter(duty => {
+      if (!searchTerm) return true
+      const staffName = (duty.staffName || getStaffName(duty.staffId)).toLowerCase()
+      const dutyType = getDutyTypeName(duty.dutyType).toLowerCase()
+      const locationName = (duty.location || '').toLowerCase()
+      const searchLower = searchTerm.toLowerCase()
+      return staffName.includes(searchLower) || dutyType.includes(searchLower) || locationName.includes(searchLower)
+    })
+  }, [duties, searchTerm, staff])
 
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentDuties = filteredDuties.slice(indexOfFirstItem, indexOfLastItem)
-  const totalPages = Math.ceil(filteredDuties.length / itemsPerPage)
+  const groups = useMemo(() => {
+    const map = {}
+    filteredDuties.forEach(duty => {
+      if (!duty.duties || duty.duties.length === 0) return
+      
+      const dates = duty.duties.map(d => new Date(d.date).getTime())
+      const docMinDate = new Date(Math.min(...dates))
+      const docMaxDate = new Date(Math.max(...dates))
+      
+      const createdTime = new Date(duty.createdAt || duty.assignedAt || Date.now())
+      // Round to nearest minute to group batch assignments together
+      const roundedTimeStr = new Date(Math.round(createdTime.getTime() / (60 * 1000)) * (60 * 1000)).toISOString()
+      
+      const groupLocation = duty.location || 'Standard'
+      const type = duty.dutyType
+      
+      const key = `${groupLocation}_${type}_${roundedTimeStr}`
+      
+      if (!map[key]) {
+        map[key] = {
+          key,
+          location: groupLocation,
+          dutyType: type,
+          startDate: docMinDate,
+          endDate: docMaxDate,
+          staffList: [],
+          rooms: new Set(),
+          statusList: new Set()
+        }
+      } else {
+        if (docMinDate < map[key].startDate) map[key].startDate = docMinDate
+        if (docMaxDate > map[key].endDate) map[key].endDate = docMaxDate
+      }
+      
+      map[key].staffList.push(duty)
+      
+      duty.duties.forEach(d => {
+        if (d.room) map[key].rooms.add(d.room)
+      })
+      
+      map[key].statusList.add(duty.status)
+    })
+    
+    return Object.values(map).sort((a, b) => b.startDate - a.startDate)
+  }, [filteredDuties])
+
+  const indexOfLastGroup = groupPage * groupsPerPage
+  const indexOfFirstGroup = indexOfLastGroup - groupsPerPage
+  const currentGroups = groups.slice(indexOfFirstGroup, indexOfLastGroup)
+  const totalGroupPages = Math.ceil(groups.length / groupsPerPage)
 
   const dutyTypes = ['exam', 'invigilation', 'supervision', 'hall_monitor', 'security', 'sports', 'arts', 'workshop']
   const hasActiveFilters = startDate || endDate || filterStaff || filterType
@@ -147,7 +237,6 @@ const DutyList = () => {
     setEndDate('')
     setFilterStaff('')
     setFilterType('')
-    setCurrentPage(1)
   }
 
   if (isLoading) return <LoadingSpinner />
@@ -156,6 +245,13 @@ const DutyList = () => {
     <div className="space-y-5">
       {/* Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+        <button
+          onClick={handleDownloadPDF}
+          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm"
+        >
+          <ClipboardDocumentListIcon className="w-4 h-4" />
+          <span>Download PDF</span>
+        </button>
         <button
           onClick={() => setShowFilters(!showFilters)}
           className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
@@ -213,7 +309,7 @@ const DutyList = () => {
         <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
           type="text"
-          placeholder="Search by staff name or duty type..."
+          placeholder="Search by staff name, location, or duty type..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
@@ -227,120 +323,217 @@ const DutyList = () => {
 
       {/* Stats Row */}
       <div className="flex justify-between items-center">
-        <p className="text-xs text-gray-500">Total: {filteredDuties.length} duties</p>
+        <p className="text-xs text-gray-500">Total: {groups.length} duty batches ({filteredDuties.length} assignments)</p>
       </div>
 
-      {/* Duties List */}
-      {filteredDuties.length === 0 ? (
+      {/* Grouped Duties Table */}
+      {groups.length === 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
           <ClipboardDocumentListIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <h3 className="text-base font-semibold text-gray-800 mb-1">No duties found</h3>
-          <p className="text-sm text-gray-500">Try adjusting your filters</p>
+          <p className="text-sm text-gray-500">Try adjusting your search or filters</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {currentDuties.map((duty) => (
-            <div key={duty._id} className="bg-white rounded-lg border border-gray-200 hover:shadow-sm transition-all">
-              <div className="p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  {/* Left Section */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <UserIcon className="w-5 h-5 text-emerald-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-900">{getStaffName(duty.staffId)}</h3>
-                        <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600">
-                          {getDutyTypeName(duty.dutyType)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <CalendarIcon className="w-4 h-4 text-gray-400" />
-                        <span className="truncate">
-                          {duty.duties?.map(d => new Date(d.date).toLocaleDateString()).join(', ')}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <ClockIcon className="w-4 h-4 text-gray-400" />
-                        <span>{duty.totalDuties} duties | {duty.totalHours} hours</span>
-                      </div>
-                    </div>
-
-                    {duty.location && (
-                      <p className="text-sm text-gray-500 mt-2">📍 {duty.location}</p>
-                    )}
-                  </div>
-
-                  {/* Right Section - Status & Actions */}
-                  <div className="flex items-center gap-3">
-                    {getStatusBadge(duty.status)}
-                    
-                    {/* Desktop Actions */}
-                    <div className="hidden sm:flex items-center gap-1">
-                      <button onClick={() => { setSelectedDutyDetails(duty); setShowDetailsModal(true); }} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors" title="View Details">
-                        <EyeIcon className="w-4 h-4" />
-                      </button>
-                      {duty.status === 'assigned' && (
-                        <>
-                          <button onClick={() => handleUpdateStatus(duty._id, 'confirmed')} className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors" title="Confirm">
-                            <CheckCircleIcon className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => handleUpdateStatus(duty._id, 'cancelled')} className="p-1.5 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors" title="Cancel">
-                            <XCircleIcon className="w-4 h-4" />
-                          </button>
-                        </>
-                      )}
-                      <button onClick={() => { setSelectedDuty(duty); setShowDeleteModal(true); }} className="p-1.5 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors" title="Delete">
-                        <TrashIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {/* Mobile Actions Menu */}
-                    <div className="relative sm:hidden" ref={menuRef}>
-                      <button onClick={() => setOpenMenuId(openMenuId === duty._id ? null : duty._id)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
-                        <EllipsisVerticalIcon className="w-5 h-5" />
-                      </button>
-                      {openMenuId === duty._id && (
-                        <div className="absolute right-0 top-full mt-1 w-36 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
-                          <button onClick={() => { setSelectedDutyDetails(duty); setShowDetailsModal(true); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                            <EyeIcon className="w-4 h-4" /> View
-                          </button>
-                          {duty.status === 'assigned' && (
-                            <>
-                              <button onClick={() => { handleUpdateStatus(duty._id, 'confirmed'); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                                <CheckCircleIcon className="w-4 h-4" /> Confirm
-                              </button>
-                              <button onClick={() => { handleUpdateStatus(duty._id, 'cancelled'); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50">
-                                <XCircleIcon className="w-4 h-4" /> Cancel
-                              </button>
-                            </>
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3">Name</th>
+                  <th className="px-6 py-3">Duty Type</th>
+                  <th className="px-6 py-3">Date Range</th>
+                  <th className="px-6 py-3 text-center">Staff Count</th>
+                  <th className="px-6 py-3 text-center">Rooms</th>
+                  <th className="px-6 py-3">Status</th>
+                  <th className="px-6 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {currentGroups.map((group) => {
+                  const isExpanded = expandedGroupKey === group.key
+                  
+                  let statusLabel = 'Mixed'
+                  let statusColor = 'bg-gray-50 text-gray-700 ring-1 ring-gray-600/20'
+                  if (group.statusList.size === 1) {
+                    const status = Array.from(group.statusList)[0]
+                    const statusConfigs = {
+                      assigned: { color: 'bg-gray-100 text-gray-700 ring-1 ring-gray-600/20', label: 'Assigned' },
+                      confirmed: { color: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20', label: 'Confirmed' },
+                      completed: { color: 'bg-blue-50 text-blue-700 ring-1 ring-blue-600/20', label: 'Completed' },
+                      cancelled: { color: 'bg-rose-50 text-rose-700 ring-1 ring-rose-600/20', label: 'Cancelled' }
+                    }
+                    const config = statusConfigs[status] || statusConfigs.assigned
+                    statusLabel = config.label
+                    statusColor = config.color
+                  }
+                  
+                  return (
+                    <React.Fragment key={group.key}>
+                      <tr 
+                        onClick={() => setExpandedGroupKey(isExpanded ? null : group.key)}
+                        className={`hover:bg-slate-50 cursor-pointer transition-colors ${isExpanded ? 'bg-slate-50/50' : ''}`}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="font-semibold text-gray-900">{group.location}</div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 capitalize">
+                          {getDutyTypeName(group.dutyType)}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          <span className="inline-flex items-center gap-1.5">
+                            <CalendarIcon className="w-4 h-4 text-gray-400" />
+                            {new Date(group.startDate).toLocaleDateString()} - {new Date(group.endDate).toLocaleDateString()}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-center font-medium text-gray-800">
+                          {group.staffList.length}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-center text-gray-600">
+                          {group.rooms.size > 0 ? (
+                            <span className="font-medium bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded text-xs">
+                              {group.rooms.size}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
                           )}
-                          <button onClick={() => { setSelectedDuty(duty); setShowDeleteModal(true); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50">
-                            <TrashIcon className="w-4 h-4" /> Delete
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${statusColor}`}>
+                            {statusLabel}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right text-sm font-medium">
+                          <button 
+                            className="text-emerald-600 hover:text-emerald-700 font-semibold"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedGroupKey(isExpanded ? null : group.key);
+                            }}
+                          >
+                            {isExpanded ? 'Collapse' : 'View Staff'}
                           </button>
-                        </div>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr className="bg-slate-50/30">
+                          <td colSpan={7} className="px-6 py-4">
+                            <div className="space-y-4">
+                              {/* Group Info header */}
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-3 rounded-lg border border-gray-150">
+                                <div>
+                                  <h4 className="text-sm font-semibold text-gray-900">
+                                    Staff Assignment Details
+                                  </h4>
+                                  <p className="text-xs text-gray-500">
+                                    {group.staffList.length} staff members assigned across {group.rooms.size} rooms
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => handleDownloadGroupPDF(group)}
+                                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm self-start sm:self-auto"
+                                >
+                                  <ClipboardDocumentListIcon className="w-3.5 h-3.5" />
+                                  <span>Download PDF for this Batch</span>
+                                </button>
+                              </div>
+
+                              {/* Staff Grid */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {group.staffList.map((duty) => {
+                                  const sName = duty.staffName || getStaffName(duty.staffId);
+                                  return (
+                                    <div key={duty._id} className="bg-white rounded-lg border border-gray-200 p-4 space-y-3 relative hover:shadow-sm transition-all">
+                                      <div className="flex justify-between items-start gap-2">
+                                        <div className="flex items-center gap-2.5">
+                                          <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-xs font-bold text-emerald-700">
+                                            {getStaffShortName(duty.staffId)}
+                                          </div>
+                                          <div>
+                                            <h5 className="text-sm font-semibold text-gray-900">{sName}</h5>
+                                            <p className="text-[10px] text-gray-400 capitalize">{duty.dutyType.replace('_', ' ')}</p>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                          {getStatusBadge(duty.status)}
+                                          <button 
+                                            onClick={() => { setSelectedDutyDetails(duty); setShowDetailsModal(true); }}
+                                            className="p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-gray-100"
+                                            title="View Details"
+                                          >
+                                            <EyeIcon className="w-4 h-4" />
+                                          </button>
+                                          {duty.status === 'assigned' && (
+                                            <>
+                                              <button 
+                                                onClick={() => handleUpdateStatus(duty._id, 'confirmed')}
+                                                className="p-1 text-gray-400 hover:text-emerald-600 rounded hover:bg-gray-100"
+                                                title="Confirm"
+                                              >
+                                                <CheckCircleIcon className="w-4 h-4" />
+                                              </button>
+                                              <button 
+                                                onClick={() => handleUpdateStatus(duty._id, 'cancelled')}
+                                                className="p-1 text-gray-400 hover:text-rose-600 rounded hover:bg-gray-100"
+                                                title="Cancel"
+                                              >
+                                                <XCircleIcon className="w-4 h-4" />
+                                              </button>
+                                            </>
+                                          )}
+                                          <button 
+                                            onClick={() => { setSelectedDuty(duty); setShowDeleteModal(true); }}
+                                            className="p-1 text-gray-400 hover:text-rose-600 rounded hover:bg-gray-100"
+                                            title="Delete"
+                                          >
+                                            <TrashIcon className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="bg-slate-50 rounded-lg p-2.5 space-y-1.5 text-xs border border-gray-100">
+                                        {duty.duties?.map((d, idx) => (
+                                          <div key={idx} className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-gray-600">
+                                            <span className="font-medium">
+                                              📅 {new Date(d.date).toLocaleDateString()}
+                                            </span>
+                                            <div className="flex gap-1">
+                                              <span className="capitalize bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-semibold text-[10px]">
+                                                ⏱️ {d.shift}
+                                              </span>
+                                              {d.room && (
+                                                <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-semibold text-[10px]">
+                                                  🚪 {d.room}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {totalGroupPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-2">
-          <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg disabled:opacity-50">
+          <button onClick={() => setGroupPage(p => Math.max(1, p - 1))} disabled={groupPage === 1} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg disabled:opacity-50">
             <ChevronLeftIcon className="w-4 h-4" />
           </button>
-          <span className="text-sm text-gray-600">Page {currentPage} of {totalPages}</span>
-          <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg disabled:opacity-50">
+          <span className="text-sm text-gray-600">Page {groupPage} of {totalGroupPages}</span>
+          <button onClick={() => setGroupPage(p => Math.min(totalGroupPages, p + 1))} disabled={groupPage === totalGroupPages} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg disabled:opacity-50">
             <ChevronRightIcon className="w-4 h-4" />
           </button>
         </div>
@@ -355,9 +548,21 @@ const DutyList = () => {
               <h3 className="text-base font-semibold text-gray-900">Duty Details</h3>
             </div>
             <div className="p-5 space-y-3">
-              <div><label className="text-xs text-gray-500">Staff Member</label><p className="text-sm font-medium text-gray-900">{getStaffName(selectedDutyDetails.staffId)}</p></div>
+              <div><label className="text-xs text-gray-500">Staff Member</label><p className="text-sm font-medium text-gray-900">{selectedDutyDetails.staffName || getStaffName(selectedDutyDetails.staffId)}</p></div>
               <div><label className="text-xs text-gray-500">Duty Type</label><p className="text-sm font-medium text-gray-900 capitalize">{selectedDutyDetails.dutyType}</p></div>
-              <div><label className="text-xs text-gray-500">Dates</label>{selectedDutyDetails.duties?.map((d, idx) => (<p key={idx} className="text-sm text-gray-600">{new Date(d.date).toLocaleDateString()} - {d.shift} shift ({d.duration} hours)</p>))}</div>
+              <div>
+                <label className="text-xs text-gray-500">Dates & Shifts</label>
+                <div className="mt-1 space-y-1.5">
+                  {selectedDutyDetails.duties?.map((d, idx) => (
+                    <p key={idx} className="text-sm text-gray-600 flex flex-wrap items-center gap-1.5">
+                      <span>• {new Date(d.date).toLocaleDateString()}</span>
+                      <span className="capitalize">({d.shift})</span>
+                      {d.room && <span className="font-semibold text-emerald-600">({d.room})</span>}
+                      <span className="text-xs text-gray-400">({d.duration} hrs)</span>
+                    </p>
+                  ))}
+                </div>
+              </div>
               <div><label className="text-xs text-gray-500">Status</label><div className="mt-1">{getStatusBadge(selectedDutyDetails.status)}</div></div>
               {selectedDutyDetails.location && <div><label className="text-xs text-gray-500">Location</label><p className="text-sm text-gray-600">{selectedDutyDetails.location}</p></div>}
               {selectedDutyDetails.remarks && <div><label className="text-xs text-gray-500">Remarks</label><p className="text-sm text-gray-600">{selectedDutyDetails.remarks}</p></div>}
@@ -381,7 +586,7 @@ const DutyList = () => {
                 <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center"><TrashIcon className="w-5 h-5 text-rose-600" /></div>
                 <div><h3 className="text-base font-semibold text-gray-900">Delete Duty</h3><p className="text-xs text-gray-500">This action cannot be undone</p></div>
               </div>
-              <p className="text-sm text-gray-600 mb-5">Are you sure you want to delete the duty for <span className="font-medium">{getStaffName(selectedDuty?.staffId)}</span>?</p>
+              <p className="text-sm text-gray-600 mb-5">Are you sure you want to delete the duty for <span className="font-medium">{selectedDuty?.staffName || getStaffName(selectedDuty?.staffId)}</span>?</p>
               <div className="flex justify-end gap-3">
                 <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
                 <button onClick={handleDelete} className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700">Delete</button>

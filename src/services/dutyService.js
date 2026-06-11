@@ -12,21 +12,25 @@ const dutyService = {
     return response.data
   },
 
-  autoAssignDuties: async (dates, dutyType, excludedStaffIds = [], algorithm = 'priority', className = 'School') => {
+  autoAssignDuties: async (dates, dutyType, excludedStaffIds = [], algorithm = 'priority', className = 'School', totalRooms = 1, rooms = [], excludedStaff = []) => {
     const response = await api.post('/staff-duty/auto-assign', {
       dates,
       dutyType,
       excludedStaffIds,
       algorithm,
-      className
+      className,
+      totalRooms,
+      rooms,
+      excludedStaff
     })
     return response.data
   },
 
-  multiTypeAssign: async (dutyRequirements, excludedStaffIds = []) => {
+  multiTypeAssign: async (dutyRequirements, excludedStaffIds = [], excludedStaff = []) => {
     const response = await api.post('/staff-duty/multi-type-assign', {
       dutyRequirements,
-      excludedStaffIds
+      excludedStaffIds,
+      excludedStaff
     })
     return response.data
   },

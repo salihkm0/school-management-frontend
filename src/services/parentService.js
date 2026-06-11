@@ -28,6 +28,11 @@ const parentService = {
     return response.data
   },
 
+  updateParent: async (id, parentData) => {
+    const response = await api.put(`/parents/${id}`, parentData)
+    return response.data
+  },
+
   connectStudent: async (parentId, studentCode, dateOfBirth, relation) => {
     const response = await api.post(`/parents/connect-student/${parentId}`, {
       studentCode,

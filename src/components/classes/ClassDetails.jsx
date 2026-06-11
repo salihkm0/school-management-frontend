@@ -34,6 +34,8 @@ const ClassDetails = () => {
   const [selectedTeacher, setSelectedTeacher] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [selectedSubject, setSelectedSubject] = useState('')
+  const [periodsPerWeek, setPeriodsPerWeek] = useState(1)
 
   useEffect(() => {
     if (id && id !== 'undefined') {
@@ -43,6 +45,13 @@ const ClassDetails = () => {
     }
     return () => { dispatch(clearCurrentClass()) }
   }, [dispatch, id])
+
+  const closeTeacherModal = () => {
+    setShowTeacherModal(false)
+    setSelectedTeacher('')
+    setSelectedSubject('')
+    setPeriodsPerWeek(1)
+  }
 
   const handleAssignTeacher = async () => {
     if (!selectedTeacher) { toast.error('Please select a teacher'); return }
@@ -57,10 +66,15 @@ const ClassDetails = () => {
       }
       if (!currentYearId) { toast.error('Academic year not found'); return }
       
-      await dispatch(assignClassTeacher({ classId: id, staffId: selectedTeacher, academicYearId: currentYearId })).unwrap()
+      await dispatch(assignClassTeacher({ 
+        classId: id, 
+        staffId: selectedTeacher, 
+        academicYearId: currentYearId,
+        subjectId: selectedSubject || undefined,
+        periodsPerWeek: selectedSubject ? periodsPerWeek : undefined
+      })).unwrap()
       toast.success('Class teacher assigned successfully')
-      setShowTeacherModal(false)
-      setSelectedTeacher('')
+      closeTeacherModal()
       dispatch(fetchClassById(id))
     } catch (error) {
       toast.error(error.message || 'Failed to assign class teacher')
@@ -261,23 +275,58 @@ const ClassDetails = () => {
       {/* Assign Teacher Modal */}
       {showTeacherModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowTeacherModal(false)} />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeTeacherModal} />
           <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-auto overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-200 flex justify-between items-center">
               <h3 className="text-base font-semibold text-gray-900">Assign Class Teacher</h3>
-              <button onClick={() => setShowTeacherModal(false)} className="text-gray-400 hover:text-gray-600"><XMarkIcon className="w-5 h-5" /></button>
+              <button onClick={closeTeacherModal} className="text-gray-400 hover:text-gray-600"><XMarkIcon className="w-5 h-5" /></button>
             </div>
             <div className="p-5 space-y-4">
               <p className="text-sm text-gray-600">Select a teacher for <span className="font-medium">{currentClass.displayName}</span></p>
-              <select value={selectedTeacher} onChange={(e) => setSelectedTeacher(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                <option value="">Select Teacher</option>
-                {staff.filter(s => s.role === 'teacher' || s.role === 'principal').map(teacher => (
-                  <option key={teacher._id} value={teacher._id}>{teacher.name} ({teacher.staffCode || teacher.role})</option>
-                ))}
-              </select>
+              
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700">Teacher</label>
+                <select value={selectedTeacher} onChange={(e) => setSelectedTeacher(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                  <option value="">Select Teacher</option>
+                  {staff.filter(s => s.role === 'teacher' || s.role === 'principal').map(teacher => (
+                    <option key={teacher._id} value={teacher._id}>{teacher.name} ({teacher.staffCode || teacher.role})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700">Subject to Teach (Optional)</label>
+                <select 
+                  value={selectedSubject} 
+                  onChange={(e) => {
+                    setSelectedSubject(e.target.value);
+                    if (!e.target.value) setPeriodsPerWeek(1);
+                  }} 
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="">None / No Subject</option>
+                  {currentClass.subjects?.map(s => (
+                    <option key={s._id} value={s._id}>{s.name} {s.code ? `(${s.code})` : ''}</option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedSubject && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700">Periods/Week</label>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    max="12" 
+                    value={periodsPerWeek} 
+                    onChange={(e) => setPeriodsPerWeek(Math.max(1, Math.min(12, parseInt(e.target.value) || 1)))} 
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500" 
+                  />
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-3 px-5 py-4 border-t border-gray-200 bg-gray-50">
-              <button onClick={() => { setShowTeacherModal(false); setSelectedTeacher(''); }} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={closeTeacherModal} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={handleAssignTeacher} disabled={isSubmitting || !selectedTeacher} className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50">
                 {isSubmitting ? 'Assigning...' : 'Assign'}
               </button>

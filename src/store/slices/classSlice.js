@@ -105,9 +105,9 @@ export const deleteClass = createAsyncThunk(
 
 export const assignClassTeacher = createAsyncThunk(
   'classes/assignTeacher',
-  async ({ classId, staffId, academicYearId, remove = false }, { rejectWithValue }) => {
+  async ({ classId, staffId, academicYearId, subjectId, periodsPerWeek, remove = false }, { rejectWithValue }) => {
     try {
-      console.log('assignClassTeacher called with:', { classId, staffId, academicYearId, remove })
+      console.log('assignClassTeacher called with:', { classId, staffId, academicYearId, subjectId, periodsPerWeek, remove })
       
       if (!classId || classId === 'undefined') {
         throw new Error('Class ID is required and cannot be undefined')
@@ -123,8 +123,8 @@ export const assignClassTeacher = createAsyncThunk(
         if (!staffId) {
           throw new Error('Staff ID is required for assignment')
         }
-        console.log('Assigning teacher to class:', { classId, staffId, academicYearId })
-        response = await classService.assignClassTeacher(classId, staffId, academicYearId)
+        console.log('Assigning teacher to class:', { classId, staffId, academicYearId, subjectId, periodsPerWeek })
+        response = await classService.assignClassTeacher(classId, staffId, academicYearId, subjectId, periodsPerWeek)
         toast.success('Class teacher assigned successfully')
       }
       
@@ -478,7 +478,8 @@ const classSlice = createSlice({
             state.currentClass = {
               ...state.currentClass,
               classTeacherId: updatedClass.classTeacherId,
-              classTeacherName: updatedClass.classTeacherName
+              classTeacherName: updatedClass.classTeacherName,
+              subjectTeachers: updatedClass.subjectTeachers || state.currentClass.subjectTeachers
             }
           }
           const index = state.classes.findIndex(c => c._id === updatedClass._id)
@@ -486,7 +487,8 @@ const classSlice = createSlice({
             state.classes[index] = {
               ...state.classes[index],
               classTeacherId: updatedClass.classTeacherId,
-              classTeacherName: updatedClass.classTeacherName
+              classTeacherName: updatedClass.classTeacherName,
+              subjectTeachers: updatedClass.subjectTeachers || state.classes[index].subjectTeachers
             }
           }
         }

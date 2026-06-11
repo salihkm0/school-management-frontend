@@ -309,6 +309,27 @@ const StudentDetails = () => {
               } 
             />
           </SectionCard>
+
+          {currentStudent.parentIds && currentStudent.parentIds.length > 0 && (
+            <SectionCard title="Connected Parent Accounts" icon={UserCircleIcon}>
+              <div className="space-y-3">
+                {currentStudent.parentIds.map((parent) => (
+                  <div key={parent._id} className="flex flex-col py-2 border-b border-gray-100 last:border-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-gray-900">{parent.fullName}</span>
+                      <Link to={`/parents/${parent._id}`} className="inline-flex items-center gap-0.5 text-xs text-emerald-600 hover:text-emerald-700 font-medium">
+                        View Parent details
+                      </Link>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1 flex flex-col gap-0.5">
+                      <span>Email: {parent.email || '-'}</span>
+                      <span>Phone: {parent.phone}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          )}
         </div>
       )}
 

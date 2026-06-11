@@ -15,7 +15,8 @@ import {
   ClockIcon,
   XMarkIcon,
   CalendarIcon,
-  PencilIcon
+  PencilIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline'
 import { fetchParentById, connectStudent, removeStudentConnection } from '../../store/slices/parentSlice'
 import { fetchStudents } from '../../store/slices/studentSlice'
@@ -72,7 +73,7 @@ const ParentDetails = () => {
 
   if (isLoading || !currentParent) return <LoadingSpinner />
 
-  const students = currentParent.students || []
+  const students = currentParent.connections || []
   const verifiedCount = students.filter(s => s.studentFullName).length
   const pendingCount = students.length - verifiedCount
 
@@ -93,10 +94,16 @@ const ParentDetails = () => {
             </div>
           </div>
         </div>
-        <button onClick={() => setShowConnectModal(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all">
-          <PlusIcon className="w-4 h-4" />
-          Connect Student
-        </button>
+        <div className="flex gap-2">
+          <Link to={`/parents/${id}/edit`} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-all">
+            <PencilIcon className="w-4 h-4" />
+            Edit Parent
+          </Link>
+          <button onClick={() => setShowConnectModal(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all">
+            <PlusIcon className="w-4 h-4" />
+            Connect Student
+          </button>
+        </div>
       </div>
 
       {/* Stats Summary */}
@@ -197,7 +204,16 @@ const ParentDetails = () => {
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                         {student.studentFullName && (
-                          <div><span className="text-gray-500">Student Name:</span> <span className="ml-1 text-gray-800">{student.studentFullName}</span></div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-gray-500">Student Name:</span> 
+                            <span className="text-gray-800">{student.studentFullName}</span>
+                            {student.currentDetails?._id && (
+                              <Link to={`/students/${student.currentDetails._id}`} className="inline-flex items-center gap-0.5 text-xs text-emerald-600 hover:text-emerald-700 font-medium ml-2">
+                                <EyeIcon className="w-3.5 h-3.5" />
+                                <span>View</span>
+                              </Link>
+                            )}
+                          </div>
                         )}
                         <div><span className="text-gray-500">Relation:</span> <span className="ml-1 text-gray-800 capitalize">{student.relation}</span></div>
                         <div><span className="text-gray-500">Connected:</span> <span className="ml-1 text-gray-800">{new Date(student.connectedSince).toLocaleDateString()}</span></div>

@@ -30,8 +30,8 @@ const classService = {
     return response.data
   },
 
-  assignClassTeacher: async (classId, teacherId, academicYearId) => {
-    console.log('assignClassTeacher service call:', { classId, teacherId, academicYearId })
+  assignClassTeacher: async (classId, teacherId, academicYearId, subjectId, periodsPerWeek) => {
+    console.log('assignClassTeacher service call:', { classId, teacherId, academicYearId, subjectId, periodsPerWeek })
     
     if (!classId || classId === 'undefined') {
       throw new Error('Invalid class ID')
@@ -39,7 +39,9 @@ const classService = {
     
     const response = await api.post(`/classes/${classId}/assign-teacher`, { 
       teacherId, 
-      academicYearId 
+      academicYearId,
+      subjectId,
+      periodsPerWeek
     })
     return response.data
   },

@@ -27,6 +27,20 @@ const examService = {
     return response.data;
   },
 
+  // Get exams for staff (class teacher)
+  getStaffExams: async (academicYearId) => {
+    const response = await api.get("/exams/staff/exams", {
+      params: { academicYearId },
+    });
+    return response.data;
+  },
+
+  // Create exam as staff
+  createStaffExam: async (examData) => {
+    const response = await api.post("/exams/staff/exams", examData);
+    return response.data;
+  },
+
   publishExam: async (id) => {
     const response = await api.post(`/exams/${id}/publish`);
     return response.data;

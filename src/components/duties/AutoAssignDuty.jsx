@@ -1,5 +1,5 @@
 // src/components/duties/AutoAssignDuty.jsx
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useDispatch } from 'react-redux'
 import { autoAssignDuties } from '../../store/slices/dutySlice'
 import { fetchStaff } from '../../store/slices/staffSlice'
@@ -46,11 +46,28 @@ const AutoAssignDuty = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState('')
   const [className, setClassName] = useState('')
-  const [excludedStaffIds, setExcludedStaffIds] = useState([])
+  
+  // Room states
+  const [totalRooms, setTotalRooms] = useState('')
+  const [rooms, setRooms] = useState([])
+
+  // Excluded staff state: [{ staffId, name, dates: [] }]
+  const [excludedStaff, setExcludedStaff] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [showStaffDropdown, setShowStaffDropdown] = useState(false)
+  const dropdownRef = useRef(null)
 
   useEffect(() => { loadStaff() }, [])
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowStaffDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const loadStaff = async () => {
     try {
@@ -59,14 +76,40 @@ const AutoAssignDuty = () => {
     } catch (error) { console.error('Failed to load staff:', error) }
   }
 
+  // Handle room count change
+  const handleTotalRoomsChange = (val) => {
+    if (val === '') {
+      setTotalRooms('');
+      setRooms([]);
+      return;
+    }
+    const num = Math.max(1, parseInt(val) || 1);
+    setTotalRooms(num);
+    const updatedRooms = [...rooms];
+    if (num > updatedRooms.length) {
+      for (let i = updatedRooms.length; i < num; i++) {
+        updatedRooms.push('');
+      }
+    } else if (num < updatedRooms.length) {
+      updatedRooms.splice(num);
+    }
+    setRooms(updatedRooms);
+  }
+
+  const handleRoomNameChange = (index, name) => {
+    const updated = [...rooms];
+    updated[index] = name;
+    setRooms(updated);
+  }
+
   const filteredStaff = useMemo(() => {
     return staffList.filter(staff => 
-      !excludedStaffIds.includes(staff._id) &&
+      !excludedStaff.some(e => e.staffId === staff._id) &&
       (staff.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
        staff.staffCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
        staff.role?.toLowerCase().includes(searchTerm.toLowerCase()))
     )
-  }, [staffList, excludedStaffIds, searchTerm])
+  }, [staffList, excludedStaff, searchTerm])
 
   const handleDateSelect = () => {
     if (!selectedDate) { toast.error('Please select a date'); return }
@@ -75,25 +118,73 @@ const AutoAssignDuty = () => {
     setSelectedDate('')
   }
 
-  const removeDate = (dateToRemove) => setSelectedDates(selectedDates.filter(d => d.date !== dateToRemove))
+  const removeDate = (dateToRemove) => {
+    const nextDates = selectedDates.filter(d => d.date !== dateToRemove);
+    setSelectedDates(nextDates);
+    // Also remove this date from any staff exclusions
+    setExcludedStaff(excludedStaff.map(e => ({
+      ...e,
+      dates: e.dates.filter(d => d !== dateToRemove)
+    })));
+  }
+
   const updateDateShift = (dateObj, newShift) => setSelectedDates(selectedDates.map(d => d.date === dateObj.date ? { ...d, shift: newShift } : d))
 
   const addExcludedStaff = (staffId, staffName) => {
-    setExcludedStaffIds([...excludedStaffIds, staffId])
+    // Default to excluding them from all currently selected dates
+    const initialDates = selectedDates.map(d => d.date);
+    setExcludedStaff([...excludedStaff, { staffId, name: staffName, dates: initialDates }]);
     setSearchTerm('')
     setShowStaffDropdown(false)
     toast.success(`${staffName} added to excluded list`)
   }
 
-  const removeExcludedStaff = (staffId) => setExcludedStaffIds(excludedStaffIds.filter(id => id !== staffId))
+  const removeExcludedStaff = (staffId) => setExcludedStaff(excludedStaff.filter(e => e.staffId !== staffId))
+
+  const toggleExcludedStaffDate = (staffId, dateStr) => {
+    setExcludedStaff(excludedStaff.map(e => {
+      if (e.staffId === staffId) {
+        const hasDate = e.dates.includes(dateStr);
+        const updatedDates = hasDate 
+          ? e.dates.filter(d => d !== dateStr)
+          : [...e.dates, dateStr];
+        return { ...e, dates: updatedDates };
+      }
+      return e;
+    }));
+  }
+
+  const toggleExcludeAllDates = (staffId) => {
+    setExcludedStaff(excludedStaff.map(e => {
+      if (e.staffId === staffId) {
+        const allDates = selectedDates.map(d => d.date);
+        const isExcludingAll = e.dates.length === allDates.length;
+        return { ...e, dates: isExcludingAll ? [] : allDates };
+      }
+      return e;
+    }));
+  }
+
   const getStaffName = (staffId) => staffList.find(s => s._id === staffId)?.name || 'Unknown'
 
   const handleSubmit = async () => {
     if (selectedDates.length === 0) { toast.error('Please select at least one date'); return }
     const formattedDates = selectedDates.map(d => ({ date: d.date, shift: d.shift }))
+    
+    // Clean rooms array - if a room name is empty, replace it with default name
+    const cleanedRooms = rooms.map((r, i) => r.trim() || `Room ${i + 1}`);
+    const finalTotalRooms = parseInt(totalRooms) || 1;
+    
     setIsLoading(true)
     try {
-      const res = await dispatch(autoAssignDuties({ dates: formattedDates, dutyType, excludedStaffIds, className: className || dutyType })).unwrap()
+      const res = await dispatch(autoAssignDuties({
+        dates: formattedDates,
+        dutyType,
+        excludedStaff: excludedStaff.map(e => ({ staffId: e.staffId, dates: e.dates })),
+        totalRooms: finalTotalRooms,
+        rooms: cleanedRooms.length > 0 ? cleanedRooms : [`Room 1`],
+        className: className || dutyType
+      })).unwrap()
       setResult(res)
       toast.success(`${res.statistics?.totalDuties || 0} duties assigned for ${selectedDates.length} date(s)`)
     } catch (error) { 
@@ -120,7 +211,7 @@ const AutoAssignDuty = () => {
   const changeMonth = (increment) => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + increment, 1))
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
   const days = getDaysInMonth(currentMonth)
-  const totalSlots = selectedDates.reduce((total, date) => total + (date.shift === 'both' ? 2 : 1), 0)
+  const totalSlots = selectedDates.reduce((total, date) => total + (date.shift === 'both' ? 2 : 1), 0) * totalRooms
 
   return (
     <div className="space-y-5">
@@ -154,15 +245,54 @@ const AutoAssignDuty = () => {
               </select>
             </div>
 
+            {/* Rooms Configuration */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Total Rooms</label>
+                <input
+                  type="number"
+                  value={totalRooms}
+                  onChange={(e) => handleTotalRoomsChange(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  min="1"
+                  max="50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Total Slots / Shift</label>
+                <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 font-medium">
+                  {parseInt(totalRooms) || 1} slots
+                </div>
+              </div>
+            </div>
+
+            {parseInt(totalRooms) >= 1 && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Room Names / Codes</label>
+                <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-1 bg-gray-50 rounded-lg border border-gray-200">
+                  {rooms.map((roomName, idx) => (
+                    <input
+                      key={idx}
+                      type="text"
+                      value={roomName}
+                      onChange={(e) => handleRoomNameChange(idx, e.target.value)}
+                      className="px-2.5 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+                      placeholder={`Room ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Excluded Staff */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Exclude Staff Members</label>
-              <div className="relative">
+              <div className="relative" ref={dropdownRef}>
                 <div className="flex gap-2">
                   <input type="text" placeholder="Search staff..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setShowStaffDropdown(true); }} onFocus={() => setShowStaffDropdown(true)} className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500" />
                   <button type="button" onClick={() => setShowStaffDropdown(!showStaffDropdown)} className="px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">▼</button>
                 </div>
-                {showStaffDropdown && searchTerm && (
+                {showStaffDropdown && (
                   <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                     {filteredStaff.length === 0 ? <div className="px-4 py-3 text-gray-500 text-sm">No staff found</div> :
                       filteredStaff.map(staff => (
@@ -175,15 +305,56 @@ const AutoAssignDuty = () => {
                   </div>
                 )}
               </div>
-              {excludedStaffIds.length > 0 && (
-                <div className="mt-3">
-                  <label className="text-xs text-gray-500 mb-1 block">Excluded ({excludedStaffIds.length})</label>
-                  <div className="flex flex-wrap gap-2">
-                    {excludedStaffIds.map(staffId => (
-                      <span key={staffId} className="inline-flex items-center gap-1 px-2 py-1 bg-rose-50 text-rose-700 rounded-lg text-xs">
-                        {getStaffName(staffId)}
-                        <button onClick={() => removeExcludedStaff(staffId)} className="hover:text-rose-800">×</button>
-                      </span>
+              {excludedStaff.length > 0 && (
+                <div className="mt-3 space-y-3">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Excluded Staff & Dates</label>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {excludedStaff.map(e => (
+                      <div key={e.staffId} className="p-2.5 bg-gray-50 rounded-lg border border-gray-200 space-y-1.5">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-gray-800">{e.name}</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleExcludeAllDates(e.staffId)}
+                              className="text-[10px] text-emerald-600 hover:text-emerald-700 font-semibold"
+                            >
+                              {e.dates.length === selectedDates.length ? 'Clear Dates' : 'Exclude All'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeExcludedStaff(e.staffId)}
+                              className="text-rose-500 hover:text-rose-700 font-semibold text-xs"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                        {selectedDates.length === 0 ? (
+                          <p className="text-[10px] text-gray-400 italic">Select assignment dates first to set specific exclusions</p>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {selectedDates.map(d => {
+                              const isExcluded = e.dates.includes(d.date);
+                              return (
+                                <button
+                                  key={d.date}
+                                  type="button"
+                                  onClick={() => toggleExcludedStaffDate(e.staffId, d.date)}
+                                  className={`px-1.5 py-0.5 rounded text-[10px] font-medium border transition-colors ${
+                                    isExcluded
+                                      ? 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
+                                      : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-100'
+                                  }`}
+                                  title={isExcluded ? 'Excluded on this date (click to enable)' : 'Not excluded (click to exclude)'}
+                                >
+                                  {new Date(d.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -284,7 +455,7 @@ const AutoAssignDuty = () => {
                   const existingLoad = result.statistics?.existingLoad?.[staffId] || 0
                   const newAssignments = result.statistics?.newAssignments?.[staffId] || 0
                   const percentage = (totalCount / result.statistics?.totalDuties) * 100
-                  const isExcluded = excludedStaffIds.includes(staffId)
+                  const isExcluded = excludedStaff.some(e => e.staffId === staffId && e.dates.length === selectedDates.length)
                   return (
                     <div key={staffId} className={isExcluded ? 'opacity-50' : ''}>
                       <div className="flex justify-between text-sm mb-1">

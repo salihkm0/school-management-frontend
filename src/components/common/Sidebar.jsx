@@ -18,6 +18,7 @@ import {
   DocumentTextIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ArchiveBoxIcon,
 } from '@heroicons/react/24/outline'
 import { logout } from '../../store/slices/authSlice'
 import { disconnectSocket } from '../../services/socketService'
@@ -25,21 +26,34 @@ import toast from 'react-hot-toast'
 
 // Menu Items grouped by role
 const menuItems = [
+
+  // Common routes for all roles
   { path: '/dashboard', name: 'Dashboard', icon: HomeIcon, roles: ['admin', 'staff', 'parent'] },
+
+  // Admin-specific routes
   { path: '/students', name: 'Students', icon: UsersIcon, roles: ['admin'] },
   { path: '/staff', name: 'Staff', icon: UserGroupIcon, roles: ['admin'] },
   { path: '/parents', name: 'Parents', icon: UserIcon, roles: ['admin'] },
   { path: '/classes', name: 'Classes', icon: AcademicCapIcon, roles: ['admin'] },
   { path: '/subjects', name: 'Subjects', icon: BookOpenIcon, roles: ['admin'] },
   { path: '/exams', name: 'Exams', icon: ClipboardDocumentListIcon, roles: ['admin'] },
-  { path: '/attendance', name: 'Attendance', icon: CalendarIcon, roles: ['admin', 'staff'] },
+  { path: '/attendance', name: 'Attendance', icon: CalendarIcon, roles: ['admin'] },
   { path: '/duties', name: 'Duties', icon: CalendarIcon, roles: ['admin'] },
   { path: '/reports', name: 'Reports', icon: ChartBarIcon, roles: ['admin'] },
   { path: '/pdf-reports', name: 'PDF Reports', icon: DocumentTextIcon, roles: ['admin'] },
+  { path: '/historical-import', name: 'Historical Records', icon: ArchiveBoxIcon, roles: ['admin'] },
+
+  // Staff-specific routes
+  { path: '/staff/exams', name: 'Exams', icon: ClipboardDocumentListIcon, roles: ['staff'] },
+  { path: '/staff/attendance', name: 'Attendance', icon: CalendarIcon, roles: ['staff'] },
   { path: '/staff/mark', name: 'Mark Entry', icon: ClipboardDocumentListIcon, roles: ['staff'] },
+
+  // Parent-specific routes
   { path: '/my-children', name: 'My Children', icon: UserGroupIcon, roles: ['parent'] },
   { path: '/my-child-attendance', name: 'Attendance', icon: CalendarIcon, roles: ['parent'] },
-  { path: '/my-child-results', name: 'Results', icon: ChartBarIcon, roles: ['parent'] },
+  { path: 'my-child-results', name: 'Results', icon: ChartBarIcon, roles: ['parent'] },
+
+  // common routes
   { path: '/notifications', name: 'Notifications', icon: BellIcon, roles: ['admin', 'staff', 'parent'] },
   { path: '/settings', name: 'Settings', icon: Cog6ToothIcon, roles: ['admin', 'staff', 'parent'] },
 ]

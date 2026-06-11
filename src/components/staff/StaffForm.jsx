@@ -15,7 +15,11 @@ const StaffForm = () => {
   const isEditing = !!id;
   const { currentStaff, isLoading } = useSelector((state) => state.staff);
   const [roles, setRoles] = React.useState([]);
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm();
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
+    defaultValues: {
+      employeeType: "Permanent"
+    }
+  });
 
   useEffect(() => {
     loadRoles();
@@ -30,6 +34,7 @@ const StaffForm = () => {
         shortName: currentStaff.shortName || "",
         email: currentStaff.email,
         role: currentStaff.role,
+        employeeType: currentStaff.employeeType || "Permanent",
         qualification: currentStaff.qualification,
         contact: currentStaff.contact,
         dateOfJoining: currentStaff.dateOfJoining?.split("T")[0],
@@ -91,6 +96,17 @@ const StaffForm = () => {
                 <option value="">Select Role</option>
                 {roles.map((r) => (<option key={r} value={r}>{r}</option>))}
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Employee Type *</label>
+              <select {...register("employeeType", { required: "Employee type required" })} className={`w-full px-3 py-2 text-sm border rounded-lg ${errors.employeeType ? "border-rose-500" : "border-gray-200"} focus:outline-none focus:ring-1 focus:ring-emerald-500`}>
+                <option value="Permanent">Permanent</option>
+                <option value="Contract">Contract</option>
+                <option value="Temporary">Temporary</option>
+                <option value="Part-time">Part-time</option>
+                <option value="Guest">Guest</option>
+              </select>
+              {errors.employeeType && <p className="mt-1 text-xs text-rose-500">{errors.employeeType.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Qualification *</label>

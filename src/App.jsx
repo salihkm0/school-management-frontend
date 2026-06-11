@@ -22,14 +22,21 @@ import PdfReports from './components/pdf/PdfReports'
 import { checkAuth } from './store/slices/authSlice'
 import useSocketInit from './hooks/useSocketInit'
 import { Toaster } from 'react-hot-toast'
+
+//staff pages
 import MyClassesPage from './pages/staff/MyClassesPage'
 import MyDutiesPage from './pages/staff/MyDutiesPage'
 import StaffAttendancePage from './pages/staff/StaffAttendancePage'
 import StaffExamsPage from './pages/staff/StaffExamsPage'
 import StaffMarksEntry from './pages/staff/StaffMarksEntry'
+
+//parent pages
 import MyChildrenPage from './pages/parent/MyChildrenPage'
 import MyChildAttendancePage from './pages/parent/MyChildAttendancePage'
 import MyChildResultsPage from './pages/parent/MyChildResultsPage'
+
+// Historical records (standalone — does not affect main system)
+import HistoricalImport from './pages/admin/HistoricalImport'
 
 function App() {
   const dispatch = useDispatch()
@@ -103,15 +110,21 @@ function App() {
           <Route path="notifications/*" element={<NotificationsPage />} />
           <Route path="settings/*" element={<SettingsPage />} />
           <Route path="pdf-reports" element={<PdfReports />} />
+
+          {/* Staff routes */}
           <Route path="staff/my-classes" element={<MyClassesPage />} />
           <Route path="staff/my-duties" element={<MyDutiesPage />} />
           <Route path="staff/attendance" element={<StaffAttendancePage />} />
           <Route path="staff/exams" element={<StaffExamsPage />} />
           <Route path="staff/mark" element={<StaffMarksEntry />} />
 
+          {/* Parent routes */}
           <Route path="my-children" element={<MyChildrenPage />} />
           <Route path="my-child-attendance" element={<MyChildAttendancePage />} />
           <Route path="my-child-results" element={<MyChildResultsPage />} />  
+
+          {/* Historical import — admin only */}
+          <Route path="historical-import" element={<HistoricalImport />} />
         </Route>        
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

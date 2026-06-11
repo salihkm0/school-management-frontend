@@ -372,8 +372,10 @@ const PendingTasks = ({ tasks }) => {
   )
 }
 
-// Gender Distribution Chart
-const GenderDistribution = ({ gender }) => {
+// Gender Distribution Component (shows total + standard-wise details)
+const GenderDistribution = ({ gender, standardGender = [] }) => {
+  const [showStandardDetails, setShowStandardDetails] = useState(false)
+  
   const data = [
     { name: 'Male', value: gender?.male || 0, color: '#3b82f6' },
     { name: 'Female', value: gender?.female || 0, color: '#ec4899' },
@@ -387,96 +389,170 @@ const GenderDistribution = ({ gender }) => {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
           <h2 className="text-sm font-semibold text-gray-900">Gender Distribution</h2>
-          <p className="text-xs text-gray-500 mt-0.5">Student demographics</p>
         </div>
-        <div className="p-8 text-center">
-          <ChartPieIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-          <p className="text-sm text-gray-500">No data available</p>
-        </div>
+        <div className="p-8 text-center text-gray-400">No data available</div>
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-        <h2 className="text-sm font-semibold text-gray-900">Gender Distribution</h2>
-        <p className="text-xs text-gray-500 mt-0.5">Student demographics</p>
-      </div>
-      <div className="p-4">
-        <ResponsiveContainer width="100%" height={180}>
-          <PieChart>
-            <Pie
-              data={data}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              innerRadius={40}
-              outerRadius={70}
-              paddingAngle={3}
-              strokeWidth={0}
-            >
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip formatter={(value) => [`${value} students`, '']} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-          </PieChart>
-        </ResponsiveContainer>
-        <div className="flex justify-center gap-4 mt-2">
-          {data.map((item, i) => (
-            <div key={i} className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full" style={{ background: item.color }} />
-              <span className="text-xs text-gray-600">{item.name}: {item.value}</span>
-            </div>
-          ))}
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col h-full transition-all">
+      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-900">Gender Distribution</h2>
+          <p className="text-xs text-gray-500 mt-0.5">Demographics summary</p>
         </div>
+        <button
+          onClick={() => setShowStandardDetails(!showStandardDetails)}
+          className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 font-semibold transition-all active:scale-95 cursor-pointer"
+        >
+          {showStandardDetails ? 'Show Total' : 'Show Standard-wise'}
+        </button>
+      </div>
+
+      <div className="p-4 flex-1 flex flex-col justify-center">
+        {!showStandardDetails ? (
+          <div>
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie
+                  data={data}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={40}
+                  outerRadius={70}
+                  paddingAngle={3}
+                  strokeWidth={0}
+                >
+                  {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => [`${value} students`, '']} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="flex justify-center gap-4 mt-2">
+              {data.map((item, i) => (
+                <div key={i} className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full" style={{ background: item.color }} />
+                  <span className="text-xs text-gray-600">{item.name}: {item.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-y-auto max-h-[180px] border border-gray-100 rounded-lg">
+            <table className="min-w-full text-left divide-y divide-gray-100 text-xs">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr>
+                  <th className="p-2 font-semibold text-gray-600">Standard</th>
+                  <th className="p-2 font-semibold text-blue-600 text-center">Boys</th>
+                  <th className="p-2 font-semibold text-pink-600 text-center">Girls</th>
+                  <th className="p-2 font-semibold text-gray-600 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50 bg-white">
+                {standardGender.map((std, idx) => (
+                  <tr key={idx} className="hover:bg-gray-50/50">
+                    <td className="p-2 font-semibold text-gray-900">{std.className} Standard</td>
+                    <td className="p-2 text-center text-gray-700">{std.male}</td>
+                    <td className="p-2 text-center text-gray-700">{std.female}</td>
+                    <td className="p-2 text-right font-medium text-gray-900">{std.total}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-// Category Distribution
-const CategoryDistribution = ({ categories }) => {
+// Category Distribution Component (shows total + standard-wise details)
+const CategoryDistribution = ({ categories, standardCategory = [] }) => {
+  const [showStandardDetails, setShowStandardDetails] = useState(false)
+
   if (!categories || categories.length === 0) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
           <h2 className="text-sm font-semibold text-gray-900">Category Distribution</h2>
-          <p className="text-xs text-gray-500 mt-0.5">Student categories</p>
         </div>
-        <div className="p-8 text-center">
-          <ChartBarIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-          <p className="text-sm text-gray-500">No data available</p>
-        </div>
+        <div className="p-8 text-center text-gray-400">No data available</div>
       </div>
     )
   }
 
   const total = categories.reduce((sum, c) => sum + c.count, 0)
 
+  const categoryKeys = Array.from(
+    new Set(
+      standardCategory.flatMap(std => Object.keys(std.categories || {}))
+    )
+  ).filter(k => k && k !== 'null' && k !== 'undefined')
+
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-        <h2 className="text-sm font-semibold text-gray-900">Category Distribution</h2>
-        <p className="text-xs text-gray-500 mt-0.5">Student categories</p>
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col h-full transition-all">
+      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-900">Category Distribution</h2>
+          <p className="text-xs text-gray-500 mt-0.5">Demographics summary</p>
+        </div>
+        <button
+          onClick={() => setShowStandardDetails(!showStandardDetails)}
+          className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 font-semibold transition-all active:scale-95 cursor-pointer"
+        >
+          {showStandardDetails ? 'Show Total' : 'Show Standard-wise'}
+        </button>
       </div>
-      <div className="p-4 space-y-3">
-        {categories.map((cat, idx) => (
-          <div key={cat._id}>
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-gray-600 font-medium">{cat._id}</span>
-              <span className="text-gray-700">{cat.count} students ({((cat.count / total) * 100).toFixed(1)}%)</span>
-            </div>
-            <div className="relative w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-              <div 
-                className="absolute left-0 top-0 h-full rounded-full transition-all duration-700"
-                style={{ width: `${(cat.count / total) * 100}%`, backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
-              />
-            </div>
+
+      <div className="p-4 flex-1 flex flex-col justify-center">
+        {!showStandardDetails ? (
+          <div className="space-y-3">
+            {categories.map((cat, idx) => (
+              <div key={cat._id}>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-gray-600 font-medium">{cat._id}</span>
+                  <span className="text-gray-700">{cat.count} students ({((cat.count / total) * 100).toFixed(1)}%)</span>
+                </div>
+                <div className="relative w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                  <div 
+                    className="absolute left-0 top-0 h-full rounded-full transition-all duration-700"
+                    style={{ width: `${(cat.count / total) * 100}%`, backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        ) : (
+          <div className="overflow-y-auto max-h-[180px] border border-gray-100 rounded-lg">
+            <table className="min-w-full text-left divide-y divide-gray-100 text-xs">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr>
+                  <th className="p-2 font-semibold text-gray-600">Standard</th>
+                  {categoryKeys.map((key, i) => (
+                    <th key={i} className="p-2 font-semibold text-gray-600 text-center">{key}</th>
+                  ))}
+                  <th className="p-2 font-semibold text-gray-600 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50 bg-white">
+                {standardCategory.map((std, idx) => (
+                  <tr key={idx} className="hover:bg-gray-50/50">
+                    <td className="p-2 font-semibold text-gray-900">{std.className} Standard</td>
+                    {categoryKeys.map((key, i) => (
+                      <td key={i} className="p-2 text-center text-gray-700">{std.categories[key] || 0}</td>
+                    ))}
+                    <td className="p-2 text-right font-medium text-gray-900">{std.total}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -491,6 +567,50 @@ const AdminDashboard = () => {
   const { socket, isConnected } = useSocket()
   const [activeChart, setActiveChart] = useState('subjects')
   const [showRefreshIndicator, setShowRefreshIndicator] = useState(false)
+  const [classSearch, setClassSearch] = useState('')
+  const [classSort, setClassSort] = useState('name-asc')
+  const [classPage, setClassPage] = useState(1)
+  const itemsPerPage = 10
+
+  const classDistribution = dashboardData?.classDistribution || []
+
+  // Filter and sort class distribution
+  const filteredAndSortedClasses = React.useMemo(() => {
+    let result = [...classDistribution]
+    
+    // Filter by search
+    if (classSearch.trim()) {
+      const query = classSearch.toLowerCase()
+      result = result.filter(c => c.className?.toLowerCase().includes(query))
+    }
+    
+    // Sort
+    result.sort((a, b) => {
+      if (classSort === 'name-asc') {
+        return a.className.localeCompare(b.className, undefined, { numeric: true, sensitivity: 'base' })
+      }
+      if (classSort === 'name-desc') {
+        return b.className.localeCompare(a.className, undefined, { numeric: true, sensitivity: 'base' })
+      }
+      if (classSort === 'strength-desc') {
+        return b.studentCount - a.studentCount
+      }
+      if (classSort === 'strength-asc') {
+        return a.studentCount - b.studentCount
+      }
+      return 0
+    })
+    
+    return result
+  }, [classDistribution, classSearch, classSort])
+
+  // Paginated classes
+  const paginatedClasses = React.useMemo(() => {
+    const startIndex = (classPage - 1) * itemsPerPage
+    return filteredAndSortedClasses.slice(startIndex, startIndex + itemsPerPage)
+  }, [filteredAndSortedClasses, classPage])
+
+  const totalClassPages = Math.ceil(filteredAndSortedClasses.length / itemsPerPage) || 1
 
   useEffect(() => {
     loadDashboardData()
@@ -559,6 +679,8 @@ const AdminDashboard = () => {
   // Extract data from API response
   const summary = dashboardData?.summary || {}
   const demographics = dashboardData?.demographics || {}
+  const standardGender = demographics?.standardGender || []
+  const standardCategory = demographics?.standardCategory || []
   const recentActivities = dashboardData?.recentActivities || []
   const pendingTasks = dashboardData?.pendingTasks || {}
   const upcomingEvents = dashboardData?.upcomingEvents || []
@@ -568,7 +690,6 @@ const AdminDashboard = () => {
   
   // Real data from API for charts
   const subjectPerformance = dashboardData?.subjectPerformance || []
-  const classDistribution = dashboardData?.classDistribution || []
   const gradeDistribution = dashboardData?.gradeDistribution || []
 
   const statConfigs = [
@@ -576,18 +697,18 @@ const AdminDashboard = () => {
     { key: 'totalStaff', label: 'Total Staff', icon: UserGroupIcon, bgColor: 'bg-emerald-50', iconColor: 'text-emerald-600', gradient: 'from-emerald-500 to-emerald-600', animation: 'animate-fade-up stagger-2' },
     { key: 'totalClasses', label: 'Total Classes', icon: AcademicCapIcon, bgColor: 'bg-purple-50', iconColor: 'text-purple-600', gradient: 'from-purple-500 to-purple-600', animation: 'animate-fade-up stagger-3' },
     { key: 'currentExams', label: 'Active Exams', icon: BookOpenIcon, bgColor: 'bg-amber-50', iconColor: 'text-amber-600', gradient: 'from-amber-500 to-amber-600', animation: 'animate-fade-up stagger-4' },
-    { key: 'attendancePercentage', label: 'Attendance Rate', icon: CalendarIcon, bgColor: 'bg-teal-50', iconColor: 'text-teal-600', gradient: 'from-teal-500 to-teal-600', animation: 'animate-fade-up stagger-5', suffix: '%' },
-    { key: 'fullAPlusCount', label: 'A+ Students', icon: TrophyIcon, bgColor: 'bg-rose-50', iconColor: 'text-rose-600', gradient: 'from-rose-500 to-rose-600', animation: 'animate-fade-up stagger-6' },
   ]
 
   const quickActions = [
     { label: 'Add Student', icon: UserPlusIcon, path: '/students/new', bgColor: 'bg-blue-500', iconColor: 'text-blue-600' },
     { label: 'Add Staff', icon: UserGroupIcon, path: '/staff/new', bgColor: 'bg-emerald-500', iconColor: 'text-emerald-600' },
     { label: 'Create Exam', icon: BookOpenIcon, path: '/exams/new', bgColor: 'bg-purple-500', iconColor: 'text-purple-600' },
-    { label: 'Mark Attendance', icon: CalendarIcon, path: '/attendance/bulk', bgColor: 'bg-amber-500', iconColor: 'text-amber-600' },
+    { label: 'Mark Attendance', icon: CalendarIcon, path: '/attendance/bulk', bgColor: 'bg-amber-50', iconColor: 'text-amber-600' },
     { label: 'Generate Report', icon: ChartBarIcon, path: '/reports', bgColor: 'bg-rose-500', iconColor: 'text-rose-600' },
     { label: 'Send Notice', icon: BellIcon, path: '/notifications/send', bgColor: 'bg-indigo-500', iconColor: 'text-indigo-600' },
   ]
+
+
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
@@ -622,7 +743,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statConfigs.map((config, i) => {
           let value = summary[config.key]
           if (config.key === 'attendancePercentage') {
@@ -639,204 +760,139 @@ const AdminDashboard = () => {
         })}
       </div>
 
-      {/* Performance Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs text-gray-500">Average Attendance</p>
-            <CalendarIcon className="w-4 h-4 text-gray-400" />
-          </div>
-          <p className="text-xl font-bold text-gray-900">{parseFloat(summary.attendancePercentage || 0).toFixed(1)}%</p>
-          <div className="mt-2">
-            <div className="w-full bg-gray-100 rounded-full h-1.5">
-              <div className="bg-emerald-500 rounded-full h-1.5 transition-all" style={{ width: `${Math.min(parseFloat(summary.attendancePercentage || 0), 100)}%` }} />
-            </div>
-          </div>
-          <p className="text-xs text-gray-400 mt-2">{summary.attendanceToday || 0} students present today</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs text-gray-500">Pass Percentage</p>
-            <ChartBarIcon className="w-4 h-4 text-gray-400" />
-          </div>
-          <p className="text-xl font-bold text-gray-900">{Number(examPerformance.passPercentage || 0).toFixed(1)}%</p>
-          <div className="flex items-center gap-1 mt-1">
-            {examPerformance.trend === 'up' ? (
-              <ArrowUpIcon className="w-3 h-3 text-emerald-500" />
-            ) : examPerformance.trend === 'down' ? (
-              <ArrowDownIcon className="w-3 h-3 text-rose-500" />
-            ) : (
-              <MinusIcon className="w-3 h-3 text-gray-500" />
-            )}
-            <span className={`text-xs ${examPerformance.trend === 'up' ? 'text-emerald-600' : examPerformance.trend === 'down' ? 'text-rose-600' : 'text-gray-500'}`}>
-              vs last term
-            </span>
-          </div>
-          <div className="mt-2">
-            <div className="w-full bg-gray-100 rounded-full h-1.5">
-              <div className="bg-blue-500 rounded-full h-1.5 transition-all" style={{ width: `${Math.min(examPerformance.passPercentage || 0, 100)}%` }} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs text-gray-500">Top Performers (A+)</p>
-            <TrophyIcon className="w-4 h-4 text-gray-400" />
-          </div>
-          <p className="text-xl font-bold text-gray-900">{Number(examPerformance.topPerformers || 0).toLocaleString()}</p>
-          <p className="text-xs text-gray-400 mt-2">students achieved A+ grade</p>
-        </div>
-      </div>
-
       {/* Main Charts Section */}
       <div className="grid gap-5 lg:grid-cols-3">
         {/* Main Chart Area */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            {/* Chart Tabs */}
-            <div className="border-b border-gray-200 overflow-x-auto">
-              <div className="flex gap-1 p-1 min-w-max">
-                {[
-                  { id: 'subjects', label: 'Subject Performance', icon: ChartBarIcon },
-                  { id: 'distribution', label: 'Class Distribution', icon: ChartPieIcon },
-                  { id: 'grades', label: 'Grade Distribution', icon: TrophyIcon },
-                ].map((tab) => {
-                  const Icon = tab.icon
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveChart(tab.id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${
-                        activeChart === tab.id
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                      {tab.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
             <div className="p-4 sm:p-5">
-              {/* Subject Performance - Bar Chart */}
-              {activeChart === 'subjects' && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">Subject-wise Performance</h3>
-                  {subjectPerformance.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={280}>
-                      <BarChart data={subjectPerformance} layout="vertical" margin={{ left: 8, right: 24, top: 4, bottom: 4 }}>
-                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
-                        <XAxis type="number" tick={{ fontSize: 10, fill: '#6b7280' }} tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} domain={[0, 100]} />
-                        <YAxis type="category" dataKey="subjectName" width={70} tick={{ fontSize: 10, fill: '#6b7280' }} tickLine={false} axisLine={false} />
-                        <Tooltip content={<CustomTooltip suffix="%" />} />
-                        <Bar dataKey="averageScore" fill="#6366f1" name="Score (%)" radius={[0, 6, 6, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex items-center justify-center h-[280px] text-gray-500 text-sm">
-                      No subject performance data available. Results will appear once exams are published.
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">Class-wise Strength & Distribution</h3>
+              {classDistribution.length > 0 ? (
+                <div className="space-y-4">
+                  {/* Search and Sort controls */}
+                  <div className="flex flex-col sm:flex-row gap-3 justify-between items-center mb-4">
+                    <div className="relative w-full sm:w-72">
+                      <input
+                        type="text"
+                        placeholder="Search class (e.g. 10-A)..."
+                        value={classSearch}
+                        onChange={(e) => {
+                          setClassSearch(e.target.value)
+                          setClassPage(1)
+                        }}
+                        className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all bg-white"
+                      />
+                      <svg
+                        className="absolute left-3 top-2.5 h-4.5 w-4.5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
                     </div>
-                  )}
-                </div>
-              )}
+                    <div className="flex gap-2 items-center w-full sm:w-auto justify-end">
+                      <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Sort by:</span>
+                      <select
+                        value={classSort}
+                        onChange={(e) => {
+                          setClassSort(e.target.value)
+                          setClassPage(1)
+                        }}
+                        className="text-xs border border-gray-200 rounded-xl px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium cursor-pointer"
+                      >
+                        <option value="name-asc">Class Name (A-Z)</option>
+                        <option value="name-desc">Class Name (Z-A)</option>
+                        <option value="strength-desc">Strength (High to Low)</option>
+                        <option value="strength-asc">Strength (Low to High)</option>
+                      </select>
+                    </div>
+                  </div>
 
-              {/* Class Distribution - Pie Chart */}
-              {activeChart === 'distribution' && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">Class-wise Student Distribution</h3>
-                  {classDistribution.length > 0 ? (
-                    <div className="flex flex-col sm:flex-row items-center gap-6">
-                      <ResponsiveContainer width="55%" height={220}>
-                        <PieChart>
-                          <Pie
-                            data={classDistribution}
-                            dataKey="studentCount"
-                            nameKey="className"
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={55}
-                            outerRadius={80}
-                            paddingAngle={3}
-                            strokeWidth={0}
+                  {/* Class List Table */}
+                  {filteredAndSortedClasses.length > 0 ? (
+                    <div className="space-y-4">
+                      <div className="overflow-x-auto border border-gray-100 rounded-xl">
+                        <table className="min-w-full divide-y divide-gray-100 text-left">
+                          <thead className="bg-gray-50/50">
+                            <tr>
+                              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Class</th>
+                              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Student Strength</th>
+                              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Distribution</th>
+                              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Percentage</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-50">
+                            {paginatedClasses.map((item, idx) => {
+                              const maxStrength = Math.max(...classDistribution.map(c => c.studentCount), 1)
+                              const strengthPercent = (item.studentCount / maxStrength) * 100
+                              
+                              return (
+                                <tr key={item.classId || idx} className="hover:bg-gray-50/40 transition-colors duration-150">
+                                  <td className="px-4 py-3 text-sm font-semibold text-gray-900">{item.className}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-700">
+                                    <span className="font-semibold text-gray-900">{item.studentCount}</span> students
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-gray-500 w-2/5">
+                                    <div className="relative w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                      <div
+                                        className="absolute left-0 top-0 h-full rounded-full transition-all duration-700 bg-emerald-500"
+                                        style={{ width: `${strengthPercent}%` }}
+                                      />
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm font-semibold text-gray-900 text-right">{item.percentage}%</td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      {/* Pagination Controls */}
+                      <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+                        <p className="text-xs text-gray-500 font-medium">
+                          Showing <span className="font-semibold text-gray-800">{(classPage - 1) * itemsPerPage + 1}</span> to{' '}
+                          <span className="font-semibold text-gray-800">
+                            {Math.min(classPage * itemsPerPage, filteredAndSortedClasses.length)}
+                          </span>{' '}
+                          of <span className="font-semibold text-gray-800">{filteredAndSortedClasses.length}</span> classes
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setClassPage(p => Math.max(p - 1, 1))}
+                            disabled={classPage === 1}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
+                              classPage === 1
+                                ? 'border-gray-100 text-gray-300 cursor-not-allowed bg-gray-50/50'
+                                : 'border-gray-200 text-gray-600 hover:bg-gray-50 active:scale-95'
+                            }`}
                           >
-                            {classDistribution.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value, name) => [`${value} students`, name]} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="flex-1 space-y-2">
-                        {classDistribution.map((item, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
-                            <span className="text-xs text-gray-600 truncate flex-1">{item.className}</span>
-                            <span className="text-xs font-semibold text-gray-900">{item.studentCount}</span>
-                            <span className="text-xs text-gray-400">({item.percentage}%)</span>
-                          </div>
-                        ))}
+                            Previous
+                          </button>
+                          <button
+                            onClick={() => setClassPage(p => Math.min(p + 1, totalClassPages))}
+                            disabled={classPage === totalClassPages}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
+                              classPage === totalClassPages
+                                ? 'border-gray-100 text-gray-300 cursor-not-allowed bg-gray-50/50'
+                                : 'border-gray-200 text-gray-600 hover:bg-gray-50 active:scale-95'
+                            }`}
+                          >
+                            Next
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center h-[220px] text-gray-500 text-sm">
-                      No class distribution data available.
+                    <div className="text-center py-8">
+                      <p className="text-sm text-gray-500">No classes match your search</p>
                     </div>
                   )}
                 </div>
-              )}
-
-              {/* Grade Distribution - Bar Chart */}
-              {activeChart === 'grades' && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">Grade Distribution</h3>
-                  {gradeDistribution.length > 0 ? (
-                    <div className="space-y-3">
-                      {gradeDistribution.map((grade, idx) => (
-                        <div key={idx}>
-                          <div className="flex justify-between text-xs mb-1">
-                            <span className="text-gray-600 font-medium">Grade {grade.grade}</span>
-                            <div className="flex gap-3">
-                              <span className="text-gray-700">{grade.count} students</span>
-                              <span className="text-gray-400">({grade.percentage}%)</span>
-                            </div>
-                          </div>
-                          <div className="relative w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                            <div 
-                              className="absolute left-0 top-0 h-full rounded-full transition-all duration-700"
-                              style={{ width: `${grade.percentage}%`, backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                      <div className="mt-4 pt-3 border-t border-gray-100">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <p className="text-xs text-gray-500">Total Students Graded</p>
-                            <p className="text-base font-bold text-gray-900">
-                              {gradeDistribution.reduce((sum, g) => sum + g.count, 0)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500">Pass Percentage</p>
-                            <p className="text-base font-bold text-emerald-600">
-                              {gradeDistribution
-                                .filter(g => !['F', 'D'].includes(g.grade))
-                                .reduce((sum, g) => sum + g.count, 0) / gradeDistribution.reduce((sum, g) => sum + g.count, 0) * 100 || 0}%
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-[200px] text-gray-500 text-sm">
-                      No grade distribution data available.
-                    </div>
-                  )}
+              ) : (
+                <div className="flex items-center justify-center h-[220px] text-gray-500 text-sm">
+                  No class distribution data available.
                 </div>
               )}
             </div>
@@ -866,47 +922,12 @@ const AdminDashboard = () => {
 
       {/* Demographics & Tasks Row */}
       <div className="grid gap-5 lg:grid-cols-3">
-        <GenderDistribution gender={demographics.gender} />
-        <CategoryDistribution categories={demographics.category} />
+        <GenderDistribution gender={demographics.gender} standardGender={standardGender} />
+        <CategoryDistribution categories={demographics.category} standardCategory={standardCategory} />
         <PendingTasks tasks={pendingTasks} />
       </div>
 
-      {/* Top Classes & Upcoming Events */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        {/* Top Performing Classes */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-            <h2 className="text-sm font-semibold text-gray-900">Top Performing Classes</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Based on exam results</p>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {topClasses.length > 0 ? (
-              topClasses.slice(0, 5).map((classItem, index) => (
-                <div key={classItem.classId || index} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg font-bold text-gray-300 w-6">#{index + 1}</span>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{classItem.className}</p>
-                      <p className="text-xs text-gray-500">{classItem.studentCount} students</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-base font-semibold text-emerald-600">{Number(classItem.averagePercentage || 0).toFixed(1)}%</p>
-                    <div className="w-24 bg-gray-100 rounded-full h-1 mt-1">
-                      <div className="bg-emerald-500 rounded-full h-1" style={{ width: `${Math.min(classItem.averagePercentage || 0, 100)}%` }} />
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="px-4 py-8 text-center text-gray-500 text-sm">No class performance data available</div>
-            )}
-          </div>
-        </div>
 
-        {/* Upcoming Events */}
-        <UpcomingEvents events={upcomingEvents} />
-      </div>
 
       {/* Recent Activities */}
       <RecentActivities activities={recentActivities} isLoading={isLoading} />

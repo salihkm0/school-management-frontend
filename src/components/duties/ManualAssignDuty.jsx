@@ -19,6 +19,7 @@ const ManualAssignDuty = () => {
   const [shift, setShift] = useState('full')
   const [duration, setDuration] = useState(8)
   const [location, setLocation] = useState('')
+  const [room, setRoom] = useState('')
   const [remarks, setRemarks] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -54,10 +55,10 @@ const ManualAssignDuty = () => {
 
     setIsLoading(true)
     try {
-      const dutyData = { staffId: selectedStaff, dutyType, dates, shift, duration, location, remarks, className: dutyType }
+      const dutyData = { staffId: selectedStaff, dutyType, dates, shift, duration, location, room, remarks, className: dutyType }
       const res = await dispatch(assignManualDuty(dutyData)).unwrap()
       toast.success(res.message || 'Duty assigned successfully')
-      setSelectedStaff(''); setDutyType('exam'); setDates([]); setShift('full'); setDuration(8); setLocation(''); setRemarks('')
+      setSelectedStaff(''); setDutyType('exam'); setDates([]); setShift('full'); setDuration(8); setLocation(''); setRoom(''); setRemarks('')
     } catch (error) {
       toast.error(error.message || 'Failed to assign duty')
     } finally { setIsLoading(false) }
@@ -105,8 +106,13 @@ const ManualAssignDuty = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Location (Optional)</label>
-              <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g., Main Hall, Room 101" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Room / Specific Location (Optional)</label>
+              <input type="text" value={room} onChange={(e) => setRoom(e.target.value)} placeholder="e.g., Room 101, Science Lab" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Location / School Area (Optional)</label>
+              <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g., Main Block, Ground Floor" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500" />
             </div>
 
             <div>

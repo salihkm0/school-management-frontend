@@ -246,7 +246,10 @@ const StaffList = () => {
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-sm text-gray-600 hidden md:table-cell">{s.shortName || "-"}</td>
                     <td className="px-3 sm:px-4 py-3 text-sm text-gray-600 font-mono hidden sm:table-cell">{s.staffCode}</td>
-                    <td className="px-3 sm:px-4 py-3 text-sm text-gray-600 capitalize">{s.role}</td>
+                    <td className="px-3 sm:px-4 py-3 text-sm text-gray-600 capitalize">
+                      {s.role}
+                      <span className="block text-xs text-gray-400 font-normal">{s.employeeType || 'Permanent'}</span>
+                    </td>
                     <td className="px-3 sm:px-4 py-3 text-sm text-gray-600 hidden lg:table-cell">{s.contact}</td>
                     <td className="px-3 sm:px-4 py-3 hidden lg:table-cell">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${s.isActive ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20" : "bg-rose-50 text-rose-700 ring-1 ring-rose-600/20"}`}>

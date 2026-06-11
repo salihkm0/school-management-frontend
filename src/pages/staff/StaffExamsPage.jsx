@@ -3,29 +3,29 @@ import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  BookOpenIcon,
-  AcademicCapIcon,
-  UserGroupIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  ChartBarIcon,
-  EyeIcon,
-  PencilIcon,
-  ClipboardDocumentCheckIcon,
-  ArrowPathIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-  XCircleIcon,
-  PlusIcon,
-  TrashIcon
-} from '@heroicons/react/24/outline'
-import { CheckIcon } from '@heroicons/react/24/solid'
-import { fetchExams, fetchExamById } from '../../store/slices/examSlice'
+  BookOpen,
+  Calendar,
+  Users,
+  CheckCircle,
+  RefreshCw,
+  Plus,
+  Search,
+  Eye,
+  Pencil,
+  Trash2,
+  X,
+  Clock,
+  UserCheck,
+  Award,
+  AlertCircle,
+  Menu,
+  ChevronRight
+} from 'lucide-react'
 import { fetchStaff } from '../../store/slices/staffSlice'
 import { fetchAcademicYears } from '../../store/slices/academicYearSlice'
 import { fetchTeacherClassTeacherClasses, clearTeacherClasses } from '../../store/slices/classSlice'
-import { fetchSubjects } from '../../store/slices/subjectSlice'
-import { getMarksheetsByClass, bulkUpdateMarks, getTeacherPermissions } from '../../services/markService'
+import { fetchExamById, deleteExam } from '../../store/slices/examSlice'
+import examService from '../../services/examService'
 import LoadingSpinner from '../../components/common/LoadingSpinner.jsx'
 import toast from 'react-hot-toast'
 
@@ -34,26 +34,21 @@ const StaffExamsPage = () => {
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
   const { staff, isLoading: staffLoading } = useSelector((state) => state.staff)
-  const { exams, isLoading: examsLoading, currentExam } = useSelector((state) => state.exams)
   const { teacherClassTeacherClasses, isLoading: classesLoading } = useSelector((state) => state.classes)
   const { academicYears } = useSelector((state) => state.academicYears)
-  const { subjects } = useSelector((state) => state.subjects)
+  const { currentExam, isLoading: examLoading } = useSelector((state) => state.exams)
   
   const [myClasses, setMyClasses] = useState([])
-  const [availableExams, setAvailableExams] = useState([])
+  const [exams, setExams] = useState([])
+  const [loadingExams, setLoadingExams] = useState(false)
   const [selectedExam, setSelectedExam] = useState(null)
   const [selectedClass, setSelectedClass] = useState(null)
-  const [examMarks, setExamMarks] = useState(null)
-  const [permissions, setPermissions] = useState(null)
-  const [expandedStudent, setExpandedStudent] = useState(null)
-  const [isEditing, setIsEditing] = useState(false)
-  const [editedMarks, setEditedMarks] = useState({})
-  const [isSaving, setIsSaving] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const [currentAcademicYear, setCurrentAcademicYear] = useState(null)
-  const [showSubjectModal, setShowSubjectModal] = useState(false)
-  const [examSubjects, setExamSubjects] = useState([])
-  const [newSubject, setNewSubject] = useState({ subjectId: '', maxMarks: 100, passingMarks: 40, practicalMarks: 0 })
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [examToDelete, setExamToDelete] = useState(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -78,46 +73,32 @@ const StaffExamsPage = () => {
   useEffect(() => {
     if (teacherClassTeacherClasses.length > 0) {
       setMyClasses(teacherClassTeacherClasses)
+      if (teacherClassTeacherClasses.length > 0 && !selectedClass) {
+        setSelectedClass(teacherClassTeacherClasses[0])
+      }
     }
   }, [teacherClassTeacherClasses])
 
   useEffect(() => {
-    if (myClasses.length > 0 && exams.length > 0) {
-      filterAvailableExams()
+    if (selectedClass && currentAcademicYear) {
+      loadExamsForClass()
     }
-  }, [exams, myClasses])
+  }, [selectedClass, currentAcademicYear])
 
   useEffect(() => {
     if (selectedExam && selectedExam._id) {
-      loadExamSubjects()
+      dispatch(fetchExamById(selectedExam._id))
     }
-  }, [selectedExam])
+  }, [selectedExam, dispatch])
 
   const loadData = async () => {
-    setIsLoading(true)
     try {
       await Promise.all([
         dispatch(fetchStaff({ limit: 100 })),
-        dispatch(fetchExams({ limit: 100 })),
-        dispatch(fetchAcademicYears({ limit: 10 })),
-        dispatch(fetchSubjects({ limit: 100 }))
+        dispatch(fetchAcademicYears({ limit: 10 }))
       ])
     } catch (error) {
       console.error('Failed to load data:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const loadExamSubjects = async () => {
-    if (selectedExam?.subjects && selectedExam.subjects.length > 0) {
-      setExamSubjects(selectedExam.subjects)
-    } else if (selectedExam?._id) {
-      try {
-        await dispatch(fetchExamById(selectedExam._id))
-      } catch (error) {
-        console.error('Failed to load exam subjects:', error)
-      }
     }
   }
 
@@ -141,200 +122,86 @@ const StaffExamsPage = () => {
     }
   }
 
-  const filterAvailableExams = () => {
-    const classIds = myClasses.map(c => c._id)
-    const relevantExams = exams.filter(exam => 
-      exam.classIds?.some(cid => classIds.includes(cid._id || cid))
-    )
+  const loadExamsForClass = async () => {
+    if (!selectedClass || !currentAcademicYear) return
     
-    relevantExams.sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
-    setAvailableExams(relevantExams)
-  }
-
-  const handleExamSelect = async (exam) => {
-    setSelectedExam(exam)
-    setSelectedClass(null)
-    setExamMarks(null)
-    setPermissions(null)
-    setIsEditing(false)
-    setEditedMarks({})
-    
-    // Load full exam details including subjects
-    if (exam._id) {
-      try {
-        await dispatch(fetchExamById(exam._id))
-      } catch (error) {
-        console.error('Failed to load exam details:', error)
-      }
-    }
-  }
-
-  const handleClassSelect = async (classObj) => {
-    if (!selectedExam) return
-    
-    setSelectedClass(classObj)
-    setIsEditing(false)
-    setEditedMarks({})
-    setIsLoading(true)
-    
+    setLoadingExams(true)
     try {
-      const permRes = await getTeacherPermissions(selectedExam._id, classObj._id)
-      setPermissions(permRes.data)
-      
-      const marksRes = await getMarksheetsByClass(selectedExam._id, classObj._id)
-      if (marksRes.success && marksRes.data) {
-        setExamMarks(marksRes.data)
-        
-        // Initialize edited marks with current values or default 0
-        const initialMarks = {}
-        marksRes.data.students?.forEach(student => {
-          initialMarks[student.studentId] = {}
-          marksRes.data.subjects?.forEach(subject => {
-            const studentSubject = student.subjects?.find(
-              s => s.subjectId === subject.subjectId
-            )
-            initialMarks[student.studentId][subject.subjectId] = {
-              theoryScore: studentSubject?.theoryScore || 0,
-              practicalScore: studentSubject?.practicalScore || 0,
-              totalScore: studentSubject?.totalScore || 0
-            }
-          })
-        })
-        setEditedMarks(initialMarks)
-      }
-    } catch (error) {
-      console.error('Failed to load exam data:', error)
-      toast.error('Failed to load exam data')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleMarkChange = (studentId, subjectId, field, value) => {
-    let marks = value === "" || value === null ? 0 : parseInt(value) || 0
-    
-    const subject = examMarks?.subjects?.find(s => s.subjectId === subjectId)
-    const maxMarks = field === "theoryScore" 
-      ? (subject?.theoryMaxMarks || subject?.maxMarks || 100)
-      : (subject?.practicalMaxMarks || 0)
-    
-    if (marks > maxMarks) marks = maxMarks
-    if (marks < 0) marks = 0
-
-    setEditedMarks(prev => {
-      const studentMarks = prev[studentId] || {}
-      const subjectMarks = studentMarks[subjectId] || { theoryScore: 0, practicalScore: 0 }
-      
-      const updatedSubjectMarks = {
-        ...subjectMarks,
-        [field]: marks,
-      }
-      
-      updatedSubjectMarks.totalScore = (updatedSubjectMarks.theoryScore || 0) + (updatedSubjectMarks.practicalScore || 0)
-      
-      return {
-        ...prev,
-        [studentId]: {
-          ...studentMarks,
-          [subjectId]: updatedSubjectMarks,
-        },
-      }
-    })
-  }
-
-  const handleSaveMarks = async () => {
-    if (!selectedExam || !selectedClass) return
-    
-    setIsSaving(true)
-    try {
-      // Prepare students data for bulk update
-      const studentsData = examMarks?.students?.map(student => {
-        const studentMarks = editedMarks[student.studentId] || {}
-        
-        return {
-          studentId: student.studentId,
-          subjects: examMarks.subjects.map(subject => {
-            const marks = studentMarks[subject.subjectId] || { theoryScore: 0, practicalScore: 0 }
-            return {
-              subjectId: subject.subjectId,
-              theoryScore: marks.theoryScore || 0,
-              practicalScore: marks.practicalScore || 0,
-              remarks: ""
-            }
-          }),
-          remarks: student.remarks || ""
+      const response = await examService.getStaffExams(currentAcademicYear._id)
+      if (response && response.data) {
+        const classExams = response.data.filter(exam => 
+          exam.classIds?.some(c => (c._id || c) === selectedClass._id)
+        )
+        setExams(classExams)
+        if (classExams.length > 0 && !selectedExam) {
+          setSelectedExam(classExams[0])
+        } else if (classExams.length === 0) {
+          setSelectedExam(null)
         }
-      })
-      
-      await bulkUpdateMarks(selectedExam._id, selectedClass._id, studentsData)
-      toast.success('Marks saved successfully')
-      
-      // Reload data
-      await handleClassSelect(selectedClass)
+      }
     } catch (error) {
-      console.error('Failed to save marks:', error)
-      toast.error(error.response?.data?.message || 'Failed to save marks')
+      console.error('Failed to load exams:', error)
+      toast.error('Failed to load exams')
     } finally {
-      setIsSaving(false)
+      setLoadingExams(false)
     }
   }
 
-  const handleSetAllMarks = (studentId, subjectId, marks) => {
-    let theoryMarks = parseInt(marks) || 0
-    const subject = examMarks?.subjects?.find(s => s.subjectId === subjectId)
-    const maxMarks = subject?.theoryMaxMarks || subject?.maxMarks || 100
+  const handleDeleteExam = async () => {
+    if (!examToDelete) return
     
-    if (theoryMarks > maxMarks) theoryMarks = maxMarks
-    if (theoryMarks < 0) theoryMarks = 0
-    
-    setEditedMarks(prev => {
-      const studentMarks = prev[studentId] || {}
-      const subjectMarks = studentMarks[subjectId] || { theoryScore: 0, practicalScore: 0 }
-      
-      const updatedSubjectMarks = {
-        ...subjectMarks,
-        theoryScore: theoryMarks,
+    try {
+      await dispatch(deleteExam(examToDelete._id)).unwrap()
+      toast.success('Exam deleted successfully')
+      setShowDeleteModal(false)
+      setExamToDelete(null)
+      await loadExamsForClass()
+      if (exams.length === 1) {
+        setSelectedExam(null)
       }
-      
-      updatedSubjectMarks.totalScore = updatedSubjectMarks.theoryScore + (updatedSubjectMarks.practicalScore || 0)
-      
-      return {
-        ...prev,
-        [studentId]: {
-          ...studentMarks,
-          [subjectId]: updatedSubjectMarks,
-        },
-      }
-    })
+    } catch (error) {
+      console.error('Failed to delete exam:', error)
+      toast.error(error.response?.data?.message || 'Failed to delete exam')
+    }
   }
 
-  const getExamStatus = (exam) => {
-    if (exam.overallStatus === 'published') return { label: 'Published', color: 'bg-green-100 text-green-800' }
-    if (exam.overallStatus === 'reviewed') return { label: 'Under Review', color: 'bg-yellow-100 text-yellow-800' }
-    if (exam.overallStatus === 'submitted') return { label: 'Submitted', color: 'bg-blue-100 text-blue-800' }
-    return { label: 'Draft', color: 'bg-gray-100 text-gray-800' }
+  const getExamStatus = (status) => {
+    const config = { 
+      draft: { color: 'bg-gray-100 text-gray-600', label: 'Draft', icon: AlertCircle },
+      submitted: { color: 'bg-yellow-100 text-yellow-700', label: 'Submitted', icon: Clock },
+      reviewed: { color: 'bg-blue-100 text-blue-700', label: 'Reviewed', icon: UserCheck },
+      published: { color: 'bg-green-100 text-green-700', label: 'Published', icon: Award }
+    }
+    return config[status] || config.draft
   }
 
-  const getCurrentMarkValue = (studentId, subjectId, field) => {
-    return editedMarks[studentId]?.[subjectId]?.[field] || 0
+  const filteredExams = exams.filter(exam => {
+    if (filterStatus !== 'all' && exam.overallStatus !== filterStatus) return false
+    if (searchTerm && !exam.displayName?.toLowerCase().includes(searchTerm.toLowerCase())) return false
+    return true
+  })
+
+  const getSessionLabel = (session) => {
+    const labels = { BF: 'Morning', AF: 'Afternoon', FULL: 'Full Day' }
+    return labels[session] || session
   }
 
-  if (isLoading || staffLoading || examsLoading || classesLoading) {
+  if (staffLoading || classesLoading) {
     return <LoadingSpinner />
   }
 
   if (myClasses.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AcademicCapIcon className="w-10 h-10 text-gray-400" />
+      <div className="min-h-screen bg-gray-50/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 sm:p-12 text-center shadow-sm">
+            <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Users className="w-8 h-8 text-emerald-500" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
               No Classes Assigned
             </h3>
-            <p className="text-gray-500">
+            <p className="text-gray-500 max-w-md mx-auto text-sm">
               You are not assigned as a class teacher for any class.
             </p>
           </div>
@@ -343,124 +210,176 @@ const StaffExamsPage = () => {
     )
   }
 
-  // Check if selected exam has subjects configured
-  const examHasSubjects = selectedExam?.subjects && selectedExam.subjects.length > 0
-  const examSubjectsList = selectedExam?.subjects || examSubjects
-
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50/50 to-white">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="bg-white/20 rounded-xl p-3">
-                <BookOpenIcon className="w-8 h-8" />
+      <div className="border-b border-gray-100 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="bg-emerald-50 rounded-xl p-2.5">
+                <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">Exams & Marks</h1>
-                <p className="text-primary-100 mt-1">
-                  Manage exam marks for your class (Class Teacher)
-                </p>
+                <h1 className="text-lg sm:text-xl font-semibold text-gray-900">My Exams</h1>
+                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">View and manage exams for your class</p>
               </div>
             </div>
-            <button
-              onClick={() => {
-                filterAvailableExams()
-                if (selectedExam && selectedClass) {
-                  handleClassSelect(selectedClass)
-                }
-              }}
-              className="px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors flex items-center gap-2"
-            >
-              <ArrowPathIcon className="w-4 h-4" />
-              <span>Refresh</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                to={`/staff/exams/create?classId=${selectedClass?._id}`}
+                className="px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all duration-200 flex items-center gap-2 text-xs sm:text-sm font-medium shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>Create Exam</span>
+              </Link>
+              <button
+                onClick={loadExamsForClass}
+                className="p-1.5 sm:p-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200"
+              >
+                <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Academic Year Info */}
-        {currentAcademicYear && (
-          <div className="bg-blue-50 rounded-lg p-3 mb-4 text-sm text-blue-700">
-            📅 Academic Year: {currentAcademicYear.name} ({currentAcademicYear.year})
-          </div>
-        )}
-
-        {/* Class Info */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
-          <h3 className="font-semibold text-gray-800 mb-3">My Class</h3>
-          <div className="flex flex-wrap gap-3">
-            {myClasses.map((cls) => (
-              <button
-                key={cls._id}
-                onClick={() => {
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        {/* Class Selection */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-4 sm:mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Academic Year</label>
+              <div className="px-3 py-2 bg-gray-50 rounded-lg text-sm text-gray-700">
+                {currentAcademicYear?.name || 'Loading...'}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Select Class</label>
+              <select
+                value={selectedClass?._id || ''}
+                onChange={(e) => {
+                  const cls = myClasses.find(c => c._id === e.target.value)
                   setSelectedClass(cls)
-                  setIsEditing(false)
-                  setExamMarks(null)
                   setSelectedExam(null)
+                  setMobileMenuOpen(false)
                 }}
-                className={`px-4 py-2 rounded-xl transition-all ${
-                  selectedClass?._id === cls._id
-                    ? 'bg-primary-500 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-sm bg-white"
               >
-                {cls.displayName || `${cls.name}${cls.section ? ` - ${cls.section}` : ''}`}
-              </button>
-            ))}
+                {myClasses.map(cls => (
+                  <option key={cls._id} value={cls._id}>
+                    {cls.displayName || `${cls.name}${cls.section ? ` - ${cls.section}` : ''}`}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Two Column Layout */}
+        {/* Mobile: Show/Hide Exams List Button */}
         {selectedClass && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:hidden mb-4">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-white rounded-xl border border-gray-100 shadow-sm"
+            >
+              <div className="flex items-center gap-2">
+                <Menu className="w-4 h-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">
+                  {selectedExam ? (selectedExam.displayName || selectedExam.name) : 'Select an Exam'}
+                </span>
+              </div>
+              <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${mobileMenuOpen ? 'rotate-90' : ''}`} />
+            </button>
+          </div>
+        )}
+
+        {/* Exams List - Desktop always visible, Mobile togglable */}
+        {selectedClass && (
+          <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 ${!mobileMenuOpen && 'hidden lg:grid'}`}>
             {/* Left Panel - Exams List */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="px-5 py-4 bg-gradient-to-r from-primary-50 to-white border-b">
-                  <h2 className="font-semibold text-gray-800">Available Exams</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">Select an exam to manage marks</p>
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-gray-900">Exams</h2>
+                    <span className="text-xs text-gray-500">{filteredExams.length} total</span>
+                  </div>
+                  
+                  <div className="mt-3 space-y-2">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search exams..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                      />
+                    </div>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none bg-white"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="draft">Draft</option>
+                      <option value="submitted">Submitted</option>
+                      <option value="reviewed">Reviewed</option>
+                      <option value="published">Published</option>
+                    </select>
+                  </div>
                 </div>
                 
-                <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
-                  {availableExams.length === 0 ? (
+                <div className="divide-y divide-gray-100 max-h-[400px] lg:max-h-[500px] overflow-y-auto">
+                  {loadingExams ? (
                     <div className="p-8 text-center">
-                      <p className="text-gray-500 text-sm">No exams available for your class</p>
+                      <LoadingSpinner />
+                    </div>
+                  ) : filteredExams.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <BookOpen className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">No exams found</p>
+                      <Link
+                        to={`/staff/exams/create?classId=${selectedClass._id}`}
+                        className="mt-3 inline-block text-emerald-600 hover:text-emerald-700 text-sm font-medium"
+                      >
+                        Create your first exam →
+                      </Link>
                     </div>
                   ) : (
-                    availableExams.map((exam) => {
-                      const status = getExamStatus(exam)
+                    filteredExams.map((exam) => {
+                      const status = getExamStatus(exam.overallStatus)
+                      const StatusIcon = status.icon
                       const isSelected = selectedExam?._id === exam._id
-                      const hasSubjects = exam.subjects && exam.subjects.length > 0
                       
                       return (
                         <button
                           key={exam._id}
-                          onClick={() => handleExamSelect(exam)}
-                          className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${
-                            isSelected ? 'bg-primary-50 border-l-4 border-primary-500' : ''
+                          onClick={() => {
+                            setSelectedExam(exam)
+                            setMobileMenuOpen(false)
+                          }}
+                          className={`w-full p-3 sm:p-4 text-left hover:bg-gray-50 transition-all ${
+                            isSelected ? 'bg-emerald-50/50 border-l-4 border-l-emerald-500' : ''
                           }`}
                         >
                           <div className="flex justify-between items-start mb-1">
                             <h3 className="font-medium text-gray-800 text-sm">
                               {exam.displayName || exam.name}
                             </h3>
-                            <span className={`px-2 py-0.5 text-xs rounded-full ${status.color}`}>
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full ${status.color}`}>
+                              <StatusIcon className="w-3 h-3" />
                               {status.label}
                             </span>
                           </div>
                           <p className="text-xs text-gray-500 mt-1">
-                            {new Date(exam.startDate).toLocaleDateString()} - {new Date(exam.endDate).toLocaleDateString()}
+                            {new Date(exam.startDate).toLocaleDateString()}
                           </p>
-                          <div className="flex items-center justify-between mt-2">
-                            <p className="text-xs text-gray-400">
-                              {exam.subjects?.length || 0} subjects
-                            </p>
-                            {!hasSubjects && (
-                              <span className="text-xs text-orange-500">⚠️ No subjects configured</span>
-                            )}
+                          <div className="flex items-center gap-3 mt-2">
+                            <span className="text-xs text-gray-400">
+                              📚 {exam.subjects?.length || 0} subjects
+                            </span>
                           </div>
                         </button>
                       )
@@ -470,328 +389,264 @@ const StaffExamsPage = () => {
               </div>
             </div>
 
-            {/* Right Panel - Marks Entry */}
+            {/* Right Panel - Exam Details */}
             <div className="lg:col-span-2">
               {!selectedExam ? (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <BookOpenIcon className="w-10 h-10 text-gray-400" />
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8 sm:p-12 text-center">
+                  <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <BookOpen className="w-8 h-8 text-gray-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-700 mb-2">
                     Select an Exam
                   </h3>
-                  <p className="text-gray-500">
-                    Choose an exam from the left panel to enter or manage marks
+                  <p className="text-gray-500 text-sm">
+                    Choose an exam from the left panel to view details
                   </p>
                 </div>
-              ) : !examHasSubjects ? (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-                  <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <BookOpenIcon className="w-10 h-10 text-orange-400" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                    No Subjects Configured
-                  </h3>
-                  <p className="text-gray-500">
-                    This exam doesn't have any subjects configured yet.
-                  </p>
-                  <p className="text-sm text-gray-400 mt-2">
-                    Please ask an admin to configure subjects for this exam before entering marks.
-                  </p>
+              ) : examLoading ? (
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8 sm:p-12 text-center">
+                  <LoadingSpinner />
                 </div>
-              ) : (
+              ) : currentExam ? (
                 <>
                   {/* Exam Info Header */}
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h2 className="text-xl font-bold text-gray-800">
-                          {selectedExam.displayName || selectedExam.name}
-                        </h2>
-                        <div className="flex gap-3 mt-2">
-                          <span className="text-sm text-gray-500">
-                            📅 {new Date(selectedExam.startDate).toLocaleDateString()} - {new Date(selectedExam.endDate).toLocaleDateString()}
-                          </span>
-                          <span className="text-sm text-gray-500">
-                            📚 {selectedExam.subjects?.length} Subjects
-                          </span>
-                          <span className="text-sm text-gray-500">
-                            🎓 {selectedClass?.displayName || `${selectedClass?.name}${selectedClass?.section ? `-${selectedClass.section}` : ''}`}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className={`px-3 py-1 text-sm rounded-full ${getExamStatus(selectedExam).color}`}>
-                          {getExamStatus(selectedExam).label}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Subjects List */}
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4">
-                    <h3 className="font-semibold text-gray-800 mb-3">Exam Subjects</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedExam.subjects?.map((subject, idx) => (
-                        <div
-                          key={idx}
-                          className="px-3 py-2 bg-gray-100 rounded-lg text-sm"
-                        >
-                          <span className="font-medium">{subject.subjectName}</span>
-                          <span className="text-gray-500 ml-2">
-                            Max: {subject.maxMarks || subject.termMaxMarks} | 
-                            Pass: {subject.passingMarks || subject.termPassingMarks}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Marks Entry Section */}
-                  {examMarks && permissions && (
-                    <>
-                      {/* Action Buttons */}
-                      <div className="flex gap-2 mb-4 justify-end">
-                        {!isEditing ? (
-                          <button
-                            onClick={() => setIsEditing(true)}
-                            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm flex items-center gap-2"
-                            disabled={permissions?.classStatus === 'submitted' || permissions?.classStatus === 'reviewed'}
-                          >
-                            <PencilIcon className="w-4 h-4" />
-                            <span>Edit Marks</span>
-                          </button>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => {
-                                setIsEditing(false)
-                                handleClassSelect(selectedClass)
-                              }}
-                              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 text-sm flex items-center gap-2"
-                            >
-                              <XCircleIcon className="w-4 h-4" />
-                              <span>Cancel</span>
-                            </button>
-                            <button
-                              onClick={handleSaveMarks}
-                              disabled={isSaving}
-                              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm flex items-center gap-2 disabled:opacity-50"
-                            >
-                              <CheckIcon className="w-4 h-4" />
-                              <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
-                            </button>
-                          </>
-                        )}
-                        
-                        {permissions?.canSubmit && permissions?.classStatus === 'draft' && (
-                          <Link
-                            to={`/marks/class/${selectedExam._id}/${selectedClass._id}`}
-                            className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 text-sm flex items-center gap-2"
-                          >
-                            <ClipboardDocumentCheckIcon className="w-4 h-4" />
-                            <span>Full Marks Entry</span>
-                          </Link>
-                        )}
-                      </div>
-
-                      {permissions?.classStatus === 'submitted' && (
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4 text-sm text-yellow-700">
-                          ⚠️ Marks have been submitted for review. Editing is disabled.
-                        </div>
-                      )}
-
-                      {permissions?.classStatus === 'reviewed' && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-blue-700">
-                          ✅ Marks have been reviewed. Waiting for publication.
-                        </div>
-                      )}
-
-                      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="px-5 py-4 bg-gradient-to-r from-primary-50 to-white border-b">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <h3 className="font-semibold text-gray-800">
-                                Student Marks - {selectedClass?.displayName}
-                              </h3>
-                              <p className="text-xs text-gray-500 mt-0.5">
-                                Total Students: {examMarks.students?.length || 0}
-                              </p>
-                            </div>
+                  <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-4 sm:mb-6">
+                    <div className="p-4 sm:p-5 border-b border-gray-100">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                        <div>
+                          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
+                            {currentExam.displayName || currentExam.name}
+                          </h2>
+                          <div className="flex flex-wrap gap-2 sm:gap-3 mt-2">
+                            <span className="text-xs text-gray-500 capitalize">
+                              📋 {currentExam.examType?.replace('_', ' ')}
+                            </span>
+                            <span className="text-xs text-gray-500 capitalize">
+                              📖 {currentExam.term} Term
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              🎓 {selectedClass?.displayName || selectedClass?.name}
+                            </span>
                           </div>
                         </div>
-
-                        {/* Students List */}
-                        <div className="divide-y divide-gray-100">
-                          {examMarks.students?.length === 0 ? (
-                            <div className="p-8 text-center">
-                              <p className="text-gray-500">No students found in this class</p>
-                            </div>
-                          ) : (
-                            examMarks.students.map((student) => {
-                              const isExpanded = expandedStudent === student.studentId
-                              
-                              return (
-                                <div key={student.studentId} className="hover:bg-gray-50">
-                                  {/* Student Header */}
-                                  <div
-                                    className="px-5 py-3 flex items-center justify-between cursor-pointer"
-                                    onClick={() => setExpandedStudent(isExpanded ? null : student.studentId)}
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 bg-gradient-to-br from-primary-100 to-primary-200 rounded-xl flex items-center justify-center text-primary-600 font-bold">
-                                        {student.studentName?.charAt(0).toUpperCase()}
-                                      </div>
-                                      <div>
-                                        <h4 className="font-medium text-gray-800">{student.studentName}</h4>
-                                        <p className="text-xs text-gray-500">
-                                          Roll No: {student.rollNumber || '-'} | Admission: {student.admissionNo || '-'}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                      <span className="text-sm font-medium text-gray-600">
-                                        Total: {student.totalPercentage?.toFixed(1) || 0}%
-                                      </span>
-                                      {isExpanded ? <ChevronUpIcon className="w-4 h-4 text-gray-400" /> : <ChevronDownIcon className="w-4 h-4 text-gray-400" />}
-                                    </div>
-                                  </div>
-
-                                  {/* Subject Marks (expanded) */}
-                                  {isExpanded && (
-                                    <div className="px-5 pb-4">
-                                      <div className="bg-gray-50 rounded-xl p-4">
-                                        <h5 className="text-sm font-medium text-gray-700 mb-3">Subject-wise Marks</h5>
-                                        <div className="grid grid-cols-1 gap-3">
-                                          {examMarks.subjects?.map((subject) => {
-                                            const theoryMarks = isEditing 
-                                              ? getCurrentMarkValue(student.studentId, subject.subjectId, "theoryScore")
-                                              : (student.subjects?.find(s => s.subjectId === subject.subjectId)?.theoryScore || 0)
-                                            const practicalMarks = isEditing 
-                                              ? getCurrentMarkValue(student.studentId, subject.subjectId, "practicalScore")
-                                              : (student.subjects?.find(s => s.subjectId === subject.subjectId)?.practicalScore || 0)
-                                            const totalMarks = theoryMarks + practicalMarks
-                                            const percentage = subject.maxMarks > 0 ? (totalMarks / subject.maxMarks) * 100 : 0
-                                            
-                                            const gradeColor = percentage >= 75 ? 'text-green-600' : percentage >= 60 ? 'text-yellow-600' : percentage >= 40 ? 'text-orange-600' : 'text-red-600'
-                                            const theoryMax = subject.theoryMaxMarks || subject.maxMarks
-                                            const practicalMax = subject.practicalMaxMarks || 0
-                                            
-                                            return (
-                                              <div key={subject.subjectId} className="bg-white rounded-lg p-3 border border-gray-100">
-                                                <div className="flex justify-between items-start mb-2">
-                                                  <span className="font-medium text-gray-800 text-sm">{subject.subjectName}</span>
-                                                  <div className="flex items-center gap-2">
-                                                    {isEditing && (
-                                                      <button
-                                                        onClick={() => handleSetAllMarks(student.studentId, subject.subjectId, 0)}
-                                                        className="text-xs text-gray-400 hover:text-green-600"
-                                                        title="Set to 0"
-                                                      >
-                                                        Reset
-                                                      </button>
-                                                    )}
-                                                    <span className={`text-xs font-semibold ${gradeColor}`}>
-                                                      {percentage.toFixed(1)}%
-                                                    </span>
-                                                  </div>
-                                                </div>
-                                                <div className="grid grid-cols-3 gap-2 text-xs">
-                                                  {isEditing ? (
-                                                    <>
-                                                      <div>
-                                                        <label className="text-gray-400">Theory</label>
-                                                        <input
-                                                          type="number"
-                                                          value={theoryMarks}
-                                                          onChange={(e) => handleMarkChange(student.studentId, subject.subjectId, "theoryScore", e.target.value)}
-                                                          className="w-full px-2 py-1 border rounded focus:ring-2 focus:ring-primary-500"
-                                                          min="0"
-                                                          max={theoryMax}
-                                                        />
-                                                        <span className="text-gray-400 text-xs">/{theoryMax}</span>
-                                                      </div>
-                                                      {practicalMax > 0 && (
-                                                        <div>
-                                                          <label className="text-gray-400">Practical</label>
-                                                          <input
-                                                            type="number"
-                                                            value={practicalMarks}
-                                                            onChange={(e) => handleMarkChange(student.studentId, subject.subjectId, "practicalScore", e.target.value)}
-                                                            className="w-full px-2 py-1 border rounded focus:ring-2 focus:ring-primary-500"
-                                                            min="0"
-                                                            max={practicalMax}
-                                                          />
-                                                          <span className="text-gray-400 text-xs">/{practicalMax}</span>
-                                                        </div>
-                                                      )}
-                                                      <div>
-                                                        <label className="text-gray-400">Total</label>
-                                                        <p className="font-medium">{totalMarks} / {subject.maxMarks}</p>
-                                                      </div>
-                                                    </>
-                                                  ) : (
-                                                    <>
-                                                      <div>
-                                                        <p className="text-gray-400">Theory</p>
-                                                        <p className="font-medium">{theoryMarks} / {theoryMax}</p>
-                                                      </div>
-                                                      {practicalMax > 0 && (
-                                                        <div>
-                                                          <p className="text-gray-400">Practical</p>
-                                                          <p className="font-medium">{practicalMarks} / {practicalMax}</p>
-                                                        </div>
-                                                      )}
-                                                      <div>
-                                                        <p className="text-gray-400">Total</p>
-                                                        <p className="font-medium">{totalMarks} / {subject.maxMarks}</p>
-                                                      </div>
-                                                    </>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            )
-                                          })}
-                                        </div>
-                                        
-                                        {/* Total Summary */}
-                                        <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between items-center">
-                                          <span className="text-sm font-medium text-gray-700">Total Percentage</span>
-                                          <span className="text-lg font-bold text-primary-600">
-                                            {student.totalPercentage?.toFixed(1) || 0}%
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )
-                            })
+                        <div className="flex flex-wrap gap-2">
+                          {currentExam.overallStatus === 'draft' && (
+                            <>
+                              <button
+                                onClick={() => navigate(`/staff/exams/edit/${currentExam._id}?classId=${selectedClass._id}`)}
+                                className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-xs sm:text-sm flex items-center gap-1.5"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setExamToDelete(currentExam)
+                                  setShowDeleteModal(true)
+                                }}
+                                className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs sm:text-sm flex items-center gap-1.5"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Delete</span>
+                              </button>
+                            </>
+                          )}
+                          {currentExam.overallStatus === 'published' && (
+                            <button
+                              onClick={() => navigate(`/staff/exams/results/${currentExam._id}?classId=${selectedClass._id}`)}
+                              className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs sm:text-sm flex items-center gap-1.5"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>Results</span>
+                            </button>
+                          )}
+                          {(currentExam.overallStatus === 'draft' || currentExam.overallStatus === 'submitted') && (
+                            <button
+                              onClick={() => navigate(`/staff/marks-entry?examId=${currentExam._id}&classId=${selectedClass._id}`)}
+                              className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-xs sm:text-sm flex items-center gap-1.5"
+                            >
+                              <BookOpen className="w-3.5 h-3.5" />
+                              <span>Marks</span>
+                            </button>
                           )}
                         </div>
                       </div>
-                    </>
+                    </div>
+
+                    {/* Date Info */}
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 p-4 sm:p-5 bg-gray-50/50 border-b border-gray-100">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs text-gray-500">Start Date</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {new Date(currentExam.startDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs text-gray-500">End Date</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {new Date(currentExam.endDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Schedule Section */}
+                  {currentExam.schedule && currentExam.schedule.length > 0 && (
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-4 sm:mb-6">
+                      <div className="px-4 sm:px-5 py-3 bg-gray-50/50 border-b border-gray-100">
+                        <h3 className="text-sm font-semibold text-gray-900">Exam Schedule</h3>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-[600px] w-full">
+                          <thead>
+                            <tr className="border-b border-gray-100 bg-gray-50/30">
+                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Subject</th>
+                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Date</th>
+                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Session</th>
+                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Theory</th>
+                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Practical</th>
+                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Total</th>
+                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Passing</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {currentExam.schedule.map((item, idx) => (
+                              <tr key={idx} className="hover:bg-gray-50/50">
+                                <td className="px-3 sm:px-4 py-2 sm:py-3 text-sm font-medium text-gray-900">
+                                  {item.subjectName}
+                                </td>
+                                <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600">
+                                  {new Date(item.examDate).toLocaleDateString()}
+                                </td>
+                                <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600">
+                                  {getSessionLabel(item.session)}
+                                </td>
+                                <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600">
+                                  {item.theoryMarks || item.maxMarks || '-'}
+                                </td>
+                                <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600">
+                                  {item.practicalMarks > 0 ? item.practicalMarks : '-'}
+                                </td>
+                                <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-900">
+                                  {(item.maxMarks || item.termMaxMarks) + (item.practicalMarks || 0)}
+                                </td>
+                                <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600">
+                                  {item.passingMarks || item.termPassingMarks}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   )}
 
-                  {!examMarks && !isLoading && (
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-                      <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <ChartBarIcon className="w-10 h-10 text-gray-400" />
+                  {/* Subjects Section */}
+                  {currentExam.subjects && currentExam.subjects.length > 0 && (
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                      <div className="px-4 sm:px-5 py-3 bg-gray-50/50 border-b border-gray-100">
+                        <h3 className="text-sm font-semibold text-gray-900">Subjects Configuration</h3>
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                        Loading Marks Data...
-                      </h3>
-                      <p className="text-gray-500">
-                        Please wait while we load the marks data.
-                      </p>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-[500px] w-full">
+                          <thead>
+                            <tr className="border-b border-gray-100 bg-gray-50/30">
+                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Subject</th>
+                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Code</th>
+                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Theory</th>
+                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Practical</th>
+                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">CE</th>
+                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {currentExam.subjects.map((subject, idx) => (
+                              <tr key={idx} className="hover:bg-gray-50/50">
+                                <td className="px-3 sm:px-4 py-2 sm:py-3 text-sm font-medium text-gray-900">
+                                  {subject.subjectName}
+                                </td>
+                                <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600">
+                                  {subject.subjectCode || '-'}
+                                </td>
+                                <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600">
+                                  {subject.termMaxMarks || subject.maxMarks || '-'}
+                                </td>
+                                <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600">
+                                  {subject.practicalMaxMarks || '-'}
+                                </td>
+                                <td className="px-3 sm:px-4 py-2 sm:py-3">
+                                  {subject.ceEnabled ? (
+                                    <span className="text-xs text-purple-600">{subject.ceMaxMarks} marks</span>
+                                  ) : (
+                                    <span className="text-xs text-gray-400">-</span>
+                                  )}
+                                </td>
+                                <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-900">
+                                  {(subject.termMaxMarks || subject.maxMarks || 0) + (subject.practicalMaxMarks || 0) + (subject.ceMaxMarks || 0)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
                 </>
+              ) : (
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8 sm:p-12 text-center">
+                  <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <BookOpen className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                    Loading Exam Details...
+                  </h3>
+                </div>
               )}
             </div>
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowDeleteModal(false)} />
+          <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete Exam</h3>
+              </div>
+              <p className="text-gray-600 mb-6 text-sm">
+                Are you sure you want to delete "{examToDelete?.displayName || examToDelete?.name}"? 
+                This action cannot be undone.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteExam}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                >
+                  Delete Exam
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

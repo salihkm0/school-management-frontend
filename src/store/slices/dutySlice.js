@@ -16,9 +16,18 @@ export const fetchDuties = createAsyncThunk(
 
 export const autoAssignDuties = createAsyncThunk(
   'duties/autoAssign',
-  async ({ dates, dutyType, excludedStaffIds, algorithm, className }, { rejectWithValue }) => {
+  async ({ dates, dutyType, excludedStaffIds, algorithm, className, totalRooms, rooms, excludedStaff }, { rejectWithValue }) => {
     try {
-      const response = await dutyService.autoAssignDuties(dates, dutyType, excludedStaffIds, algorithm, className)
+      const response = await dutyService.autoAssignDuties(
+        dates, 
+        dutyType, 
+        excludedStaffIds, 
+        algorithm, 
+        className,
+        totalRooms,
+        rooms,
+        excludedStaff
+      )
       toast.success(`${response.statistics?.totalDuties || 0} duties assigned for ${dates.length} dates`)
       return response
     } catch (error) {
@@ -30,9 +39,9 @@ export const autoAssignDuties = createAsyncThunk(
 
 export const multiTypeAssign = createAsyncThunk(
   'duties/multiTypeAssign',
-  async ({ dutyRequirements, excludedStaffIds }, { rejectWithValue }) => {
+  async ({ dutyRequirements, excludedStaffIds, excludedStaff }, { rejectWithValue }) => {
     try {
-      const response = await dutyService.multiTypeAssign(dutyRequirements, excludedStaffIds)
+      const response = await dutyService.multiTypeAssign(dutyRequirements, excludedStaffIds, excludedStaff)
       toast.success(`${response.statistics?.totalDuties || 0} duties assigned across ${dutyRequirements.length} types`)
       return response
     } catch (error) {

@@ -388,7 +388,21 @@ const pdfService = {
     return response.data;
   },
 
-  
+  getStaffDutyPDF: async (params = {}) => {
+    const response = await api.get(`/staff-duty/pdf/view`, {
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
+  },
+
+  downloadStaffDutyPDF: async (params = {}) => {
+    const response = await api.get(`/staff-duty/pdf/download`, {
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
+  },
 };
 
 // Helper function to open PDF in new tab

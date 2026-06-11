@@ -64,6 +64,7 @@ const StaffDetails = () => {
           <InfoRow label="Short Name" value={currentStaff.shortName || '-'} />
           <InfoRow label="Staff Code" value={currentStaff.staffCode} />
           <InfoRow label="Role" value={currentStaff.role?.toUpperCase()} />
+          <InfoRow label="Employee Type" value={currentStaff.employeeType} />
           <InfoRow label="Qualification" value={currentStaff.qualification} />
           <InfoRow label="Gender" value={currentStaff.gender === 'M' ? 'Male' : currentStaff.gender === 'F' ? 'Female' : 'Other'} />
           <InfoRow label="Date of Birth" value={formatDate(currentStaff.dateOfBirth)} />

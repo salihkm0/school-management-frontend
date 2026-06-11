@@ -13,7 +13,8 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   FunnelIcon,
-  EllipsisVerticalIcon
+  EllipsisVerticalIcon,
+  PencilIcon
 } from '@heroicons/react/24/outline'
 import { fetchParents, removeStudentConnection } from '../../store/slices/parentSlice'
 import LoadingSpinner from '../common/LoadingSpinner'
@@ -232,14 +233,21 @@ const ParentList = () => {
                       </div>
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-right">
-                      {/* Desktop: Show eye icon directly */}
-                      <div className="hidden sm:flex items-center justify-end">
+                      {/* Desktop: Show eye and edit icons */}
+                      <div className="hidden sm:flex items-center justify-end gap-1">
                         <Link
                           to={`/parents/${parent._id}`}
                           className="inline-flex p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors"
                           title="View Details"
                         >
                           <EyeIcon className="w-4 h-4" />
+                        </Link>
+                        <Link
+                          to={`/parents/${parent._id}/edit`}
+                          className="inline-flex p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                          title="Edit Parent"
+                        >
+                          <PencilIcon className="w-4 h-4" />
                         </Link>
                       </div>
                       
@@ -256,7 +264,7 @@ const ParentList = () => {
                         </button>
                         
                         {openMenuId === parent._id && (
-                          <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+                          <div className="absolute right-0 top-full mt-1 w-36 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
                             <Link
                               to={`/parents/${parent._id}`}
                               className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
@@ -264,6 +272,14 @@ const ParentList = () => {
                             >
                               <EyeIcon className="w-4 h-4" />
                               <span>View Details</span>
+                            </Link>
+                            <Link
+                              to={`/parents/${parent._id}/edit`}
+                              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                              onClick={() => setOpenMenuId(null)}
+                            >
+                              <PencilIcon className="w-4 h-4" />
+                              <span>Edit Parent</span>
                             </Link>
                           </div>
                         )}

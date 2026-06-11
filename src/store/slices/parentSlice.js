@@ -93,6 +93,20 @@ export const removeStudentConnection = createAsyncThunk(
   }
 )
 
+export const updateParent = createAsyncThunk(
+  'parents/update',
+  async ({ id, data }, { rejectWithValue }) => {
+    try {
+      const response = await parentService.updateParent(id, data)
+      toast.success('Parent details updated successfully')
+      return response
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update parent')
+      return rejectWithValue(error.response?.data)
+    }
+  }
+)
+
 const initialState = {
   parents: [],
   currentParent: null,
@@ -204,6 +218,23 @@ const parentSlice = createSlice({
           )
         }
         state.myChildren = state.myChildren.filter(c => c.studentCode !== action.payload)
+      })
+      
+      // Update Parent
+      .addCase(updateParent.pending, (state) => {
+        state.isLoading = true
+      })
+      .addCase(updateParent.fulfilled, (state, action) => {
+        state.isLoading = false
+        state.currentParent = action.payload.data
+        const index = state.parents.findIndex(p => p._id === action.payload.data?._id)
+        if (index !== -1) {
+          state.parents[index] = action.payload.data
+        }
+      })
+      .addCase(updateParent.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.payload?.message
       })
   },
 })

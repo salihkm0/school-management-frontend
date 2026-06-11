@@ -1,7 +1,7 @@
 // src/components/parents/ParentForm.jsx
-import React, { useState } from 'react'
-import { useDispatch } from 'react-redux'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { 
   ArrowLeftIcon, 
@@ -15,30 +15,60 @@ import {
   EyeSlashIcon,
   CheckIcon
 } from '@heroicons/react/24/outline'
-import { registerParent } from '../../store/slices/parentSlice'
+import { registerParent, updateParent, fetchParentById, clearCurrentParent } from '../../store/slices/parentSlice'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
 
 const ParentForm = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { id } = useParams()
+  const isEditing = !!id
+  const { currentParent, isLoading } = useSelector((state) => state.parents)
   const [showPassword, setShowPassword] = useState(false)
-  const { register, handleSubmit, watch, formState: { errors } } = useForm()
+  const { register, handleSubmit, watch, reset, formState: { errors, isSubmitting } } = useForm()
   const password = watch('password')
 
+  useEffect(() => {
+    if (isEditing && id) {
+      dispatch(fetchParentById(id))
+    }
+    return () => {
+      dispatch(clearCurrentParent())
+    }
+  }, [dispatch, id, isEditing])
+
+  useEffect(() => {
+    if (isEditing && currentParent) {
+      reset({
+        fullName: currentParent.fullName,
+        email: currentParent.email,
+        phone: currentParent.phone,
+        alternatePhone: currentParent.alternatePhone || "",
+        occupation: currentParent.occupation || "",
+        address: typeof currentParent.address === 'string'
+          ? currentParent.address
+          : `${currentParent.address?.street || ''} ${currentParent.address?.city || ''} ${currentParent.address?.state || ''}`.trim()
+      })
+    }
+  }, [isEditing, currentParent, reset])
+
   const onSubmit = async (data) => {
-    setIsSubmitting(true)
     try {
-      await dispatch(registerParent(data)).unwrap()
-      toast.success('Parent registered successfully')
+      if (isEditing) {
+        await dispatch(updateParent({ id, data })).unwrap()
+        toast.success('Parent updated successfully')
+      } else {
+        await dispatch(registerParent(data)).unwrap()
+        toast.success('Parent registered successfully')
+      }
       navigate('/parents')
     } catch (error) { 
-      toast.error(error.message || 'Failed to register parent')
-    } finally { 
-      setIsSubmitting(false) 
+      console.error(error)
     }
   }
+
+  if (isLoading) return <LoadingSpinner />
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
@@ -48,8 +78,8 @@ const ParentForm = () => {
           <ArrowLeftIcon className="w-5 h-5" />
         </button>
         <div>
-          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Register Parent</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Create a new parent account for the school</p>
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">{isEditing ? 'Edit Parent' : 'Register Parent'}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{isEditing ? 'Update parent profile details' : 'Create a new parent account for the school'}</p>
         </div>
       </div>
 
@@ -97,28 +127,32 @@ const ParentForm = () => {
               </div>
             </div>
 
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password <span className="text-rose-500">*</span></label>
-              <div className="relative">
-                <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input type={showPassword ? 'text' : 'password'} {...register('password', { required: 'Password required', minLength: { value: 6, message: 'Min 6 characters' } })} className={`w-full pl-9 pr-9 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 ${errors.password ? 'border-rose-500' : 'border-gray-200'}`} placeholder="••••••••" />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  {showPassword ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
-                </button>
-              </div>
-              {errors.password && <p className="mt-1 text-xs text-rose-500">{errors.password.message}</p>}
-            </div>
+            {!isEditing && (
+              <>
+                {/* Password */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password <span className="text-rose-500">*</span></label>
+                  <div className="relative">
+                    <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input type={showPassword ? 'text' : 'password'} {...register('password', { required: 'Password required', minLength: { value: 6, message: 'Min 6 characters' } })} className={`w-full pl-9 pr-9 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 ${errors.password ? 'border-rose-500' : 'border-gray-200'}`} placeholder="••••••••" />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      {showPassword ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {errors.password && <p className="mt-1 text-xs text-rose-500">{errors.password.message}</p>}
+                </div>
 
-            {/* Confirm Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password <span className="text-rose-500">*</span></label>
-              <div className="relative">
-                <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input type={showPassword ? 'text' : 'password'} {...register('confirmPassword', { required: 'Confirm password', validate: value => value === password || 'Passwords do not match' })} className={`w-full pl-9 pr-3 py-2 text-sm border rounded-lg ${errors.confirmPassword ? 'border-rose-500' : 'border-gray-200'} focus:outline-none focus:ring-1 focus:ring-emerald-500`} placeholder="••••••••" />
-              </div>
-              {errors.confirmPassword && <p className="mt-1 text-xs text-rose-500">{errors.confirmPassword.message}</p>}
-            </div>
+                {/* Confirm Password */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password <span className="text-rose-500">*</span></label>
+                  <div className="relative">
+                    <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input type={showPassword ? 'text' : 'password'} {...register('confirmPassword', { required: 'Confirm password', validate: value => value === password || 'Passwords do not match' })} className={`w-full pl-9 pr-3 py-2 text-sm border rounded-lg ${errors.confirmPassword ? 'border-rose-500' : 'border-gray-200'} focus:outline-none focus:ring-1 focus:ring-emerald-500`} placeholder="••••••••" />
+                  </div>
+                  {errors.confirmPassword && <p className="mt-1 text-xs text-rose-500">{errors.confirmPassword.message}</p>}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Divider */}
@@ -151,7 +185,7 @@ const ParentForm = () => {
           <button type="button" onClick={() => navigate('/parents')} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
           <button type="submit" disabled={isSubmitting} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50">
             {isSubmitting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <CheckIcon className="w-4 h-4" />}
-            <span>{isSubmitting ? 'Registering...' : 'Register Parent'}</span>
+            <span>{isSubmitting ? 'Saving...' : isEditing ? 'Update Parent' : 'Register Parent'}</span>
           </button>
         </div>
       </form>
