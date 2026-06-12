@@ -30,41 +30,41 @@ import { historicalImportService } from '../../services/historicalImportService'
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SUBJECTS_9 = [
-  { code: 'LAN',    label: 'Language',   maxMarks: 50 },
-  { code: 'MAL II', label: 'Mal II',     maxMarks: 50 },
+  { code: 'LAN',    label: 'Language I',   maxMarks: 50 },
+  { code: 'MAL II', label: 'Malayalam II', maxMarks: 50 },
   { code: 'ENG',    label: 'English',    maxMarks: 50 },
   { code: 'HIN',    label: 'Hindi',      maxMarks: 50 },
-  { code: 'SS',     label: 'Soc. Sci',   maxMarks: 50 },
-  { code: 'PHY',    label: 'Physics',    maxMarks: 50 },
-  { code: 'CHE',    label: 'Chemistry',  maxMarks: 50 },
-  { code: 'BIO',    label: 'Biology',    maxMarks: 50 },
+  { code: 'SS',     label: 'Social Science', maxMarks: 50 },
+  { code: 'PHY',    label: 'Physics',    maxMarks: 25 },
+  { code: 'CHE',    label: 'Chemistry',  maxMarks: 25 },
+  { code: 'BIO',    label: 'Biology',    maxMarks: 25 },
   { code: 'MATHS',  label: 'Maths',      maxMarks: 50 },
 ];
 
 const SUBJECTS_10 = [
-  { code: 'LAN',    label: 'Language',   maxMarks: 50 },
-  { code: 'MAL II', label: 'Mal II',     maxMarks: 50 },
-  { code: 'ENG',    label: 'English',    maxMarks: 50 },
+  { code: 'LAN',    label: 'Language I',   maxMarks: 50 },
+  { code: 'MAL II', label: 'Malayalam II', maxMarks: 50 },
+  { code: 'ENG',    label: 'English',    maxMarks: 100 },
   { code: 'HIN',    label: 'Hindi',      maxMarks: 50 },
-  { code: 'SS',     label: 'Soc. Sci',   maxMarks: 50 },
+  { code: 'SS',     label: 'Social Science', maxMarks: 100 },
   { code: 'PHY',    label: 'Physics',    maxMarks: 50 },
   { code: 'CHE',    label: 'Chemistry',  maxMarks: 50 },
   { code: 'BIO',    label: 'Biology',    maxMarks: 50 },
-  { code: 'MATHS',  label: 'Maths',      maxMarks: 50 },
+  { code: 'MATHS',  label: 'Maths',      maxMarks: 100 },
 ];
 
 const DEFAULT_SUBJECTS = SUBJECTS_9;
 
 const BUILTIN_PRESETS = {
-  class_8_9: {
-    label: 'Class 8 / 9',
-    description: 'Subjects: cols I–Q \u2022 Total: R \u2022 Col E = UID (auto-skipped)',
+  class_8: {
+    label: '8',
+    description: 'all subjects max 50 (40+ 10)',
     icon: BookOpenIcon,
     subjects: SUBJECTS_9,
   },
-  class_10_sslc: {
-    label: 'Class 10',
-    description: 'Subjects: cols H–P \u2022 Total: Q \u2022 No UID column',
+  class_9_10: {
+    label: '9/10',
+    description: 'ENG,SS,MATHS max 100 (80 +20) other max 50 (40+ 10)',
     icon: AcademicCapIcon,
     subjects: SUBJECTS_10,
   },
@@ -153,6 +153,7 @@ export default function HistoricalImport() {
         setUploadStatus(data);
         if (data?.status === 'done' || data?.status === 'error') {
           clearInterval(pollRef.current);
+          setUploadId(null);
           loadImports();
           data.status === 'done'
             ? toast.success(`✅ Imported ${data.totalStudents} students!`)
@@ -259,7 +260,7 @@ export default function HistoricalImport() {
   // ── Subject helpers ───────────────────────────────────────────────────────
   const updateSubject = (i, key, val) =>
     setSubjects((prev) => { const c = [...prev]; c[i] = { ...c[i], [key]: key === 'maxMarks' ? Number(val) : val }; return c; });
-  const addSubject    = () => setSubjects((prev) => [...prev, { code: '', label: '', maxMarks: 40 }]);
+  const addSubject    = () => setSubjects((prev) => [...prev, { code: '', label: '', maxMarks: 50 }]);
   const removeSubject = (i) => setSubjects((prev) => prev.filter((_, idx) => idx !== i));
 
   // ── Filter options ────────────────────────────────────────────────────────
@@ -752,7 +753,7 @@ export default function HistoricalImport() {
                     {(selectedBatch.subjectConfig || DEFAULT_SUBJECTS).map((s) => (
                       <th key={s.code} className="px-2 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                         {s.code}<br />
-                        <span className="text-gray-400 normal-case font-normal">/50</span>
+                        <span className="text-gray-400 normal-case font-normal">/{s.maxMarks || 50}</span>
                       </th>
                     ))}
                     <th className="px-2 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
@@ -791,7 +792,7 @@ export default function HistoricalImport() {
                       {(selectedBatch.subjectConfig || DEFAULT_SUBJECTS).map((subj) => {
                         const found = s.subjects?.find((x) => x.subjectCode === subj.code);
                         const val   = found?.obtained ?? '-';
-                        const pct   = found ? (found.obtained / 50) * 100 : -1;
+                        const pct   = found ? (found.obtained / (subj.maxMarks || 50)) * 100 : -1;
                         return (
                           <td
                             key={subj.code}
