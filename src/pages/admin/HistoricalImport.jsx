@@ -30,27 +30,27 @@ import { historicalImportService } from '../../services/historicalImportService'
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SUBJECTS_9 = [
-  { code: 'LAN',    label: 'Language',   maxMarks: 40 },
-  { code: 'MAL II', label: 'Mal II',     maxMarks: 40 },
-  { code: 'ENG',    label: 'English',    maxMarks: 40 },
-  { code: 'HIN',    label: 'Hindi',      maxMarks: 40 },
-  { code: 'SS',     label: 'Soc. Sci',   maxMarks: 40 },
-  { code: 'PHY',    label: 'Physics',    maxMarks: 40 },
-  { code: 'CHE',    label: 'Chemistry',  maxMarks: 40 },
-  { code: 'BIO',    label: 'Biology',    maxMarks: 40 },
-  { code: 'MATHS',  label: 'Maths',      maxMarks: 40 },
+  { code: 'LAN',    label: 'Language',   maxMarks: 50 },
+  { code: 'MAL II', label: 'Mal II',     maxMarks: 50 },
+  { code: 'ENG',    label: 'English',    maxMarks: 50 },
+  { code: 'HIN',    label: 'Hindi',      maxMarks: 50 },
+  { code: 'SS',     label: 'Soc. Sci',   maxMarks: 50 },
+  { code: 'PHY',    label: 'Physics',    maxMarks: 50 },
+  { code: 'CHE',    label: 'Chemistry',  maxMarks: 50 },
+  { code: 'BIO',    label: 'Biology',    maxMarks: 50 },
+  { code: 'MATHS',  label: 'Maths',      maxMarks: 50 },
 ];
 
 const SUBJECTS_10 = [
-  { code: 'LAN',    label: 'Language',   maxMarks: 40 },
-  { code: 'MAL II', label: 'Mal II',     maxMarks: 40 },
-  { code: 'ENG',    label: 'English',    maxMarks: 40 },
-  { code: 'HIN',    label: 'Hindi',      maxMarks: 40 },
-  { code: 'SS',     label: 'Soc. Sci',   maxMarks: 40 },
-  { code: 'PHY',    label: 'Physics',    maxMarks: 40 },
-  { code: 'CHE',    label: 'Chemistry',  maxMarks: 40 },
-  { code: 'BIO',    label: 'Biology',    maxMarks: 40 },
-  { code: 'MATHS',  label: 'Maths',      maxMarks: 40 },
+  { code: 'LAN',    label: 'Language',   maxMarks: 50 },
+  { code: 'MAL II', label: 'Mal II',     maxMarks: 50 },
+  { code: 'ENG',    label: 'English',    maxMarks: 50 },
+  { code: 'HIN',    label: 'Hindi',      maxMarks: 50 },
+  { code: 'SS',     label: 'Soc. Sci',   maxMarks: 50 },
+  { code: 'PHY',    label: 'Physics',    maxMarks: 50 },
+  { code: 'CHE',    label: 'Chemistry',  maxMarks: 50 },
+  { code: 'BIO',    label: 'Biology',    maxMarks: 50 },
+  { code: 'MATHS',  label: 'Maths',      maxMarks: 50 },
 ];
 
 const DEFAULT_SUBJECTS = SUBJECTS_9;
@@ -58,13 +58,13 @@ const DEFAULT_SUBJECTS = SUBJECTS_9;
 const BUILTIN_PRESETS = {
   class_8_9: {
     label: 'Class 8 / 9',
-    description: 'Subjects: cols I–Q \u2022 Total: R \u2022 Result: S \u2022 Col E = UID (auto-skipped)',
+    description: 'Subjects: cols I–Q \u2022 Total: R \u2022 Col E = UID (auto-skipped)',
     icon: BookOpenIcon,
     subjects: SUBJECTS_9,
   },
   class_10_sslc: {
     label: 'Class 10',
-    description: 'Subjects: cols H–P \u2022 Total: Q \u2022 Result: R \u2022 No UID column',
+    description: 'Subjects: cols H–P \u2022 Total: Q \u2022 No UID column',
     icon: AcademicCapIcon,
     subjects: SUBJECTS_10,
   },
@@ -752,11 +752,14 @@ export default function HistoricalImport() {
                     {(selectedBatch.subjectConfig || DEFAULT_SUBJECTS).map((s) => (
                       <th key={s.code} className="px-2 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                         {s.code}<br />
-                        <span className="text-gray-400 normal-case font-normal">/{s.maxMarks}</span>
+                        <span className="text-gray-400 normal-case font-normal">/50</span>
                       </th>
                     ))}
+                    <th className="px-2 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      IT<br />
+                      <span className="text-gray-400 normal-case font-normal">/50</span>
+                    </th>
                     <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Total</th>
-                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Result</th>
                     <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">PDF</th>
                   </tr>
                 </thead>
@@ -788,7 +791,7 @@ export default function HistoricalImport() {
                       {(selectedBatch.subjectConfig || DEFAULT_SUBJECTS).map((subj) => {
                         const found = s.subjects?.find((x) => x.subjectCode === subj.code);
                         const val   = found?.obtained ?? '-';
-                        const pct   = found ? (found.obtained / (found.maxMarks || 40)) * 100 : -1;
+                        const pct   = found ? (found.obtained / 50) * 100 : -1;
                         return (
                           <td
                             key={subj.code}
@@ -803,12 +806,22 @@ export default function HistoricalImport() {
                           </td>
                         );
                       })}
+                      {(() => {
+                        const mal2 = s.subjects?.find((x) => x.subjectCode === 'MAL II');
+                        const val = mal2?.obtained ?? '-';
+                        const pct = mal2 ? (mal2.obtained / 50) * 100 : -1;
+                        return (
+                          <td className={`px-2 py-2 text-center text-xs font-mono font-semibold ${
+                            pct < 0 ? 'text-gray-300' :
+                            pct >= 80 ? 'text-emerald-600' :
+                            pct >= 60 ? 'text-blue-600'   :
+                            pct >= 40 ? 'text-amber-600'  : 'text-red-600'
+                          }`}>
+                            {val}
+                          </td>
+                        );
+                      })()}
                       <td className="px-3 py-2 text-center text-gray-900 font-bold text-xs">{s.total}</td>
-                      <td className="px-3 py-2 text-center">
-                        <span className="bg-gray-100 text-gray-700 text-xs px-1.5 py-0.5 rounded font-mono border border-gray-200">
-                          {s.divisionResult || '-'}
-                        </span>
-                      </td>
                       <td className="px-2 py-1.5 text-center">
                         <button
                           onClick={() => handleDownloadStudentPdf(s)}
