@@ -180,16 +180,16 @@ const ExamList = () => {
 
   const getTypeBadge = (type) => {
     const typeLabels = {
-      first: 'First Term',
-      second: 'Second Term',
-      final: 'Final',
-      mid: 'Mid Term',
-      quarterly: 'Quarterly',
-      half_yearly: 'Half Yearly',
-      annual: 'Annual',
-      unit_test: 'Unit Test',
-      class_test: 'Class Test'
-    }
+      unit_test_1: 'Unit Test 1',
+      unit_test_2: 'Unit Test 2',
+      first_mid_term: 'First mid term examination',
+      first_term: 'First term Examination',
+      second_mid_term: 'Second mid term examination',
+      second_term: 'Second term examination',
+      model: 'Model examination',
+      annual: 'Annual examination',
+      custom: 'Custom'
+    };
     return (
       <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
         {typeLabels[type] || type?.replace('_', ' ')}
@@ -368,13 +368,14 @@ const ExamList = () => {
               className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
             >
               <option value="all">All Types</option>
-              <option value="first">First Term</option>
-              <option value="second">Second Term</option>
-              <option value="final">Final</option>
-              <option value="mid">Mid Term</option>
-              <option value="quarterly">Quarterly</option>
-              <option value="half_yearly">Half Yearly</option>
-              <option value="annual">Annual</option>
+              <option value="unit_test_1">Unit Test 1</option>
+              <option value="unit_test_2">Unit Test 2</option>
+              <option value="first_mid_term">First mid term examination</option>
+              <option value="first_term">First term Examination</option>
+              <option value="second_mid_term">Second mid term examination</option>
+              <option value="second_term">Second term examination</option>
+              <option value="model">Model examination</option>
+              <option value="annual">Annual examination</option>
             </select>
           </div>
         </div>

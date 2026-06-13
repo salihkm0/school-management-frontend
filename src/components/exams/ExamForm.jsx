@@ -186,18 +186,12 @@ const ExamForm = () => {
           }
           
           // Subject-level CE configuration
-          const ceEnabled = item.ceEnabled || false
-          const ceMaxMarks = ceEnabled ? (parseInt(item.ceMaxMarks) || 20) : 0
-          const cePassingMarks = ceEnabled ? (parseInt(item.cePassingMarks) || 8) : 0
+          const ceMaxMarks = parseInt(item.ceMaxMarks) || 0
+          const ceEnabled = ceMaxMarks > 0
+          const cePassingMarks = 0
           
           // CE Components
-          const ceComponents = (item.ceComponents || [])
-            .filter(c => c.name)
-            .map(comp => ({
-              name: comp.name,
-              maxMarks: parseInt(comp.maxMarks) || 0,
-              weightage: parseInt(comp.weightage) || 0
-            }))
+          const ceComponents = []
           
           const scheduleItem = {
             subjectId: item.subjectId,
@@ -324,14 +318,9 @@ const ExamForm = () => {
       roomNumber: '',
       building: '',
       ceEnabled: false,
-      ceMaxMarks: 20,
-      cePassingMarks: 8,
-      ceComponents: [
-        { name: 'Assignment', maxMarks: 5, weightage: 25 },
-        { name: 'Attendance', maxMarks: 5, weightage: 25 },
-        { name: 'Class Test', maxMarks: 5, weightage: 25 },
-        { name: 'Project', maxMarks: 5, weightage: 25 }
-      ]
+      ceMaxMarks: 0,
+      cePassingMarks: 0,
+      ceComponents: []
     })
   }
 
@@ -608,7 +597,7 @@ const ExamForm = () => {
                                   {...register(`schedule.${index}.maxMarks`, { required: 'Max marks required', min: 1 })}
                                   placeholder="e.g., 100" 
                                   className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white" 
-                                />
+                                 onWheel={(e) => e.target.blur()} />
                               </div>
                               <div>
                                 <label className="block text-xs font-medium text-gray-600 mb-1">Passing Marks *</label>
@@ -617,7 +606,7 @@ const ExamForm = () => {
                                   {...register(`schedule.${index}.passingMarks`, { required: 'Passing marks required', min: 0 })}
                                   placeholder="e.g., 40" 
                                   className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white" 
-                                />
+                                 onWheel={(e) => e.target.blur()} />
                               </div>
                               <div>
                                 <label className="block text-xs font-medium text-gray-600 mb-1">Practical Marks</label>
@@ -626,117 +615,17 @@ const ExamForm = () => {
                                   {...register(`schedule.${index}.practicalMarks`)} 
                                   placeholder="0" 
                                   className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white" 
-                                />
+                                 onWheel={(e) => e.target.blur()} />
                               </div>
-                            </div>
-
-                            {/* CE Configuration Accordion - Per Subject */}
-                            <div className="border-t border-gray-100 pt-3">
-                              <button
-                                type="button"
-                                onClick={() => toggleCePanel(index)}
-                                className="w-full flex items-center justify-between text-sm font-medium text-gray-700 hover:text-emerald-600 transition-colors"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <Cog6ToothIcon className="w-4 h-4" />
-                                  <span>Continuous Evaluation (CE) Configuration</span>
-                                  {isCeEnabled && (
-                                    <span className="px-1.5 py-0.5 text-xs bg-emerald-100 text-emerald-700 rounded-full">Enabled</span>
-                                  )}
-                                </div>
-                                {isCeExpanded ? (
-                                  <ChevronUpIcon className="w-4 h-4" />
-                                ) : (
-                                  <ChevronDownIcon className="w-4 h-4" />
-                                )}
-                              </button>
-                              
-                              {isCeExpanded && (
-                                <div className="mt-3 space-y-3 pl-4 border-l-2 border-emerald-200">
-                                  <div className="flex items-center gap-3">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                      <input 
-                                        type="checkbox" 
-                                        {...register(`schedule.${index}.ceEnabled`)}
-                                        className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
-                                      />
-                                      <span className="text-sm text-gray-700">Enable CE for this subject</span>
-                                    </label>
-                                  </div>
-
-                                  {isCeEnabled && (
-                                    <>
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                          <label className="block text-xs font-medium text-gray-600 mb-1">CE Max Marks</label>
-                                          <input 
-                                            type="number" 
-                                            {...register(`schedule.${index}.ceMaxMarks`)}
-                                            className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
-                                          />
-                                        </div>
-                                        <div>
-                                          <label className="block text-xs font-medium text-gray-600 mb-1">CE Passing Marks</label>
-                                          <input 
-                                            type="number" 
-                                            {...register(`schedule.${index}.cePassingMarks`)}
-                                            className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
-                                          />
-                                        </div>
-                                      </div>
-
-                                      <div>
-                                        <div className="flex justify-between items-center mb-2">
-                                          <label className="text-xs font-medium text-gray-700">CE Components</label>
-                                          <button 
-                                            type="button" 
-                                            onClick={() => addCeComponent(index)} 
-                                            className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-emerald-50 text-emerald-600 rounded hover:bg-emerald-100 transition-colors"
-                                          >
-                                            <PlusIcon className="w-3 h-3" />
-                                            Add Component
-                                          </button>
-                                        </div>
-                                        
-                                        <div className="space-y-2">
-                                          {(watchedSchedule[index]?.ceComponents || []).map((comp, compIndex) => (
-                                            <div key={compIndex} className="flex gap-2 items-center">
-                                              <input 
-                                                type="text" 
-                                                value={comp.name || ''}
-                                                onChange={(e) => updateCeComponent(index, compIndex, 'name', e.target.value)}
-                                                placeholder="Component Name" 
-                                                className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
-                                              />
-                                              <input 
-                                                type="number" 
-                                                value={comp.maxMarks || 0}
-                                                onChange={(e) => updateCeComponent(index, compIndex, 'maxMarks', parseInt(e.target.value) || 0)}
-                                                placeholder="Max Marks" 
-                                                className="w-24 px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
-                                              />
-                                              <input 
-                                                type="number" 
-                                                value={comp.weightage || 0}
-                                                onChange={(e) => updateCeComponent(index, compIndex, 'weightage', parseInt(e.target.value) || 0)}
-                                                placeholder="Weightage %" 
-                                                className="w-24 px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
-                                              />
-                                              <button 
-                                                type="button" 
-                                                onClick={() => removeCeComponent(index, compIndex)} 
-                                                className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
-                                              >
-                                                <TrashIcon className="w-4 h-4" />
-                                              </button>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    </>
-                                  )}
-                                </div>
-                              )}
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">CE Marks</label>
+                                <input 
+                                  type="number" 
+                                  {...register(`schedule.${index}.ceMaxMarks`)} 
+                                  placeholder="0" 
+                                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white" 
+                                 onWheel={(e) => e.target.blur()} />
+                              </div>
                             </div>
                           </div>
                         </div>

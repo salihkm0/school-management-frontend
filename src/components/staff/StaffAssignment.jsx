@@ -294,7 +294,7 @@ const StaffAssignment = () => {
                             <div className="flex-1">
                               <label className="block text-xs font-medium text-gray-600 mb-1">Periods/Week</label>
                               <input 
-                                type="number" 
+                                type="number" onWheel={(e) => e.target.blur()} 
                                 value={item.periodsPerWeek} 
                                 onChange={(e) => updateSubjectField(index, 'periodsPerWeek', parseInt(e.target.value) || 1)}
                                 className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"

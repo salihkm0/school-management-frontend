@@ -236,7 +236,7 @@ const SubjectTeacherMapping = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Periods/Week</label>
               <div className="flex gap-2">
                 <input
-                  type="number"
+                  type="number" onWheel={(e) => e.target.blur()}
                   value={newAssignment.periodsPerWeek}
                   onChange={(e) => setNewAssignment({ ...newAssignment, periodsPerWeek: parseInt(e.target.value) || 1 })}
                   className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"

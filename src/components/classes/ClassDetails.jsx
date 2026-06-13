@@ -315,7 +315,7 @@ const ClassDetails = () => {
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Periods/Week</label>
                   <input 
-                    type="number" 
+                    type="number" onWheel={(e) => e.target.blur()} 
                     min="1" 
                     max="12" 
                     value={periodsPerWeek} 

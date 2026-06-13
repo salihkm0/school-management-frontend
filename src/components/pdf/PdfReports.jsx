@@ -204,11 +204,11 @@ const PdfReports = () => {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Year</label>
-                <input type="number" value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg" />
+                <input type="number" onWheel={(e) => e.target.blur()} value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Working Days</label>
-                <input type="number" value={workingDays} onChange={(e) => setWorkingDays(parseInt(e.target.value))} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg" />
+                <input type="number" onWheel={(e) => e.target.blur()} value={workingDays} onChange={(e) => setWorkingDays(parseInt(e.target.value))} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg" />
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
@@ -236,7 +236,7 @@ const PdfReports = () => {
                 </select>
               </div>
               <div><label className="block text-xs font-medium text-gray-700 mb-1">Year</label>
-                <input type="number" value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg" />
+                <input type="number" onWheel={(e) => e.target.blur()} value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg" />
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
@@ -343,7 +343,7 @@ const PdfReports = () => {
                 </select>
               </div>
               <div><label className="block text-xs font-medium text-gray-700 mb-1">Year</label>
-                <input type="number" value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg" />
+                <input type="number" onWheel={(e) => e.target.blur()} value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg" />
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
@@ -369,7 +369,7 @@ const PdfReports = () => {
                 </select>
               </div>
               <div><label className="block text-xs font-medium text-gray-700 mb-1">Year</label>
-                <input type="number" value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg" />
+                <input type="number" onWheel={(e) => e.target.blur()} value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg" />
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">

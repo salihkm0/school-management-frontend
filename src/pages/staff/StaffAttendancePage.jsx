@@ -173,10 +173,12 @@ const StaffAttendancePage = () => {
   }
 
   const handleAbsentChange = (studentId, value, workingDays) => {
-    let absentDays = parseInt(value) || 0
-    if (absentDays < 0) absentDays = 0
-    if (absentDays > workingDays) absentDays = workingDays
-    const presentDays = workingDays - absentDays
+    let absentDays = value === "" ? "" : parseInt(value);
+    if (typeof absentDays === 'number' && !isNaN(absentDays)) {
+      if (absentDays < 0) absentDays = 0;
+      if (absentDays > workingDays) absentDays = workingDays;
+    }
+    const presentDays = absentDays === "" ? workingDays : workingDays - absentDays;
     
     setAttendanceData(prev => ({
       ...prev,
@@ -203,7 +205,7 @@ const StaffAttendancePage = () => {
       
       const attendanceList = summary?.studentDetails?.map(student => {
         const studentAttendance = attendanceData[student.studentId]
-        const absentDays = studentAttendance?.absentDays !== undefined ? studentAttendance.absentDays : 0
+        const absentDays = (studentAttendance?.absentDays !== undefined && studentAttendance?.absentDays !== "") ? studentAttendance.absentDays : 0
         const presentDays = workingDaysVal - absentDays
         
         return {
@@ -221,9 +223,9 @@ const StaffAttendancePage = () => {
       })
       
       const result = await dispatch(bulkCreateAttendance(attendanceList)).unwrap()
+      const successCount = Array.isArray(result.results?.success) ? result.results.success.length : (result.results?.success || 0);
       
-      if (result.results?.success?.length > 0) {
-        toast.success(`Saved ${result.results.success.length} attendance records`)
+      if (successCount > 0) {
         setIsEditing(false)
         await loadSummary()
         await loadAttendanceData()
@@ -463,11 +465,11 @@ const StaffAttendancePage = () => {
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1.5">Working Days</label>
                   <input
-                    type="number"
+                    type="number" onWheel={(e) => e.target.blur()}
                     value={workingDays}
                     disabled
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 text-sm"
-                  />
+                   />
                 </div>
 
                 <div className="flex items-end">
@@ -581,8 +583,8 @@ const StaffAttendancePage = () => {
                 <tbody className="divide-y divide-gray-50">
                   {filteredStudents.map((student, idx) => {
                     const studentAttendance = attendanceData[student.studentId]
-                    const absentDays = studentAttendance?.absentDays !== undefined ? studentAttendance.absentDays : (student.absentDays || 0)
-                    const presentDays = workingDays - absentDays
+                    const absentDays = studentAttendance?.absentDays !== undefined ? studentAttendance.absentDays : ""
+                    const presentDays = workingDays - (absentDays === "" ? 0 : absentDays)
                     const percentage = (presentDays / workingDays) * 100
                     const statusColor = percentage >= 75 ? 'bg-emerald-50 text-emerald-700' : percentage >= 60 ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'
                     const statusText = percentage >= 75 ? 'Good' : percentage >= 60 ? 'Average' : 'Poor'
@@ -602,7 +604,7 @@ const StaffAttendancePage = () => {
                         <td className="px-4 py-3 whitespace-nowrap text-center">
                           {isEditing ? (
                             <input
-                              type="number"
+                              type="number" onWheel={(e) => e.target.blur()}
                               value={absentDays}
                               onChange={(e) => handleAbsentChange(student.studentId, e.target.value, workingDays)}
                               className="w-20 px-2 py-1 border border-gray-200 rounded-lg text-center text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"

@@ -339,7 +339,7 @@ const AttendanceTemplates = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Total Working Days *</label>
                 <input
-                  type="number"
+                  type="number" onWheel={(e) => e.target.blur()}
                   value={formData.totalWorkingDays}
                   onChange={(e) => setFormData({ ...formData, totalWorkingDays: parseInt(e.target.value) || 0 })}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"

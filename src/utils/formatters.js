@@ -43,16 +43,14 @@ export const formatExamName = (exam) => {
   if (!exam) return ''
   if (exam.examType === 'custom') return exam.name
   const typeNames = {
-    first: 'First Term',
-    second: 'Second Term',
-    final: 'Final',
-    mid: 'Mid Term',
-    quarterly: 'Quarterly',
-    half_yearly: 'Half Yearly',
-    annual: 'Annual',
-    unit_test: 'Unit Test',
-    class_test: 'Class Test',
-    subject_exam: 'Subject Exam',
+    unit_test_1: 'Unit Test 1',
+    unit_test_2: 'Unit Test 2',
+    first_mid_term: 'First mid term examination',
+    first_term: 'First term Examination',
+    second_mid_term: 'Second mid term examination',
+    second_term: 'Second term examination',
+    model: 'Model examination',
+    annual: 'Annual examination'
   }
   return `${typeNames[exam.examType]} Exam - ${exam.academicYear}`
 }

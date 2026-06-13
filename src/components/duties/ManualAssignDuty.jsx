@@ -101,7 +101,7 @@ const ManualAssignDuty = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Duration (hours)</label>
-                <input type="number" value={duration} onChange={(e) => setDuration(parseInt(e.target.value))} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg" min="1" max="12" />
+                <input type="number" onWheel={(e) => e.target.blur()} value={duration} onChange={(e) => setDuration(parseInt(e.target.value))} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg" min="1" max="12" />
               </div>
             </div>
 

@@ -127,7 +127,7 @@ const StudentFilter = () => {
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Min Percentage</label>
               <input
-                type="number"
+                type="number" onWheel={(e) => e.target.blur()}
                 value={conditions.minPercentage || ''}
                 onChange={(e) => setConditions({ ...conditions, minPercentage: parseFloat(e.target.value) || 0 })}
                 className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md"
@@ -137,7 +137,7 @@ const StudentFilter = () => {
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Max Percentage</label>
               <input
-                type="number"
+                type="number" onWheel={(e) => e.target.blur()}
                 value={conditions.maxPercentage || ''}
                 onChange={(e) => setConditions({ ...conditions, maxPercentage: parseFloat(e.target.value) || 100 })}
                 className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md"
@@ -153,7 +153,7 @@ const StudentFilter = () => {
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Min Rank</label>
               <input
-                type="number"
+                type="number" onWheel={(e) => e.target.blur()}
                 value={conditions.minRank || ''}
                 onChange={(e) => setConditions({ ...conditions, minRank: parseInt(e.target.value) || 1 })}
                 className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md"
@@ -163,7 +163,7 @@ const StudentFilter = () => {
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Max Rank</label>
               <input
-                type="number"
+                type="number" onWheel={(e) => e.target.blur()}
                 value={conditions.maxRank || ''}
                 onChange={(e) => setConditions({ ...conditions, maxRank: parseInt(e.target.value) || 10 })}
                 className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md"

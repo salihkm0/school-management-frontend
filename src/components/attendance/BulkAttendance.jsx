@@ -103,7 +103,7 @@ const BulkAttendance = () => {
           completeData[student._id] = existingData[student._id]
         } else {
           completeData[student._id] = {
-            absentDays: 0,
+            absentDays: "",
             presentDays: workingDaysVal,
             totalWorkingDays: workingDaysVal
           }
@@ -116,7 +116,7 @@ const BulkAttendance = () => {
       const defaultData = {}
       students.forEach(student => {
         defaultData[student._id] = {
-          absentDays: 0,
+          absentDays: "",
           presentDays: totalWorkingDays,
           totalWorkingDays: totalWorkingDays
         }
@@ -128,15 +128,17 @@ const BulkAttendance = () => {
   }
 
   const handleAbsentChange = (studentId, value) => {
-    let absentDays = value !== '' && value !== null ? parseInt(value) || 0 : 0
-    const validAbsent = Math.min(Math.max(absentDays, 0), totalWorkingDays)
-    const presentDays = totalWorkingDays - validAbsent
+    let absentDays = value === "" ? "" : parseInt(value)
+    if (typeof absentDays === 'number' && !isNaN(absentDays)) {
+      absentDays = Math.min(Math.max(absentDays, 0), totalWorkingDays)
+    }
+    const presentDays = absentDays === "" ? totalWorkingDays : totalWorkingDays - absentDays
     
     setAttendanceData(prev => ({ 
       ...prev, 
       [studentId]: { 
-        absentDays: validAbsent,
-        presentDays: presentDays,
+        absentDays,
+        presentDays,
         totalWorkingDays
       } 
     }))
@@ -169,7 +171,7 @@ const BulkAttendance = () => {
     }
 
     const attendanceList = students.map(s => {
-      const absentDays = attendanceData[s._id]?.absentDays !== undefined ? attendanceData[s._id].absentDays : 0
+      const absentDays = (attendanceData[s._id]?.absentDays !== undefined && attendanceData[s._id]?.absentDays !== "") ? attendanceData[s._id].absentDays : 0
       return {
         studentId: s._id,
         studentName: s.fullName,
@@ -191,9 +193,7 @@ const BulkAttendance = () => {
       const response = await dispatch(bulkCreateAttendance(attendanceList)).unwrap()
       setResult(response.results)
       
-      if (response.results?.success?.length > 0) {
-        toast.success(`Saved ${response.results.success.length} attendance records`)
-      }
+      const successCount = Array.isArray(response.results?.success) ? response.results.success.length : (response.results?.success || 0);
       if (response.results?.failed?.length > 0) {
         toast.error(`${response.results.failed.length} records failed`)
       }
@@ -227,10 +227,7 @@ const BulkAttendance = () => {
     student.studentCode?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentStudents = filteredStudents.slice(indexOfFirstItem, indexOfLastItem)
-  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage)
+  const currentStudents = filteredStudents
 
   const months = Array.from({ length: 12 }, (_, i) => ({ value: i + 1, name: new Date(2000, i, 1).toLocaleString('default', { month: 'long' }) }))
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i)
@@ -404,21 +401,21 @@ const BulkAttendance = () => {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {currentStudents.map((student, idx) => {
-                  const absent = attendanceData[student._id]?.absentDays !== undefined ? attendanceData[student._id].absentDays : 0
-                  const present = totalWorkingDays - absent
+                  const absent = attendanceData[student._id]?.absentDays !== undefined ? attendanceData[student._id].absentDays : ""
+                  const present = totalWorkingDays - (absent === "" ? 0 : absent)
                   const percentage = totalWorkingDays > 0 ? (present / totalWorkingDays) * 100 : 0
                   const percentageColor = percentage >= 75 ? 'text-emerald-600' : percentage >= 60 ? 'text-amber-600' : 'text-rose-600'
                   
                   return (
                     <tr key={student._id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-3 py-2 text-sm text-gray-500">{indexOfFirstItem + idx + 1}</td>
+                      <td className="px-3 py-2 text-sm text-gray-500">{idx + 1}</td>
                       <td className="px-3 py-2">
                         <div className="text-sm font-medium text-gray-900">{student.fullName}</div>
                         <div className="text-xs text-gray-500">{student.studentCode}</div>
                       </td>
                       <td className="px-3 py-2 text-center">
                         <input
-                          type="number"
+                          type="number" onWheel={(e) => e.target.blur()}
                           value={absent}
                           onChange={(e) => handleAbsentChange(student._id, e.target.value)}
                           className="w-20 px-2 py-1 text-sm border border-gray-200 rounded text-center focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -436,32 +433,6 @@ const BulkAttendance = () => {
               </tbody>
             </table>
           </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="px-3 py-2 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div className="text-xs text-gray-500 text-center sm:text-left">
-                Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredStudents.length)} of {filteredStudents.length}
-              </div>
-              <div className="flex items-center justify-center gap-1">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="p-1 text-gray-400 hover:text-gray-600 rounded disabled:opacity-50 transition-colors"
-                >
-                  <ChevronLeftIcon className="w-4 h-4" />
-                </button>
-                <span className="text-xs text-gray-600">Page {currentPage} of {totalPages}</span>
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="p-1 text-gray-400 hover:text-gray-600 rounded disabled:opacity-50 transition-colors"
-                >
-                  <ChevronRightIcon className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Submit Button */}
           <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex justify-end">

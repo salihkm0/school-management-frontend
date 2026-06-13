@@ -174,14 +174,9 @@ const StaffExamForm = () => {
         roomNumber: '',
         building: '',
         ceEnabled: false,
-        ceMaxMarks: 20,
-        cePassingMarks: 8,
-        ceComponents: [
-          { name: 'Assignment', maxMarks: 5, weightage: 25 },
-          { name: 'Attendance', maxMarks: 5, weightage: 25 },
-          { name: 'Class Test', maxMarks: 5, weightage: 25 },
-          { name: 'Project', maxMarks: 5, weightage: 25 }
-        ]
+        ceMaxMarks: 0,
+        cePassingMarks: 0,
+        ceComponents: []
       }
     ])
   }
@@ -279,10 +274,10 @@ const StaffExamForm = () => {
           practicalMarks: item.practicalMarks,
           roomNumber: item.roomNumber,
           building: item.building,
-          ceEnabled: item.ceEnabled,
-          ceMaxMarks: item.ceMaxMarks,
-          cePassingMarks: item.cePassingMarks,
-          ceComponents: item.ceComponents || []
+          ceEnabled: parseInt(item.ceMaxMarks) > 0,
+          ceMaxMarks: parseInt(item.ceMaxMarks) || 0,
+          cePassingMarks: 0,
+          ceComponents: []
         }))
       }
       
@@ -381,13 +376,14 @@ const StaffExamForm = () => {
                     onChange={(e) => setExamForm({ ...examForm, examType: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none bg-white"
                   >
-                    <option value="first">First Term</option>
-                    <option value="second">Second Term</option>
-                    <option value="final">Final Exam</option>
-                    <option value="mid">Mid Term</option>
-                    <option value="quarterly">Quarterly</option>
-                    <option value="half_yearly">Half Yearly</option>
-                    <option value="annual">Annual</option>
+                    <option value="unit_test_1">Unit Test 1</option>
+                    <option value="unit_test_2">Unit Test 2</option>
+                    <option value="first_mid_term">First mid term examination</option>
+                    <option value="first_term">First term Examination</option>
+                    <option value="second_mid_term">Second mid term examination</option>
+                    <option value="second_term">Second term examination</option>
+                    <option value="model">Model examination</option>
+                    <option value="annual">Annual examination</option>
                     <option value="custom">Custom</option>
                   </select>
                 </div>
@@ -502,7 +498,7 @@ const StaffExamForm = () => {
                         <div>
                           <label className="block text-xs font-medium text-gray-600 mb-1">Max Marks</label>
                           <input
-                            type="number"
+                            type="number" onWheel={(e) => e.target.blur()}
                             value={item.maxMarks}
                             onChange={(e) => updateScheduleItem(item.id, 'maxMarks', parseInt(e.target.value) || 0)}
                             className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
@@ -511,7 +507,7 @@ const StaffExamForm = () => {
                         <div>
                           <label className="block text-xs font-medium text-gray-600 mb-1">Passing Marks</label>
                           <input
-                            type="number"
+                            type="number" onWheel={(e) => e.target.blur()}
                             value={item.passingMarks}
                             onChange={(e) => updateScheduleItem(item.id, 'passingMarks', parseInt(e.target.value) || 0)}
                             className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
@@ -520,143 +516,21 @@ const StaffExamForm = () => {
                         <div>
                           <label className="block text-xs font-medium text-gray-600 mb-1">Practical Marks</label>
                           <input
-                            type="number"
+                            type="number" onWheel={(e) => e.target.blur()}
                             value={item.practicalMarks}
                             onChange={(e) => updateScheduleItem(item.id, 'practicalMarks', parseInt(e.target.value) || 0)}
                             className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Room Number</label>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">CE Marks</label>
                           <input
-                            type="text"
-                            value={item.roomNumber}
-                            onChange={(e) => updateScheduleItem(item.id, 'roomNumber', e.target.value)}
-                            placeholder="e.g., Room 101"
+                            type="number" onWheel={(e) => e.target.blur()}
+                            value={item.ceMaxMarks}
+                            onChange={(e) => updateScheduleItem(item.id, 'ceMaxMarks', parseInt(e.target.value) || 0)}
                             className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
                           />
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Building</label>
-                          <input
-                            type="text"
-                            value={item.building}
-                            onChange={(e) => updateScheduleItem(item.id, 'building', e.target.value)}
-                            placeholder="e.g., Main Block"
-                            className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      {/* CE Configuration */}
-                      <div className="border-t border-gray-100 pt-3 mt-2">
-                        <button
-                          type="button"
-                          onClick={() => toggleCePanel(item.id)}
-                          className="w-full flex items-center justify-between text-sm text-gray-600 hover:text-emerald-600"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Cog className="w-4 h-4" />
-                            <span>Continuous Evaluation (CE) Configuration</span>
-                            {item.ceEnabled && (
-                              <span className="px-1.5 py-0.5 text-xs bg-emerald-100 text-emerald-700 rounded-full">Enabled</span>
-                            )}
-                          </div>
-                          {isCeExpanded ? (
-                            <ChevronUp className="w-4 h-4" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4" />
-                          )}
-                        </button>
-
-                        {isCeExpanded && (
-                          <div className="mt-3 space-y-3 pl-4 border-l-2 border-emerald-200">
-                            <div className="flex items-center gap-3">
-                              <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={item.ceEnabled}
-                                  onChange={(e) => updateScheduleItem(item.id, 'ceEnabled', e.target.checked)}
-                                  className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
-                                />
-                                <span className="text-sm text-gray-700">Enable CE for this subject</span>
-                              </label>
-                            </div>
-
-                            {item.ceEnabled && (
-                              <>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-600 mb-1">CE Max Marks</label>
-                                    <input
-                                      type="number"
-                                      value={item.ceMaxMarks}
-                                      onChange={(e) => updateScheduleItem(item.id, 'ceMaxMarks', parseInt(e.target.value) || 0)}
-                                      className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-600 mb-1">CE Passing Marks</label>
-                                    <input
-                                      type="number"
-                                      value={item.cePassingMarks}
-                                      onChange={(e) => updateScheduleItem(item.id, 'cePassingMarks', parseInt(e.target.value) || 0)}
-                                      className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
-                                    />
-                                  </div>
-                                </div>
-
-                                <div>
-                                  <div className="flex justify-between items-center mb-2">
-                                    <label className="text-xs font-medium text-gray-700">CE Components</label>
-                                    <button
-                                      type="button"
-                                      onClick={() => addCeComponent(item.id)}
-                                      className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
-                                    >
-                                      <Plus className="w-3 h-3" />
-                                      Add Component
-                                    </button>
-                                  </div>
-                                  <div className="space-y-2">
-                                    {(item.ceComponents || []).map((comp, compIndex) => (
-                                      <div key={compIndex} className="flex gap-2 items-center">
-                                        <input
-                                          type="text"
-                                          value={comp.name}
-                                          onChange={(e) => updateCeComponent(item.id, compIndex, 'name', e.target.value)}
-                                          placeholder="Component Name"
-                                          className="flex-1 px-2 py-1 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
-                                        />
-                                        <input
-                                          type="number"
-                                          value={comp.maxMarks}
-                                          onChange={(e) => updateCeComponent(item.id, compIndex, 'maxMarks', e.target.value)}
-                                          placeholder="Max Marks"
-                                          className="w-20 px-2 py-1 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
-                                        />
-                                        <input
-                                          type="number"
-                                          value={comp.weightage}
-                                          onChange={(e) => updateCeComponent(item.id, compIndex, 'weightage', e.target.value)}
-                                          placeholder="Wtg %"
-                                          className="w-16 px-2 py-1 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
-                                        />
-                                        <button
-                                          type="button"
-                                          onClick={() => removeCeComponent(item.id, compIndex)}
-                                          className="p-1 text-red-500 hover:bg-red-50 rounded"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        )}
                       </div>
                     </div>
                   )

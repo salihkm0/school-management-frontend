@@ -90,7 +90,7 @@ const SubjectForm = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Credit Hours</label>
-              <input type="number" {...register('creditHours')} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="1-6" />
+              <input type="number" {...register('creditHours')} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="1-6"  onWheel={(e) => e.target.blur()} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>

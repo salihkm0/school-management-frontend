@@ -1,5 +1,5 @@
 // src/components/exams/ExamDetails.jsx
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { fetchExamById, clearCurrentExam, publishExam } from '../../store/slices/examSlice'
@@ -34,35 +34,43 @@ const ExamDetails = () => {
   const { currentExam, isLoading } = useSelector((state) => state.exams)
   
   const [analytics, setAnalytics] = useState(null)
-  const [examClasses, setExamClasses] = useState(null)
-  const [classMarksData, setClassMarksData] = useState(null)
-  const [selectedClassId, setSelectedClassId] = useState(null)
   
   const [activeTab, setActiveTab] = useState('overview')
   const [loadingTab, setLoadingTab] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(true)
   const [expandedStudent, setExpandedStudent] = useState(null)
+
+  const uniqueSubjects = useMemo(() => {
+    if (!analytics?.classWise) return [];
+    const subjSet = new Set();
+    analytics.classWise.forEach(cls => {
+      cls.subjectProgress?.forEach(sp => {
+        subjSet.add(sp.subjectName);
+      });
+    });
+    return Array.from(subjSet);
+  }, [analytics]);
 
   useEffect(() => {
     const loadData = async () => {
+      setIsInitializing(true)
       await dispatch(fetchExamById(id))
-      await loadAnalytics()
-      await loadExamClasses()
+      setIsInitializing(false)
     }
     loadData()
     
     return () => { 
       dispatch(clearCurrentExam())
-      setExamClasses(null)
       setAnalytics(null)
-      setClassMarksData(null)
     }
   }, [dispatch, id])
 
   useEffect(() => {
-    if (selectedClassId) {
-      loadClassMarksData(selectedClassId)
+    if (activeTab === 'analytics' && !analytics) {
+      setLoadingTab(true)
+      loadAnalytics().finally(() => setLoadingTab(false))
     }
-  }, [selectedClassId])
+  }, [activeTab, id, analytics])
 
   const loadAnalytics = async () => {
     try {
@@ -75,54 +83,20 @@ const ExamDetails = () => {
     }
   }
 
-  const loadExamClasses = async () => {
-    setLoadingTab(true)
-    try {
-      const res = await examService.getExamClasses(id)
-      if (res && res.data) {
-        setExamClasses(res.data)
-        const firstClassWithStudents = res.data.classes?.find(c => c.totalStudents > 0)
-        if (firstClassWithStudents) {
-          setSelectedClassId(firstClassWithStudents.classId)
-        } else if (res.data.classes?.length > 0) {
-          setSelectedClassId(res.data.classes[0].classId)
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load exam classes:', error)
-      toast.error('Failed to load class data')
-    } finally {
-      setLoadingTab(false)
-    }
-  }
-
-  const loadClassMarksData = async (classId) => {
-    setLoadingTab(true)
-    try {
-      const res = await examService.getClassMarks(id, classId)
-      if (res && res.data) {
-        setClassMarksData(res.data)
-      }
-    } catch (error) {
-      console.error('Failed to load class marks:', error)
-    } finally {
-      setLoadingTab(false)
-    }
-  }
-
   const handlePublish = async () => {
     try {
       await dispatch(publishExam(id)).unwrap()
       toast.success('Exam published successfully')
       await dispatch(fetchExamById(id))
-      await loadAnalytics()
-      await loadExamClasses()
+      if (activeTab === 'analytics') {
+        await loadAnalytics()
+      }
     } catch (error) {
       toast.error('Failed to publish exam')
     }
   }
 
-  if (isLoading || !currentExam) return <LoadingSpinner />
+  if (isInitializing || !currentExam) return <LoadingSpinner />
 
   const getStatusBadge = (status) => {
     const config = {
@@ -152,18 +126,17 @@ const ExamDetails = () => {
     return 'text-rose-600'
   }
 
-  const totalClasses = examClasses?.totalClasses || currentExam?.classIds?.length || 0
-  const classesSubmitted = examClasses?.classesSubmitted || 0
-  const classesReviewed = examClasses?.classesReviewed || 0
-  const classesPublished = examClasses?.classesPublished || 0
-  const readyForPublish = examClasses?.readyForPublish || false
+  const totalClasses = currentExam?.summary?.totalClasses || currentExam?.classIds?.length || 0
+  const classesSubmitted = currentExam?.summary?.classesSubmitted || 0
+  const classesReviewed = currentExam?.summary?.classesReviewed || 0
+  const classesPublished = currentExam?.classSubmissionStatus?.filter(cs => cs.status === 'published').length || 0
+  const readyForPublish = totalClasses > 0 && classesReviewed === totalClasses
   const overallProgress = totalClasses > 0 ? (classesSubmitted / totalClasses) * 100 : 0
 
   const tabs = [
     { id: 'overview', name: 'Overview', icon: EyeIcon },
     { id: 'schedule', name: 'Schedule', icon: CalendarIcon },
     { id: 'subjects', name: 'Subjects', icon: BookOpenIcon },
-    { id: 'classes', name: 'Classes', icon: UserGroupIcon },
     { id: 'analytics', name: 'Analytics', icon: ChartBarIcon }
   ]
 
@@ -300,7 +273,7 @@ const ExamDetails = () => {
               </div>
               <div className="flex justify-between py-1.5 border-t border-gray-100">
                 <span className="text-xs text-gray-500">Total Students</span>
-                <span className="text-xs font-medium text-gray-900">{analytics?.overallStats?.totalStudents || '-'}</span>
+                <span className="text-xs font-medium text-gray-900">{currentExam?.summary?.totalStudents || '-'}</span>
               </div>
               <div className="flex justify-between py-1.5 border-t border-gray-100">
                 <span className="text-xs text-gray-500">Total Subjects</span>
@@ -530,150 +503,6 @@ const ExamDetails = () => {
         </div>
       )}
 
-      {/* Classes Tab */}
-      {activeTab === 'classes' && !loadingTab && examClasses && (
-        <div className="space-y-4">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-white rounded-lg border border-gray-200 p-3">
-              <p className="text-xs text-gray-500">Total Classes</p>
-              <p className="text-xl font-semibold text-gray-900">{totalClasses}</p>
-            </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-3">
-              <p className="text-xs text-gray-500">Submitted</p>
-              <p className="text-xl font-semibold text-amber-600">{classesSubmitted}</p>
-            </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-3">
-              <p className="text-xs text-gray-500">Reviewed</p>
-              <p className="text-xl font-semibold text-blue-600">{classesReviewed}</p>
-            </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-3">
-              <p className="text-xs text-gray-500">Published</p>
-              <p className="text-xl font-semibold text-emerald-600">{classesPublished}</p>
-            </div>
-          </div>
-
-          {/* Classes Table */}
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-              <h2 className="text-sm font-semibold text-gray-900">Class-wise Progress</h2>
-            </div>
-            {examClasses.classes?.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200 bg-gray-50/50">
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Class</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Students</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Status</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Progress</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {examClasses.classes.map((cls, i) => (
-                      <tr key={i} className="hover:bg-gray-50/50">
-                        <td className="px-4 py-3">
-                          <div className="text-sm font-medium text-gray-900">{cls.className}</div>
-                          {cls.section && <div className="text-xs text-gray-500">{cls.section}</div>}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{cls.totalStudents}</td>
-                        <td className="px-4 py-3">{getStatusBadge(cls.status)}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-24 bg-gray-100 rounded-full h-1.5">
-                              <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${cls.marksEntryStats?.completionPercentage || 0}%` }} />
-                            </div>
-                            <span className="text-xs text-gray-600">{cls.marksEntryStats?.completionPercentage?.toFixed(1) || 0}%</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => setSelectedClassId(cls.classId)}
-                            className="text-emerald-600 hover:text-emerald-700 text-xs font-medium flex items-center gap-1"
-                          >
-                            View Marks <ChevronRightIcon className="w-3 h-3" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="p-12 text-center">
-                <UserGroupIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm text-gray-500">No classes data available.</p>
-              </div>
-            )}
-          </div>
-
-          {/* Student Marks Table */}
-          {classMarksData?.students && classMarksData.students.length > 0 && (
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                <h2 className="text-sm font-semibold text-gray-900">
-                  Student Marks - {classMarksData.className || 'Selected Class'}
-                </h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200 bg-gray-50/50">
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Student Name</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Roll No</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Subject</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Theory</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Practical</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">CE</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Total</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">%</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Grade</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {classMarksData.students.map((student, i) => (
-                      student.subjects?.map((subject, j) => (
-                        <tr key={`${student.studentId}-${j}`} className="hover:bg-gray-50/50">
-                          {j === 0 && (
-                            <>
-                              <td className="px-4 py-3 text-sm font-medium text-gray-900" rowSpan={student.subjects.length}>
-                                {student.studentName}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-600" rowSpan={student.subjects.length}>
-                                {student.rollNumber || '-'}
-                              </td>
-                            </>
-                          )}
-                          <td className="px-4 py-3 text-sm text-gray-900">{subject.subjectName}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{subject.theoryScore || 0}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{subject.practicalScore || 0}</td>
-                          <td className="px-4 py-3 text-sm text-purple-600">{subject.ceScore || 0}</td>
-                          <td className="px-4 py-3 text-sm font-semibold text-gray-900">{subject.totalScore || 0}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{subject.percentage?.toFixed(1) || 0}%</td>
-                          <td className="px-4 py-3">
-                            <span className={`inline-flex px-2 py-0.5 text-xs rounded-full ${
-                              subject.grade === 'A+' ? 'bg-emerald-50 text-emerald-700' :
-                              subject.grade === 'A' ? 'bg-green-50 text-green-700' :
-                              subject.grade === 'B+' ? 'bg-blue-50 text-blue-700' :
-                              subject.grade === 'B' ? 'bg-cyan-50 text-cyan-700' :
-                              subject.grade === 'C+' ? 'bg-amber-50 text-amber-700' :
-                              subject.grade === 'C' ? 'bg-orange-50 text-orange-700' :
-                              'bg-gray-50 text-gray-600'
-                            }`}>
-                              {subject.grade}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Analytics Tab */}
       {activeTab === 'analytics' && !loadingTab && analytics && (
@@ -694,75 +523,58 @@ const ExamDetails = () => {
             </div>
           </div>
 
-          {/* Class-wise Performance */}
+          {/* Class-wise Subject Progress */}
           {analytics.classWise && analytics.classWise.length > 0 && (
             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
               <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-900">Class-wise Performance</h3>
+                <h3 className="text-sm font-semibold text-gray-900">Marks Entry Progress</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50/50">
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Class</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Students</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Average %</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Pass %</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Grade Distribution</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 whitespace-nowrap sticky left-0 bg-gray-50/50 z-10 border-r border-gray-200">Class</th>
+                      <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 whitespace-nowrap bg-gray-50/50 border-r border-gray-200">Overall Progress</th>
+                      {uniqueSubjects.map(subj => (
+                        <th key={subj} className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 whitespace-nowrap">{subj}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {analytics.classWise.map((cls, i) => (
                       <tr key={i} className="hover:bg-gray-50/50">
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{cls.className} {cls.section && `(${cls.section})`}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{cls.totalStudents}</td>
-                        <td className="px-4 py-3 text-sm font-medium" className={getGradeColor(cls.averagePercentage)}>
-                          {cls.averagePercentage?.toFixed(1)}%
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap sticky left-0 bg-white border-r border-gray-100 z-10">
+                          {cls.className} {cls.section && `(${cls.section})`}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{cls.passPercentage?.toFixed(1)}%</td>
-                        <td className="px-4 py-3">
-                          <div className="flex flex-wrap gap-1">
-                            {Object.entries(cls.gradeDistribution || {}).map(([grade, count]) => count > 0 && (
-                              <span key={grade} className="inline-flex px-1.5 py-0.5 text-xs rounded bg-gray-100">
-                                {grade}: {count}
-                              </span>
-                            ))}
+                        <td className="px-4 py-3 text-center border-r border-gray-100 bg-gray-50/30">
+                          <div className="flex flex-col items-center gap-1">
+                            <span className={`text-sm font-bold ${cls.completionPercentage === 100 ? 'text-emerald-600' : cls.completionPercentage > 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                              {cls.completionPercentage || 0}%
+                            </span>
+                            <div className="w-16 bg-gray-200 rounded-full h-1 mt-1">
+                              <div className={`h-1 rounded-full ${cls.completionPercentage === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${cls.completionPercentage || 0}%` }} />
+                            </div>
                           </div>
                         </td>
-                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Subject-wise Performance */}
-          {analytics.subjectWise && Object.keys(analytics.subjectWise).length > 0 && (
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-900">Subject-wise Performance</h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200 bg-gray-50/50">
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Subject</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Avg Score</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Pass %</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Highest</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Lowest</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {Object.entries(analytics.subjectWise).map(([name, data]) => (
-                      <tr key={name} className="hover:bg-gray-50/50">
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{name}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{data.averageScore?.toFixed(1) || 0}%</td>
-                        <td className="px-4 py-3 text-sm text-emerald-600">{data.passPercentage?.toFixed(1) || 0}%</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{data.highestScore || 0}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{data.lowestScore || 0}</td>
-                       </tr>
+                        {uniqueSubjects.map(subjName => {
+                          const subjData = cls.subjectProgress?.find(sp => sp.subjectName === subjName);
+                          if (!subjData) return <td key={subjName} className="px-4 py-3 text-center text-sm text-gray-400">-</td>;
+                          
+                          const pct = subjData.percentage || 0;
+                          return (
+                            <td key={subjName} className="px-4 py-3 text-center">
+                              <div className="flex flex-col items-center gap-1">
+                                <span className={`text-xs font-bold ${pct === 100 ? 'text-emerald-600' : pct > 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                                  {pct}%
+                                </span>
+                                <span className="text-[10px] text-gray-400">
+                                  {subjData.currentMarks}/{subjData.expectedMarks}
+                                </span>
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
                     ))}
                   </tbody>
                 </table>

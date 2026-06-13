@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect, no-unused-vars */
 // src/pages/staff/StaffMarksEntry.jsx
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -131,7 +132,6 @@ const StaffMarksEntry = () => {
   const [currentAcademicYear, setCurrentAcademicYear] = useState(null);
 
   // ── UI state ──
-  const [activeSubjectId, setActiveSubjectId] = useState(null); // currently selected subject tab
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
@@ -188,7 +188,7 @@ const StaffMarksEntry = () => {
   // ─────────────────────────────────────────
   // Data Fetching
   // ─────────────────────────────────────────
-  const loadInitialData = async () => {
+  async function loadInitialData() {
     setIsLoading(true);
     try {
       // Only re-fetch if store is empty (skip redundant fetches on navigation)
@@ -205,7 +205,7 @@ const StaffMarksEntry = () => {
     }
   };
 
-  const getAllMyAssignedClasses = async () => {
+  async function getAllMyAssignedClasses() {
     const currentStaff = staff.find((s) => {
       const su = s.userId?._id || s.userId;
       return su === user?.id;
@@ -245,7 +245,7 @@ const StaffMarksEntry = () => {
     }
   };
 
-  const filterAvailableExams = () => {
+  function filterAvailableExams() {
     const classIds = allMyClasses.map((c) => c._id);
     const relevant = exams.filter((exam) => {
       const ecIds = (exam.classIds || []).map((cid) => cid._id || cid);
@@ -258,7 +258,7 @@ const StaffMarksEntry = () => {
     }
   };
 
-  const loadData = async () => {
+  async function loadData() {
     if (!selectedExam || !selectedClass) return;
     setIsLoading(true);
     try {
@@ -284,26 +284,19 @@ const StaffMarksEntry = () => {
           initial[student.studentId] = {};
           (student.subjects || []).forEach((subject) => {
             const key = subject.examSubjectId || subject.subjectId;
+            const isActuallyEntered = subject.isEntered || subject.theoryScore > 0 || subject.practicalScore > 0 || (subject.ceScore || subject.ceMarks) > 0 || subject.isAbsent;
             initial[student.studentId][key] = {
-              theoryScore: subject.theoryScore || 0,
-              practicalScore: subject.practicalScore || 0,
-              ceMarks: subject.ceScore || subject.ceMarks || 0,
+              theoryScore: isActuallyEntered ? (subject.theoryScore ?? 0) : "",
+              practicalScore: isActuallyEntered ? (subject.practicalScore ?? 0) : "",
+              ceMarks: isActuallyEntered ? (subject.ceScore ?? subject.ceMarks ?? 0) : "",
               isAbsent: subject.isAbsent || false,
+              isEntered: isActuallyEntered,
             };
           });
         });
         setTempMarks(initial);
 
-        // Set active subject to first allowed subject
-        if (subjects && subjects.length > 0 && !activeSubjectId) {
-          setActiveSubjectId(subjects[0].examSubjectId?.toString());
-        } else if (subjects && subjects.length > 0) {
-          // Reset if previously selected subject no longer in allowed list
-          const found = subjects.find(
-            (s) => s.examSubjectId?.toString() === activeSubjectId
-          );
-          if (!found) setActiveSubjectId(subjects[0].examSubjectId?.toString());
-        }
+        // Grid layout does not require an active subject.
       }
     } catch (e) {
       console.error("Failed to load data:", e);
@@ -313,13 +306,12 @@ const StaffMarksEntry = () => {
     }
   };
 
-  const resetClassData = () => {
+  function resetClassData() {
     setStudents([]);
     setPermissions(null);
     setExamSubjects([]);
     setSubjectProgress([]);
     setTempMarks({});
-    setActiveSubjectId(null);
     dirtyStudents.current.clear(); 
   };
 
@@ -354,13 +346,6 @@ const StaffMarksEntry = () => {
   const canDownloadPDF = (isClassTeacher || isAdmin) && allMarksEntered;
 
   // ─────────────────────────────────────────
-  // Active subject config
-  // ─────────────────────────────────────────
-  const activeSubject = examSubjects.find(
-    (s) => s.examSubjectId?.toString() === activeSubjectId?.toString()
-  );
-
-  // ─────────────────────────────────────────
   // Mark Change Handler
   // ─────────────────────────────────────────
   const handleMarkChange = (studentId, examSubjectId, field, value) => {
@@ -389,8 +374,8 @@ const StaffMarksEntry = () => {
 
     setTempMarks((prev) => {
       const sm = { ...(prev[studentId] || {}) };
-      const curr = sm[examSubjectId] || { theoryScore: 0, practicalScore: 0, ceMarks: 0, isAbsent: false };
-      sm[examSubjectId] = { ...curr, [field]: parsed === "" ? 0 : parsed };
+      const curr = sm[examSubjectId] || { theoryScore: "", practicalScore: "", ceMarks: "", isAbsent: false, isEntered: false };
+      sm[examSubjectId] = { ...curr, [field]: parsed, isEntered: true };
       return { ...prev, [studentId]: sm };
     });
   };
@@ -445,9 +430,9 @@ const StaffMarksEntry = () => {
         return {
           examSubjectId: subject.examSubjectId || subject.subjectId,
           subjectId: subject.actualSubjectId || subject.subjectId,
-          theoryScore: tm.theoryScore ?? subject.theoryScore ?? 0,
-          practicalScore: tm.practicalScore ?? subject.practicalScore ?? 0,
-          ceMarks: tm.ceMarks ?? (subject.ceMarks || subject.ceScore) ?? 0,
+          theoryScore: (tm.theoryScore === "" ? 0 : tm.theoryScore) ?? subject.theoryScore ?? 0,
+          practicalScore: (tm.practicalScore === "" ? 0 : tm.practicalScore) ?? subject.practicalScore ?? 0,
+          ceMarks: (tm.ceMarks === "" ? 0 : tm.ceMarks) ?? (subject.ceMarks || subject.ceScore) ?? 0,
           isAbsent: tm.isAbsent ?? subject.isAbsent ?? false,
           remarks: subject.remarks || "",
         };
@@ -547,13 +532,9 @@ const StaffMarksEntry = () => {
   };
 
   // ─────────────────────────────────────────
-  // Derived values for active subject row
+  // Derived values
   // ─────────────────────────────────────────
-  const activeSubjectHasPractical =
-    activeSubject?.hasPractical && (activeSubject?.practicalMaxMarks || 0) > 0;
-  const activeSubjectHasCE =
-    activeSubject?.ceEnabled && (activeSubject?.ceMaxMarks || 0) > 0;
-  const activeSubjectCanEdit = activeSubjectId ? canEditSubject(activeSubjectId) : false;
+  // Variables removed as they are computed per subject in the grid.
 
   // ─────────────────────────────────────────
   // Early returns
@@ -748,329 +729,265 @@ const StaffMarksEntry = () => {
               </div>
             )}
 
-            {/* ── Subject Selector Tabs ── */}
-            {examSubjects.length > 0 && (
-              <div className="mb-4">
-                <div className="flex gap-2 overflow-x-auto pb-1 snap-x">
-                  {examSubjects.map((subject) => {
-                    const sid = subject.examSubjectId?.toString();
-                    const isActive = sid === activeSubjectId?.toString();
-                    const canEdit = canEditSubject(sid);
-                    // Find progress for this subject
-                    const sp = subjectProgress.find(
-                      (p) => p.subjectId?.toString() === sid
-                    );
-                    const pct = sp?.percentage ?? 0;
-                    return (
-                      <button
-                        key={sid}
-                        onClick={() => setActiveSubjectId(sid)}
-                        className={`snap-start flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
-                          isActive
-                            ? "bg-emerald-600 text-white border-emerald-600 shadow-md"
-                            : "bg-white text-gray-700 border-gray-200 hover:border-emerald-300 hover:text-emerald-700"
-                        }`}
-                      >
-                        {!canEdit && <LockClosedIcon className="w-3.5 h-3.5 opacity-60" />}
-                        <span>{subject.displayName || subject.subjectName}</span>
-                        <span
-                          className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${
-                            isActive
-                              ? pct === 100
-                                ? "bg-white text-emerald-700"
-                                : "bg-emerald-500 text-white"
-                              : pct === 100
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-gray-100 text-gray-500"
-                          }`}
-                        >
-                          {pct}%
-                        </span>
-                      </button>
-                    );
-                  })}
+            {/* ── Grid Table Section ── */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-4">
+              {/* Search + Save bar */}
+              <div className="px-4 py-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                    <BookOpenIcon className="w-4 h-4 text-emerald-600" />
+                    Marks Entry Grid
+                    {!hasEditPermission && (
+                      <span className="ml-1 inline-flex items-center gap-1 text-xs text-gray-400">
+                        <LockClosedIcon className="w-3 h-3" /> View Only
+                      </span>
+                    )}
+                  </h2>
                 </div>
-              </div>
-            )}
-
-            {/* ── Mark Entry Table Section ── */}
-            {activeSubject && (
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-
-                {/* Table Header bar */}
-                <div className="px-4 py-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div>
-                    <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                      <BookOpenIcon className="w-4 h-4 text-emerald-600" />
-                      {activeSubject.displayName || activeSubject.subjectName}
-                      {!activeSubjectCanEdit && (
-                        <span className="ml-1 inline-flex items-center gap-1 text-xs text-gray-400">
-                          <LockClosedIcon className="w-3 h-3" /> View Only
-                        </span>
-                      )}
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Theory: {activeSubject.theoryMaxMarks || activeSubject.termMaxMarks || activeSubject.maxMarks}
-                      {activeSubjectHasPractical && ` · Practical: ${activeSubject.practicalMaxMarks}`}
-                      {activeSubjectHasCE && ` · CE: ${activeSubject.ceMaxMarks}`}
-                      {" · Max: "}{activeSubject.maxMarks}
-                    </p>
-                  </div>
-
-                  {/* Search + Save bar */}
-                  <div className="flex gap-2 items-center">
-                    <div className="relative">
-                      <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search student…"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-8 pr-7 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 w-40 sm:w-52"
-                      />
-                      {searchTerm && (
-                        <button
-                          onClick={() => setSearchTerm("")}
-                          className="absolute right-2 top-1/2 -translate-y-1/2"
-                        >
-                          <XMarkIcon className="w-3.5 h-3.5 text-gray-400" />
-                        </button>
-                      )}
-                    </div>
-
-                    {activeSubjectCanEdit && (
+                <div className="flex gap-2 items-center">
+                  <div className="relative">
+                    <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search student…"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-8 pr-7 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 w-40 sm:w-52"
+                    />
+                    {searchTerm && (
                       <button
-                        onClick={handleSave}
-                        disabled={isSubmitting}
-                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors whitespace-nowrap shadow-sm"
+                        onClick={() => setSearchTerm("")}
+                        className="absolute right-2 top-1/2 -translate-y-1/2"
                       >
-                        <CheckIcon className="w-3.5 h-3.5" />
-                        {isSubmitting ? "Saving…" : "Save Marks"}
+                        <XMarkIcon className="w-3.5 h-3.5 text-gray-400" />
                       </button>
                     )}
                   </div>
+                  {hasEditPermission && (
+                    <button
+                      onClick={handleSave}
+                      disabled={isSubmitting}
+                      className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors whitespace-nowrap shadow-sm"
+                    >
+                      <CheckIcon className="w-3.5 h-3.5" />
+                      {isSubmitting ? "Saving…" : "Save Marks"}
+                    </button>
+                  )}
                 </div>
-
-                {/* Scrollable Table */}
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-100">
-                        <th className="sticky left-0 bg-gray-50 z-10 px-4 py-3 text-left text-xs font-semibold text-gray-600 whitespace-nowrap min-w-[160px]">
-                          Student
-                        </th>
-                        {/* Theory */}
-                        <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 whitespace-nowrap">
-                          Theory
-                          <span className="text-gray-400 font-normal">
-                            /{activeSubject.theoryMaxMarks || activeSubject.termMaxMarks || activeSubject.maxMarks}
-                          </span>
-                        </th>
-                        {/* Practical (conditional) */}
-                        {activeSubjectHasPractical && (
-                          <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 whitespace-nowrap">
-                            Practical
-                            <span className="text-gray-400 font-normal">/{activeSubject.practicalMaxMarks}</span>
-                          </th>
-                        )}
-                        {/* CE (conditional) */}
-                        {activeSubjectHasCE && (
-                          <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 whitespace-nowrap">
-                            CE
-                            <span className="text-gray-400 font-normal">/{activeSubject.ceMaxMarks}</span>
-                          </th>
-                        )}
-                        {/* Absent */}
-                        <th className="px-3 py-3 text-center text-xs font-semibold text-gray-600 whitespace-nowrap">
-                          Absent
-                        </th>
-                        {/* Total */}
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 whitespace-nowrap">
-                          Total / Grade
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {filteredStudents.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={3 + (activeSubjectHasPractical ? 1 : 0) + (activeSubjectHasCE ? 1 : 0) + 2}
-                            className="text-center py-10 text-gray-400 text-sm"
-                          >
-                            No students found.
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredStudents.map((student, idx) => {
-                          const key = activeSubject.examSubjectId?.toString();
-                          const tm = tempMarks[student.studentId]?.[key] || {};
-                          const theory = tm.theoryScore ?? 0;
-                          const practical = tm.practicalScore ?? 0;
-                          const ce = tm.ceMarks ?? 0;
-                          const absent = tm.isAbsent ?? false;
-                          const total = absent ? 0 : theory + practical + ce;
-                          const maxM = activeSubject.maxMarks || 100;
-                          const gradeInfo = getGradeInfo(total, maxM);
-                          const theoryMax =
-                            activeSubject.theoryMaxMarks ||
-                            activeSubject.termMaxMarks ||
-                            activeSubject.maxMarks ||
-                            100;
-
-                          return (
-                            <tr
-                              key={student.studentId}
-                              className={`${
-                                idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                              } hover:bg-emerald-50/40 transition-colors`}
-                            >
-                              {/* Student Name (sticky) */}
-                              <td className={`sticky left-0 z-10 px-4 py-2.5 ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-emerald-50`}>
-                                <div className="flex items-center gap-2.5">
-                                  <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs flex-shrink-0">
-                                    {student.rollNumber || (idx + 1)}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 truncate max-w-[120px]">
-                                      {student.studentName}
-                                    </p>
-                                    <p className="text-xs text-gray-400">
-                                      {student.admissionNo || student.studentCode || "-"}
-                                    </p>
-                                  </div>
-                                </div>
-                              </td>
-
-                              {/* Theory Input */}
-                              <td className="px-3 py-2.5 text-center">
-                                <input
-                                  type="number"
-                                  value={absent ? "" : (theory || "")}
-                                  onChange={(e) =>
-                                    handleMarkChange(student.studentId, key, "theoryScore", e.target.value)
-                                  }
-                                  disabled={!activeSubjectCanEdit || absent}
-                                  min={0}
-                                  max={theoryMax}
-                                  placeholder="0"
-                                  className={`w-16 sm:w-20 text-center px-2 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors ${
-                                    !activeSubjectCanEdit || absent
-                                      ? "bg-gray-50 text-gray-400 border-gray-100 cursor-not-allowed"
-                                      : "bg-white border-gray-200 hover:border-emerald-300 text-gray-900"
-                                  }`}
-                                />
-                              </td>
-
-                              {/* Practical Input */}
-                              {activeSubjectHasPractical && (
-                                <td className="px-3 py-2.5 text-center">
-                                  <input
-                                    type="number"
-                                    value={absent ? "" : (practical || "")}
-                                    onChange={(e) =>
-                                      handleMarkChange(student.studentId, key, "practicalScore", e.target.value)
-                                    }
-                                    disabled={!activeSubjectCanEdit || absent}
-                                    min={0}
-                                    max={activeSubject.practicalMaxMarks}
-                                    placeholder="0"
-                                    className={`w-16 sm:w-20 text-center px-2 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors ${
-                                      !activeSubjectCanEdit || absent
-                                        ? "bg-gray-50 text-gray-400 border-gray-100 cursor-not-allowed"
-                                        : "bg-white border-gray-200 hover:border-emerald-300 text-gray-900"
-                                    }`}
-                                  />
-                                </td>
-                              )}
-
-                              {/* CE Input */}
-                              {activeSubjectHasCE && (
-                                <td className="px-3 py-2.5 text-center">
-                                  <input
-                                    type="number"
-                                    value={absent ? "" : (ce || "")}
-                                    onChange={(e) =>
-                                      handleMarkChange(student.studentId, key, "ceMarks", e.target.value)
-                                    }
-                                    disabled={!activeSubjectCanEdit || absent}
-                                    min={0}
-                                    max={activeSubject.ceMaxMarks}
-                                    placeholder="0"
-                                    className={`w-16 sm:w-20 text-center px-2 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-colors ${
-                                      !activeSubjectCanEdit || absent
-                                        ? "bg-gray-50 text-gray-400 border-gray-100 cursor-not-allowed"
-                                        : "bg-white border-gray-200 hover:border-emerald-300 text-gray-900"
-                                    }`}
-                                  />
-                                </td>
-                              )}
-
-                              {/* Absent Toggle */}
-                              <td className="px-3 py-2.5 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    activeSubjectCanEdit &&
-                                    handleAbsentToggle(student.studentId, key)
-                                  }
-                                  disabled={!activeSubjectCanEdit}
-                                  className={`w-8 h-8 rounded-full border-2 flex items-center justify-center mx-auto transition-all ${
-                                    absent
-                                      ? "bg-red-500 border-red-500 text-white"
-                                      : "bg-white border-gray-300 text-transparent hover:border-red-300"
-                                  } ${!activeSubjectCanEdit ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
-                                  title={absent ? "Mark as Present" : "Mark as Absent"}
-                                >
-                                  <XMarkIcon className="w-4 h-4" />
-                                </button>
-                              </td>
-
-                              {/* Total + Grade */}
-                              <td className="px-4 py-2.5 text-center">
-                                {absent ? (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-lg bg-red-50 text-red-600 text-xs font-semibold">
-                                    AB
-                                  </span>
-                                ) : (
-                                  <div className="flex flex-col items-center gap-0.5">
-                                    <span className="text-sm font-bold text-gray-900">
-                                      {total}
-                                      <span className="text-gray-400 font-normal text-xs">/{maxM}</span>
-                                    </span>
-                                    <span
-                                      className={`inline-block px-2 py-0.5 rounded-md text-xs font-semibold ${gradeInfo.color}`}
-                                    >
-                                      {gradeInfo.grade}
-                                    </span>
-                                  </div>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Table Footer Summary */}
-                {filteredStudents.length > 0 && (
-                  <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50 flex items-center justify-between text-xs text-gray-500">
-                    <span>{filteredStudents.length} student{filteredStudents.length !== 1 ? "s" : ""}</span>
-                    <span>
-                      {filteredStudents.filter((s) => {
-                        const k = activeSubject.examSubjectId?.toString();
-                        return tempMarks[s.studentId]?.[k]?.isAbsent;
-                      }).length} absent
-                    </span>
-                  </div>
-                )}
               </div>
-            )}
+
+              {/* Scrollable Table */}
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th rowSpan={2} className="sticky left-0 bg-gray-50 z-20 px-4 py-3 text-left text-xs font-semibold text-gray-600 whitespace-nowrap min-w-[160px] border-r border-gray-200">
+                        Student
+                      </th>
+                      {examSubjects.map((subj) => {
+                        const hasPrac = subj.hasPractical && subj.practicalMaxMarks > 0;
+                        const hasCE = subj.ceEnabled && subj.ceMaxMarks > 0;
+                        let colSpan = 1; // Theory
+                        if (hasPrac) colSpan++;
+                        if (hasCE) colSpan++;
+                        colSpan += 2; // Absent, Total
+                        return (
+                          <th
+                            key={subj.examSubjectId}
+                            colSpan={colSpan}
+                            className="px-3 py-2 text-center text-xs font-bold text-gray-700 whitespace-nowrap border-r border-gray-200"
+                          >
+                            {subj.displayName || subj.subjectName}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      {examSubjects.map((subj) => {
+                        const hasPrac = subj.hasPractical && subj.practicalMaxMarks > 0;
+                        const hasCE = subj.ceEnabled && subj.ceMaxMarks > 0;
+                        const theoryMax = subj.theoryMaxMarks || subj.termMaxMarks || subj.maxMarks || 100;
+                        return (
+                          <React.Fragment key={subj.examSubjectId}>
+                            <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-500 whitespace-nowrap border-l border-gray-200">
+                              Th <span className="text-gray-400">/{theoryMax}</span>
+                            </th>
+                            {hasPrac && (
+                              <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-500 whitespace-nowrap border-l border-gray-200">
+                                Pr <span className="text-gray-400">/{subj.practicalMaxMarks}</span>
+                              </th>
+                            )}
+                            {hasCE && (
+                              <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-500 whitespace-nowrap border-l border-gray-200">
+                                CE <span className="text-gray-400">/{subj.ceMaxMarks}</span>
+                              </th>
+                            )}
+                            <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-500 whitespace-nowrap border-l border-gray-200">
+                              Abs
+                            </th>
+                            <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-700 whitespace-nowrap border-l border-r border-gray-200 bg-gray-100/50">
+                              Tot <span className="text-gray-400">/{subj.maxMarks || 100}</span>
+                            </th>
+                          </React.Fragment>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredStudents.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={1 + examSubjects.length * 5}
+                          className="text-center py-10 text-gray-400 text-sm"
+                        >
+                          No students found.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredStudents.map((student, idx) => (
+                        <tr
+                          key={student.studentId}
+                          className={`${
+                            idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                          } hover:bg-emerald-50/40 transition-colors`}
+                        >
+                          {/* Student Name (sticky) */}
+                          <td className={`sticky left-0 z-10 px-4 py-2 ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-emerald-50 border-r border-gray-200`}>
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-[10px] flex-shrink-0">
+                                {student.rollNumber || (idx + 1)}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-gray-900 truncate max-w-[120px]">
+                                  {student.studentName}
+                                </p>
+                                <p className="text-[10px] text-gray-400">
+                                  {student.admissionNo || student.studentCode || "-"}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Subjects Mapping */}
+                          {examSubjects.map((subj) => {
+                            const key = subj.examSubjectId?.toString();
+                            const canEdit = canEditSubject(key);
+                            const tm = tempMarks[student.studentId]?.[key] || {};
+                            const theory = tm.theoryScore !== undefined ? tm.theoryScore : (subj.isEntered ? (subj.theoryScore ?? 0) : "");
+                            const practical = tm.practicalScore !== undefined ? tm.practicalScore : (subj.isEntered ? (subj.practicalScore ?? 0) : "");
+                            const ce = tm.ceMarks !== undefined ? tm.ceMarks : (subj.isEntered ? (subj.ceScore ?? subj.ceMarks ?? 0) : "");
+                            const absent = tm.isAbsent ?? false;
+                            const total = absent ? 0 : ((theory === "" ? 0 : theory) + (practical === "" ? 0 : practical) + (ce === "" ? 0 : ce));
+                            const maxM = subj.maxMarks || 100;
+                            const gradeInfo = getGradeInfo(total, maxM);
+                            const theoryMax = subj.theoryMaxMarks || subj.termMaxMarks || subj.maxMarks || 100;
+                            const hasPrac = subj.hasPractical && subj.practicalMaxMarks > 0;
+                            const hasCE = subj.ceEnabled && subj.ceMaxMarks > 0;
+
+                            const inputClass = `w-14 text-center px-1 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-emerald-400 transition-colors font-mono ${
+                              !canEdit || absent
+                                ? "bg-gray-50 text-gray-400 border-gray-100 cursor-not-allowed"
+                                : "bg-white border-gray-300 hover:border-emerald-300 text-gray-900 font-semibold"
+                            }`;
+
+                            return (
+                              <React.Fragment key={key}>
+                                {/* Theory */}
+                                <td className="px-1 py-1 text-center border-l border-gray-200">
+                                  <input
+                                    type="number" onWheel={(e) => e.target.blur()}
+                                    value={absent ? "" : theory}
+                                    onChange={(e) => handleMarkChange(student.studentId, key, "theoryScore", e.target.value)}
+                                    disabled={!canEdit || absent}
+                                    min={0}
+                                    max={theoryMax}
+                                    placeholder="0"
+                                    className={inputClass}
+                                  />
+                                </td>
+                                
+                                {/* Practical */}
+                                {hasPrac && (
+                                  <td className="px-1 py-1 text-center border-l border-gray-200">
+                                    <input
+                                      type="number" onWheel={(e) => e.target.blur()}
+                                      value={absent ? "" : practical}
+                                      onChange={(e) => handleMarkChange(student.studentId, key, "practicalScore", e.target.value)}
+                                      disabled={!canEdit || absent}
+                                      min={0}
+                                      max={subj.practicalMaxMarks}
+                                      placeholder="0"
+                                      className={inputClass}
+                                    />
+                                  </td>
+                                )}
+
+                                {/* CE */}
+                                {hasCE && (
+                                  <td className="px-1 py-1 text-center border-l border-gray-200">
+                                    <input
+                                      type="number" onWheel={(e) => e.target.blur()}
+                                      value={absent ? "" : ce}
+                                      onChange={(e) => handleMarkChange(student.studentId, key, "ceMarks", e.target.value)}
+                                      disabled={!canEdit || absent}
+                                      min={0}
+                                      max={subj.ceMaxMarks}
+                                      placeholder="0"
+                                      className={inputClass}
+                                    />
+                                  </td>
+                                )}
+
+                                {/* Absent Toggle */}
+                                <td className="px-1 py-1 text-center border-l border-gray-200">
+                                  <button
+                                    type="button"
+                                    onClick={() => canEdit && handleAbsentToggle(student.studentId, key)}
+                                    disabled={!canEdit}
+                                    className={`w-6 h-6 rounded border flex items-center justify-center mx-auto transition-all ${
+                                      absent
+                                        ? "bg-red-500 border-red-500 text-white"
+                                        : "bg-white border-gray-300 text-transparent hover:border-red-300"
+                                    } ${!canEdit ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+                                    title={absent ? "Mark as Present" : "Mark as Absent"}
+                                  >
+                                    <XMarkIcon className="w-3 h-3" />
+                                  </button>
+                                </td>
+
+                                {/* Total */}
+                                <td className="px-2 py-1 text-center border-l border-r border-gray-200 bg-gray-50/50">
+                                  {absent ? (
+                                    <span className="text-red-500 font-bold text-xs">AB</span>
+                                  ) : (
+                                    <div className="flex flex-col items-center">
+                                      <span className={`text-xs font-bold font-mono ${gradeInfo.color.split(' ')[0]}`}>
+                                        {total}
+                                      </span>
+                                    </div>
+                                  )}
+                                </td>
+                              </React.Fragment>
+                            );
+                          })}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Table Footer Summary */}
+              {filteredStudents.length > 0 && (
+                <div className="px-4 py-2 border-t border-gray-100 bg-gray-50 flex items-center justify-between text-xs text-gray-500">
+                  <span>{filteredStudents.length} student{filteredStudents.length !== 1 ? "s" : ""}</span>
+                </div>
+              )}
+            </div>
 
             {/* ── Sticky Save Footer ── */}
-            {activeSubjectCanEdit && filteredStudents.length > 0 && (
-              <div className="sticky bottom-3 mt-4 flex gap-2">
+            {hasEditPermission && filteredStudents.length > 0 && (
+              <div className="sticky bottom-3 mt-4 flex gap-2 z-30">
                 <button
                   onClick={handleSave}
                   disabled={isSubmitting}

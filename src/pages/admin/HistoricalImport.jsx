@@ -534,7 +534,7 @@ export default function HistoricalImport() {
                       className="flex-1 bg-white border border-gray-300 rounded px-2 py-1.5 text-gray-900 text-xs focus:border-indigo-400 outline-none"
                     />
                     <input
-                      type="number"
+                      type="number" onWheel={(e) => e.target.blur()}
                       placeholder="Max"
                       value={subj.maxMarks}
                       onChange={(e) => updateSubject(i, 'maxMarks', e.target.value)}
@@ -742,9 +742,9 @@ export default function HistoricalImport() {
               <table className="min-w-full text-sm bg-white">
                 <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
                   <tr>
-                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">SL</th>
-                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Adm No</th>
-                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Name</th>
+                    <th className="px-4 py-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap min-w-[60px]">SL</th>
+                    <th className="px-4 py-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap min-w-[100px]">Adm No</th>
+                    <th className="px-4 py-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap min-w-[200px]">Name</th>
                     <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Gen</th>
                     <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Language</th>
                     <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Cat</th>
@@ -770,9 +770,9 @@ export default function HistoricalImport() {
                       key={s._id}
                       className={`transition-colors ${i % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/40 hover:bg-gray-100/60'}`}
                     >
-                      <td className="px-3 py-2 text-gray-400 text-xs">{s.slNo || i + 1}</td>
-                      <td className="px-3 py-2 text-gray-500 text-xs font-mono">{s.admissionNo}</td>
-                      <td className="px-3 py-2 text-gray-900 font-semibold max-w-[160px] truncate text-xs">{s.name}</td>
+                      <td className="px-4 py-3 text-gray-500 text-sm">{s.slNo || i + 1}</td>
+                      <td className="px-4 py-3 text-gray-600 text-sm font-mono">{s.admissionNo}</td>
+                      <td className="px-4 py-3 text-gray-900 font-semibold min-w-[200px] text-sm">{s.name}</td>
                       <td className="px-3 py-2 text-center text-gray-500 text-xs">{s.gender}</td>
                       <td className="px-3 py-2 text-center text-gray-500 text-xs">
                         <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${

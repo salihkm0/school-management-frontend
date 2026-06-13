@@ -68,8 +68,9 @@ export const bulkCreateAttendance = createAsyncThunk(
   'attendance/bulkCreate',
   async (attendanceList, { rejectWithValue }) => {
     try {
-      const response = await attendanceService.bulkCreateAttendance(attendanceList)
-      toast.success(`Saved ${response.results?.success?.length || 0} attendance records`)
+      const response = await attendanceService.bulkCreateAttendance(attendanceList);
+      const successCount = Array.isArray(response.results?.success) ? response.results.success.length : (response.results?.success || 0);
+      toast.success(`Saved ${successCount} attendance records`)
       return response
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to save attendance')
@@ -232,7 +233,7 @@ const attendanceSlice = createSlice({
       })
       // Bulk Create
       .addCase(bulkCreateAttendance.fulfilled, (state, action) => {
-        if (action.payload.results?.success) {
+        if (Array.isArray(action.payload.results?.success)) {
           state.attendance = [...action.payload.results.success, ...state.attendance]
         }
       })
