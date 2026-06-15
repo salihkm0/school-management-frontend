@@ -3,11 +3,13 @@ import React from 'react'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import NotificationList from '../components/notifications/NotificationList'
+import SentNotificationsList from '../components/notifications/SentNotificationsList'
 import SendNotification from '../components/notifications/SendNotification'
 import { 
   BellIcon, 
   PaperAirplaneIcon,
-  InboxIcon 
+  InboxIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline'
 
 const NotificationsPage = () => {
@@ -20,11 +22,11 @@ const NotificationsPage = () => {
   const canSendNotifications = userRole === 'admin' || userRole === 'staff'
   
   const tabs = [
-    { id: 'inbox', name: 'Inbox', icon: InboxIcon, path: '/notifications' }
+    { id: 'inbox', name: 'Received', icon: InboxIcon, path: '/notifications' }
   ]
   
   if (canSendNotifications) {
-    tabs.push({ id: 'send', name: 'Send', icon: PaperAirplaneIcon, path: '/notifications/send' })
+    tabs.push({ id: 'sent', name: 'Sent', icon: DocumentTextIcon, path: '/notifications/sent' })
   }
 
   const currentPath = location.pathname
@@ -84,7 +86,7 @@ const NotificationsPage = () => {
       ) : (
         <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
           <InboxIcon className="w-4 h-4 text-emerald-600" />
-          <span className="text-sm font-medium text-gray-700">Inbox</span>
+          <span className="text-sm font-medium text-gray-700">Received</span>
           {unreadCount > 0 && (
             <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium bg-emerald-100 text-emerald-700 rounded-full">
               {unreadCount} unread
@@ -97,7 +99,12 @@ const NotificationsPage = () => {
       <div className="mt-5">
         <Routes>
           <Route index element={<NotificationList />} />
-          {canSendNotifications && <Route path="send" element={<SendNotification />} />}
+          {canSendNotifications && (
+            <>
+              <Route path="sent" element={<SentNotificationsList />} />
+              <Route path="send" element={<SendNotification />} />
+            </>
+          )}
         </Routes>
       </div>
     </div>

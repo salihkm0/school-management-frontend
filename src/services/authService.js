@@ -45,7 +45,15 @@ const authService = {
   },
 
   changePassword: async (currentPassword, newPassword) => {
-    const response = await api.post('/auth/change-password', { currentPassword, newPassword })
+    const response = await api.put('/auth/change-password', { currentPassword, newPassword })
+    return response.data
+  },
+
+  updateProfile: async (profileData) => {
+    const response = await api.put('/auth/profile', profileData)
+    if (response.data.user && !response.data.user.id && response.data.user._id) {
+      response.data.user.id = response.data.user._id
+    }
     return response.data
   },
 

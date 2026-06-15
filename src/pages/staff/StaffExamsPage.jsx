@@ -137,6 +137,7 @@ const StaffExamsPage = () => {
           setSelectedExam(classExams[0])
         } else if (classExams.length === 0) {
           setSelectedExam(null)
+          setMobileMenuOpen(true)
         }
       }
     } catch (error) {
@@ -244,9 +245,9 @@ const StaffExamsPage = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-3 sm:py-6">
         {/* Class Selection */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-4 sm:mb-6">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 sm:p-4 mb-4 sm:mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Academic Year</label>
@@ -281,24 +282,27 @@ const StaffExamsPage = () => {
           <div className="lg:hidden mb-4">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="w-full flex items-center justify-between px-4 py-3 bg-white rounded-xl border border-gray-100 shadow-sm"
+              className="w-full flex items-center justify-between px-4 py-3 bg-white rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors"
             >
-              <div className="flex items-center gap-2">
-                <Menu className="w-4 h-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">
-                  {selectedExam ? (selectedExam.displayName || selectedExam.name) : 'Select an Exam'}
-                </span>
+              <div className="flex items-center gap-3">
+                <Menu className="w-5 h-5 text-gray-500" />
+                <div className="flex flex-col items-start">
+                  <span className="text-xs text-gray-500 font-medium">Current Exam</span>
+                  <span className="text-sm font-semibold text-gray-900">
+                    {selectedExam ? (selectedExam.displayName || selectedExam.name) : 'No Exam Selected'}
+                  </span>
+                </div>
               </div>
-              <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${mobileMenuOpen ? 'rotate-90' : ''}`} />
+              <ChevronRight className={`w-5 h-5 text-gray-400 transition-transform ${mobileMenuOpen ? 'rotate-90' : ''}`} />
             </button>
           </div>
         )}
 
-        {/* Exams List - Desktop always visible, Mobile togglable */}
+        {/* Main Content Area */}
         {selectedClass && (
-          <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 ${!mobileMenuOpen && 'hidden lg:grid'}`}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Left Panel - Exams List */}
-            <div className="lg:col-span-1">
+            <div className={`lg:col-span-1 ${!mobileMenuOpen ? 'hidden lg:block' : 'block'}`}>
               <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
                   <div className="flex items-center justify-between">
@@ -333,11 +337,11 @@ const StaffExamsPage = () => {
                 
                 <div className="divide-y divide-gray-100 max-h-[400px] lg:max-h-[500px] overflow-y-auto">
                   {loadingExams ? (
-                    <div className="p-8 text-center">
+                    <div className="p-6 sm:p-8 text-center">
                       <LoadingSpinner />
                     </div>
                   ) : filteredExams.length === 0 ? (
-                    <div className="p-8 text-center">
+                    <div className="p-6 sm:p-8 text-center">
                       <BookOpen className="w-10 h-10 text-gray-300 mx-auto mb-2" />
                       <p className="text-sm text-gray-500">No exams found</p>
                       <Link
@@ -390,9 +394,9 @@ const StaffExamsPage = () => {
             </div>
 
             {/* Right Panel - Exam Details */}
-            <div className="lg:col-span-2">
+            <div className={`lg:col-span-2 ${mobileMenuOpen ? 'hidden lg:block' : 'block'}`}>
               {!selectedExam ? (
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8 sm:p-12 text-center">
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 sm:p-12 text-center">
                   <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <BookOpen className="w-8 h-8 text-gray-400" />
                   </div>
@@ -404,14 +408,14 @@ const StaffExamsPage = () => {
                   </p>
                 </div>
               ) : examLoading ? (
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8 sm:p-12 text-center">
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 sm:p-12 text-center">
                   <LoadingSpinner />
                 </div>
               ) : currentExam ? (
                 <>
                   {/* Exam Info Header */}
                   <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-4 sm:mb-6">
-                    <div className="p-4 sm:p-5 border-b border-gray-100">
+                    <div className="p-3 sm:p-5 border-b border-gray-100">
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                         <div>
                           <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
@@ -460,21 +464,12 @@ const StaffExamsPage = () => {
                               <span>Results</span>
                             </button>
                           )}
-                          {(currentExam.overallStatus === 'draft' || currentExam.overallStatus === 'submitted') && (
-                            <button
-                              onClick={() => navigate(`/staff/marks-entry?examId=${currentExam._id}&classId=${selectedClass._id}`)}
-                              className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-xs sm:text-sm flex items-center gap-1.5"
-                            >
-                              <BookOpen className="w-3.5 h-3.5" />
-                              <span>Marks</span>
-                            </button>
-                          )}
                         </div>
                       </div>
                     </div>
 
                     {/* Date Info */}
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4 p-4 sm:p-5 bg-gray-50/50 border-b border-gray-100">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-5 bg-gray-50/50 border-b border-gray-100">
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                         <div>
@@ -499,7 +494,7 @@ const StaffExamsPage = () => {
                   {/* Schedule Section */}
                   {currentExam.schedule && currentExam.schedule.length > 0 && (
                     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-4 sm:mb-6">
-                      <div className="px-4 sm:px-5 py-3 bg-gray-50/50 border-b border-gray-100">
+                      <div className="px-3 sm:px-5 py-2 sm:py-3 bg-gray-50/50 border-b border-gray-100">
                         <h3 className="text-sm font-semibold text-gray-900">Exam Schedule</h3>
                       </div>
                       <div className="overflow-x-auto">
@@ -550,7 +545,7 @@ const StaffExamsPage = () => {
                   {/* Subjects Section */}
                   {currentExam.subjects && currentExam.subjects.length > 0 && (
                     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                      <div className="px-4 sm:px-5 py-3 bg-gray-50/50 border-b border-gray-100">
+                      <div className="px-3 sm:px-5 py-2 sm:py-3 bg-gray-50/50 border-b border-gray-100">
                         <h3 className="text-sm font-semibold text-gray-900">Subjects Configuration</h3>
                       </div>
                       <div className="overflow-x-auto">

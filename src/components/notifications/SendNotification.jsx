@@ -184,8 +184,8 @@ const SendNotification = () => {
           )}
 
           {recipientType === 'user' && (
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
+            <div className="bg-white rounded-lg border border-gray-200 overflow-visible">
+              <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 rounded-t-lg">
                 <h3 className="text-sm font-semibold text-gray-900">Select User</h3>
               </div>
               <div className="p-4">

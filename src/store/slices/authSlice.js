@@ -140,6 +140,21 @@ export const resetPassword = createAsyncThunk(
   }
 )
 
+export const updateProfile = createAsyncThunk(
+  'auth/updateProfile',
+  async (profileData, { rejectWithValue }) => {
+    try {
+      const response = await authService.updateProfile(profileData)
+      toast.success('Profile updated successfully')
+      return response
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to update profile'
+      toast.error(message)
+      return rejectWithValue(message)
+    }
+  }
+)
+
 export const checkAuth = createAsyncThunk(
   'auth/checkAuth',
   async (_, { dispatch }) => {
@@ -288,6 +303,20 @@ const authSlice = createSlice({
         state.isLoading = false
       })
       .addCase(resetPassword.rejected, (state) => {
+        state.isLoading = false
+      })
+      
+      // Update Profile
+      .addCase(updateProfile.pending, (state) => {
+        state.isLoading = true
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.isLoading = false
+        if (action.payload.user) {
+          state.user = action.payload.user
+        }
+      })
+      .addCase(updateProfile.rejected, (state) => {
         state.isLoading = false
       })
   },

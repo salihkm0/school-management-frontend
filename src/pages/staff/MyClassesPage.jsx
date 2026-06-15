@@ -210,8 +210,8 @@ const MyClassesPage = () => {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center justify-between">
+          <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
               <div className="flex items-center space-x-4">
                 <div className="bg-white/20 rounded-xl p-3">
                   <AcademicCapIcon className="w-8 h-8" />
@@ -234,8 +234,8 @@ const MyClassesPage = () => {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 sm:p-12 text-center">
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AcademicCapIcon className="w-10 h-10 text-gray-400" />
             </div>
@@ -254,8 +254,8 @@ const MyClassesPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
             <div className="flex items-center space-x-4">
               <div className="bg-white/20 rounded-xl p-3">
                 <UserGroupIcon className="w-8 h-8" />
@@ -278,7 +278,7 @@ const MyClassesPage = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Academic Year Info */}
         {currentAcademicYear && (
           <div className="bg-blue-50 rounded-lg p-3 mb-4 text-sm text-blue-700">
@@ -308,8 +308,8 @@ const MyClassesPage = () => {
 
         {/* Class Info Card */}
         {selectedClass && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
-            <div className="flex justify-between items-center">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5 mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
               <div>
                 <h2 className="text-xl font-bold text-gray-800">
                   {selectedClass.displayName || `${selectedClass.name}${selectedClass.section ? ` - ${selectedClass.section}` : ''}`}
@@ -340,7 +340,7 @@ const MyClassesPage = () => {
 
         {/* Search Bar */}
         {selectedClass && classStudents.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+          <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 mb-4 sm:mb-6">
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
               <input

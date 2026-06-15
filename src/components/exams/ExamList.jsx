@@ -29,6 +29,7 @@ import useDebounce from '../../hooks/useDebounce'
 const ExamList = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const { user } = useSelector((state) => state.auth)
   const { exams, isLoading } = useSelector((state) => state.exams)
   const { academicYears } = useSelector((state) => state.academicYears)
   
@@ -135,10 +136,7 @@ const ExamList = () => {
     setOpenMenuId(null)
   }
 
-  const handleEnterMarks = (examId) => {
-    navigate(`/exams/marks?examId=${examId}`)
-    setOpenMenuId(null)
-  }
+
 
   const clearSearch = () => {
     setSearchInput('')
@@ -205,71 +203,12 @@ const ExamList = () => {
     published: exams.filter(e => e.overallStatus === 'published').length
   }
 
-  const getActionButtons = (exam) => {
-    const buttons = []
-    
-    buttons.push({ 
-      label: 'View Details', 
-      icon: EyeIcon, 
-      onClick: () => navigate(`/exams/${exam._id}`),
-      color: 'text-gray-700 hover:bg-gray-50'
-    })
-    
-    buttons.push({ 
-      label: 'Edit Exam', 
-      icon: PencilIcon, 
-      onClick: () => navigate(`/exams/${exam._id}/edit`),
-      color: 'text-gray-700 hover:bg-gray-50'
-    })
-    
-    if (exam.overallStatus !== 'published' && exam.overallStatus !== 'reviewed') {
-      buttons.push({ 
-        label: 'Enter Marks', 
-        icon: ClipboardDocumentCheckIcon, 
-        onClick: () => handleEnterMarks(exam._id),
-        color: 'text-gray-700 hover:bg-gray-50'
-      })
-    }
-    
-    if (exam.overallStatus === 'submitted') {
-      buttons.push({ 
-        label: 'Review Marks', 
-        icon: ChartBarIcon, 
-        onClick: () => handleReview(exam._id),
-        color: 'text-gray-700 hover:bg-gray-50'
-      })
-    }
-    
-    if (exam.overallStatus !== 'published' && exam.overallStatus !== 'reviewed' && exam.overallStatus !== 'submitted') {
-      buttons.push({ 
-        label: 'Publish Exam', 
-        icon: CheckBadgeIcon, 
-        onClick: () => handlePublish(exam._id),
-        color: 'text-gray-700 hover:bg-gray-50'
-      })
-    }
-    
-    buttons.push({ 
-      label: 'Clone Exam', 
-      icon: DocumentDuplicateIcon, 
-      onClick: () => { setSelectedExam(exam); setShowCloneModal(true) },
-      color: 'text-gray-700 hover:bg-gray-50'
-    })
-    
-    buttons.push({ 
-      label: 'Delete Exam', 
-      icon: TrashIcon, 
-      onClick: () => { setSelectedExam(exam); setShowDeleteModal(true) },
-      color: 'text-rose-600 hover:bg-rose-50'
-    })
-    
-    return buttons
-  }
+  // Removed getActionButtons as we will use direct card buttons
 
   const showTableLoader = isLoading || isTableLoading
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+    <div className="space-y-4 sm:space-y-5 max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-3 sm:py-6">
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -390,7 +329,7 @@ const ExamList = () => {
         )}
         
         {paginatedExams.length === 0 && !showTableLoader ? (
-          <div className="bg-white rounded-md border border-gray-200 p-12 text-center">
+          <div className="bg-white rounded-md border border-gray-200 p-8 sm:p-12 text-center">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <BookOpenIcon className="w-8 h-8 text-gray-400" />
             </div>
@@ -407,170 +346,109 @@ const ExamList = () => {
           </div>
         ) : (
           <>
-            <div className="bg-white rounded-md border border-gray-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200 bg-gray-50">
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exam</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Schedule</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Classes</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-12">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {paginatedExams.map((exam, index) => {
-                      const isLastRow = index === paginatedExams.length - 1
-                      const isNearBottom = currentPage === totalPages && isLastRow
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {paginatedExams.map((exam) => {
+                const canEditDelete = user?.role === 'admin' || exam.createdBy?._id === user?._id || exam.createdBy === user?._id;
+                
+                return (
+                  <div key={exam._id} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col">
+                    <div className="p-4 sm:p-5 border-b border-gray-100 flex-grow">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <BookOpenIcon className="w-5 h-5 text-emerald-600" />
+                          </div>
+                          <div>
+                            <h3 className="text-base font-bold text-gray-900 line-clamp-1" title={exam.displayName || exam.name}>{exam.displayName || exam.name}</h3>
+                            <p className="text-xs text-gray-500 mt-0.5">{exam.term?.charAt(0).toUpperCase() + exam.term?.slice(1)} Term</p>
+                          </div>
+                        </div>
+                        {getStatusBadge(exam.overallStatus)}
+                      </div>
                       
-                      return (
-                        <tr key={exam._id} className="hover:bg-gray-50 transition-colors group">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 bg-emerald-100 rounded-md flex items-center justify-center flex-shrink-0">
-                                <BookOpenIcon className="w-4 h-4 text-emerald-600" />
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-gray-900">{exam.displayName || exam.name}</p>
-                                <p className="text-xs text-gray-500 mt-0.5">{exam.term?.charAt(0).toUpperCase() + exam.term?.slice(1)} Term</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            {getTypeBadge(exam.examType)}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="text-sm text-gray-600">
-                              <div className="flex items-center gap-1">
-                                <CalendarIcon className="w-3.5 h-3.5 text-gray-400" />
-                                <span className="text-xs">{new Date(exam.startDate).toLocaleDateString()}</span>
-                              </div>
-                              <div className="text-xs text-gray-400 mt-0.5">
-                                to {new Date(exam.endDate).toLocaleDateString()}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1">
-                              <UsersIcon className="w-3.5 h-3.5 text-gray-400" />
-                              <span className="text-sm text-gray-600">{exam.classIds?.length || 0}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            {getStatusBadge(exam.overallStatus)}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            {/* Always show action icons on desktop */}
-                            <div className="hidden sm:flex items-center justify-end gap-1">
-                              <button
-                                onClick={() => navigate(`/exams/${exam._id}`)}
-                                className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-md hover:bg-emerald-50 transition-colors"
-                                title="View Details"
-                              >
-                                <EyeIcon className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => navigate(`/exams/${exam._id}/edit`)}
-                                className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-md hover:bg-emerald-50 transition-colors"
-                                title="Edit Exam"
-                              >
-                                <PencilIcon className="w-4 h-4" />
-                              </button>
-                              {exam.overallStatus !== 'published' && exam.overallStatus !== 'reviewed' && (
-                                <button
-                                  onClick={() => handleEnterMarks(exam._id)}
-                                  className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-md hover:bg-emerald-50 transition-colors"
-                                  title="Enter Marks"
-                                >
-                                  <ClipboardDocumentCheckIcon className="w-4 h-4" />
-                                </button>
-                              )}
-                              {exam.overallStatus === 'submitted' && (
-                                <button
-                                  onClick={() => handleReview(exam._id)}
-                                  className="p-1.5 text-gray-400 hover:text-blue-600 rounded-md hover:bg-blue-50 transition-colors"
-                                  title="Review Marks"
-                                >
-                                  <ChartBarIcon className="w-4 h-4" />
-                                </button>
-                              )}
-                              {exam.overallStatus !== 'published' && exam.overallStatus !== 'reviewed' && exam.overallStatus !== 'submitted' && (
-                                <button
-                                  onClick={() => handlePublish(exam._id)}
-                                  className="p-1.5 text-gray-400 hover:text-purple-600 rounded-md hover:bg-purple-50 transition-colors"
-                                  title="Publish Exam"
-                                >
-                                  <CheckBadgeIcon className="w-4 h-4" />
-                                </button>
-                              )}
-                              <button
-                                onClick={() => { setSelectedExam(exam); setShowCloneModal(true) }}
-                                className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-md hover:bg-emerald-50 transition-colors"
-                                title="Clone Exam"
-                              >
-                                <DocumentDuplicateIcon className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => { setSelectedExam(exam); setShowDeleteModal(true) }}
-                                className="p-1.5 text-gray-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors"
-                                title="Delete Exam"
-                              >
-                                <TrashIcon className="w-4 h-4" />
-                              </button>
-                            </div>
+                      <div className="space-y-3 mb-5">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <CalendarIcon className="w-4 h-4 text-gray-400" />
+                          <span>{new Date(exam.startDate).toLocaleDateString()} - {new Date(exam.endDate).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <UsersIcon className="w-4 h-4 text-gray-400" />
+                          <span>{exam.classIds?.length || 0} Classes Included</span>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-auto">
+                        {getTypeBadge(exam.examType)}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gray-50 px-3 sm:px-4 py-2 sm:py-3 flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+                      <button
+                        onClick={() => navigate(`/exams/${exam._id}`)}
+                        className="p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                        title="View Details"
+                      >
+                        <EyeIcon className="w-4 h-4" />
+                      </button>
+                      
+                      {canEditDelete && (
+                        <button
+                          onClick={() => navigate(`/exams/${exam._id}/edit`)}
+                          className="p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                          title="Edit Exam"
+                        >
+                          <PencilIcon className="w-4 h-4" />
+                        </button>
+                      )}
+                      
 
-                            {/* Mobile: 3-dot menu with dynamic positioning */}
-                            <div className="relative sm:hidden">
-                              <button
-                                ref={(el) => menuRefs.current[exam._id] = el}
-                                onClick={(e) => handleMenuClick(exam._id, e)}
-                                className="p-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
-                              >
-                                <EllipsisVerticalIcon className="w-5 h-5" />
-                              </button>
-                              
-                              {openMenuId === exam._id && (
-                                <div 
-                                  className={`fixed z-50 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 ${
-                                    menuPosition[exam._id] === 'top' 
-                                      ? 'bottom-full mb-2' 
-                                      : 'top-full mt-2'
-                                  }`}
-                                  style={{
-                                    left: menuRefs.current[exam._id]?.getBoundingClientRect().right - 192,
-                                  }}
-                                >
-                                  {getActionButtons(exam).map((action, idx) => (
-                                    <button
-                                      key={idx}
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        action.onClick()
-                                      }}
-                                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${action.color} transition-colors`}
-                                    >
-                                      <action.icon className="w-4 h-4" />
-                                      <span>{action.label}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                           </td>
-                         </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      {exam.overallStatus === 'submitted' && (
+                        <button
+                          onClick={() => handleReview(exam._id)}
+                          className="px-3 py-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1.5 font-medium text-sm ml-1"
+                          title="Review Marks"
+                        >
+                          <ChartBarIcon className="w-4 h-4" />
+                          <span>Review</span>
+                        </button>
+                      )}
+                      
+                      {exam.overallStatus !== 'published' && exam.overallStatus !== 'reviewed' && exam.overallStatus !== 'submitted' && (
+                        <button
+                          onClick={() => handlePublish(exam._id)}
+                          className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                          title="Publish Exam"
+                        >
+                          <CheckBadgeIcon className="w-4 h-4" />
+                        </button>
+                      )}
+                      
+                      <button
+                        onClick={() => { setSelectedExam(exam); setShowCloneModal(true) }}
+                        className="p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                        title="Clone Exam"
+                      >
+                        <DocumentDuplicateIcon className="w-4 h-4" />
+                      </button>
+                      
+                      {canEditDelete && (
+                        <button
+                          onClick={() => { setSelectedExam(exam); setShowDeleteModal(true) }}
+                          className="p-2 text-gray-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                          title="Delete Exam"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
 
-            {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 bg-white rounded-md border border-gray-200 mt-4">
-                <div className="text-xs text-gray-500">
+              <div className="flex flex-col sm:flex-row items-center sm:justify-between px-3 sm:px-4 py-3 gap-3 sm:gap-0 bg-white rounded-md border border-gray-200 mt-4">
+                <div className="text-xs text-gray-500 w-full text-center sm:text-left sm:w-auto">
                   {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredExams.length)} of {filteredExams.length}
                 </div>
                 <div className="flex items-center gap-1">

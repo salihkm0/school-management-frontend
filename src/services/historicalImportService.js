@@ -1,5 +1,6 @@
 // src/services/historicalImportService.js
 import api from './api';
+import { jobService } from './jobService';
 
 const BASE = '/historical-imports';
 
@@ -30,38 +31,32 @@ export const historicalImportService = {
    * Download class/division PDF marklist (filtered).
    * Uses axios blob response — base URL is already set on the `api` instance.
    */
-  downloadPdf: async (id, filters = {}) => {
+  downloadPdf: async (id, filters = {}, onProgress) => {
     const params = {};
     if (filters.grade) params.grade = filters.grade;
     if (filters.division) params.division = filters.division;
     if (filters.sheetName) params.sheetName = filters.sheetName;
 
-    const response = await api.get(`${BASE}/${id}/pdf`, {
-      params,
-      responseType: 'blob',
-    });
-    const blob = new Blob([response.data], { type: 'application/pdf' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    const divLabel = filters.division ? `_Div${filters.division}` : filters.grade ? `_Grade${filters.grade}` : '_All';
-    link.download = `historical_marklist_${id}${divLabel}.pdf`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+    // Get jobId from backend instead of blob
+    const { data } = await api.get(`${BASE}/${id}/pdf`, { params });
+    
+    if (data.jobId) {
+      await jobService.pollJob(data.jobId, onProgress);
+      const divLabel = filters.division ? `_Div${filters.division}` : filters.grade ? `_Grade${filters.grade}` : '_All';
+      await jobService.downloadJobResult(data.jobId, `historical_marklist_${id}${divLabel}.pdf`);
+    }
   },
 
   /**
    * Download individual student mark sheet PDF (school format).
    */
-  downloadStudentPdf: async (studentId, studentName, admNo) => {
-    const response = await api.get(`${BASE}/student/${studentId}/pdf`, {
-      responseType: 'blob',
-    });
-    const blob = new Blob([response.data], { type: 'application/pdf' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    const safeName = (studentName || 'student').replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
-    link.download = `MarkSheet_${safeName}_${admNo || studentId}.pdf`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+  downloadStudentPdf: async (studentId, studentName, admNo, onProgress) => {
+    const { data } = await api.get(`${BASE}/student/${studentId}/pdf`);
+    
+    if (data.jobId) {
+      await jobService.pollJob(data.jobId, onProgress);
+      const safeName = (studentName || 'student').replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+      await jobService.downloadJobResult(data.jobId, `MarkSheet_${safeName}_${admNo || studentId}.pdf`);
+    }
   },
 };

@@ -305,7 +305,7 @@ const StaffExamForm = () => {
   if (!myClass && !isEditing) {
     return (
       <div className="min-h-screen bg-gray-50/50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-xl border border-gray-100 p-8 text-center max-w-md">
+        <div className="bg-white rounded-xl border border-gray-100 p-6 sm:p-8 text-center max-w-md">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <BookOpen className="w-8 h-8 text-gray-400" />
           </div>
@@ -326,7 +326,7 @@ const StaffExamForm = () => {
     <div className="min-h-screen bg-gradient-to-b from-gray-50/50 to-white">
       {/* Header */}
       <div className="border-b border-gray-100 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/staff-exams')}
@@ -351,10 +351,10 @@ const StaffExamForm = () => {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-4xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-6">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           {/* Basic Info */}
-          <div className="p-6 border-b border-gray-100">
+          <div className="p-4 sm:p-6 border-b border-gray-100">
             <h2 className="text-sm font-semibold text-gray-900 mb-4">Basic Information</h2>
             <div className="space-y-4">
               <div>
@@ -368,7 +368,7 @@ const StaffExamForm = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Exam Type</label>
                   <select
@@ -416,8 +416,8 @@ const StaffExamForm = () => {
           </div>
 
           {/* Subjects Schedule */}
-          <div className="p-6">
-            <div className="flex justify-between items-center mb-4">
+          <div className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0 mb-4">
               <div>
                 <h2 className="text-sm font-semibold text-gray-900">Subjects Schedule</h2>
                 <p className="text-xs text-gray-500 mt-0.5">Add subjects with their exam dates and marks</p>
@@ -460,7 +460,7 @@ const StaffExamForm = () => {
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                         <div className="col-span-2">
                           <label className="block text-xs font-medium text-gray-600 mb-1">Subject *</label>
                           <select

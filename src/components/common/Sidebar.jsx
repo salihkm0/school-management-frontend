@@ -46,7 +46,7 @@ const menuItems = [
   // Staff-specific routes
   { path: '/staff/exams', name: 'Exams', icon: ClipboardDocumentListIcon, roles: ['staff'] },
   { path: '/staff/attendance', name: 'Attendance', icon: CalendarIcon, roles: ['staff'] },
-  { path: '/staff/mark', name: 'Mark Entry', icon: ClipboardDocumentListIcon, roles: ['staff'] },
+  { path: '/staff/marks-entry', name: 'Mark Entry', icon: ClipboardDocumentListIcon, roles: ['staff'] },
 
   // Parent-specific routes
   { path: '/my-children', name: 'My Children', icon: UserGroupIcon, roles: ['parent'] },

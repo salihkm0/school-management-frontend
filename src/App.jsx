@@ -21,6 +21,7 @@ import SettingsPage from './pages/SettingsPage'
 import PdfReports from './components/pdf/PdfReports'
 import { checkAuth } from './store/slices/authSlice'
 import useSocketInit from './hooks/useSocketInit'
+import useFCMToken from './hooks/useFCMToken.jsx'
 import { Toaster } from 'react-hot-toast'
 
 //staff pages
@@ -29,6 +30,8 @@ import MyDutiesPage from './pages/staff/MyDutiesPage'
 import StaffAttendancePage from './pages/staff/StaffAttendancePage'
 import StaffExamsPage from './pages/staff/StaffExamsPage'
 import StaffMarksEntry from './pages/staff/StaffMarksEntry'
+import ExamForm from './components/exams/ExamForm'
+import ExamReview from './components/exams/ExamReview'
 
 //parent pages
 import MyChildrenPage from './pages/parent/MyChildrenPage'
@@ -40,8 +43,11 @@ import HistoricalImport from './pages/admin/HistoricalImport'
 
 function App() {
   const dispatch = useDispatch()
-  const { isLoading } = useSelector((state) => state.auth)
+  const { isLoading, isAuthenticated } = useSelector((state) => state.auth)
   const { isConnected } = useSocketInit()
+  
+  // Initialize Firebase Cloud Messaging
+  useFCMToken(isAuthenticated)
 
   useEffect(() => {
     dispatch(checkAuth())
@@ -116,7 +122,10 @@ function App() {
           <Route path="staff/my-duties" element={<MyDutiesPage />} />
           <Route path="staff/attendance" element={<StaffAttendancePage />} />
           <Route path="staff/exams" element={<StaffExamsPage />} />
-          <Route path="staff/mark" element={<StaffMarksEntry />} />
+          <Route path="staff/exams/create" element={<ExamForm />} />
+          <Route path="staff/exams/edit/:id" element={<ExamForm />} />
+          <Route path="staff/exams/results/:examId" element={<ExamReview />} />
+          <Route path="staff/marks-entry" element={<StaffMarksEntry />} />
 
           {/* Parent routes */}
           <Route path="my-children" element={<MyChildrenPage />} />

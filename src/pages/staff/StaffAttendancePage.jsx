@@ -304,8 +304,8 @@ const StaffAttendancePage = () => {
   if (myClasses.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center shadow-sm">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 sm:p-12 text-center shadow-sm">
             <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Users className="w-8 h-8 text-emerald-500" />
             </div>
@@ -327,8 +327,8 @@ const StaffAttendancePage = () => {
     <div className="min-h-screen bg-gradient-to-b from-gray-50/50 to-white">
       {/* Header */}
       <div className="border-b border-gray-100 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
             <div className="flex items-center gap-3">
               <div className="bg-emerald-50 rounded-xl p-2.5">
                 <Calendar className="w-6 h-6 text-emerald-600" />
@@ -384,7 +384,7 @@ const StaffAttendancePage = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-6">
         {/* Class Selection */}
         {myClasses.length > 0 && (
           <div className="mb-6">
@@ -643,7 +643,7 @@ const StaffAttendancePage = () => {
 
         {/* No Data Message */}
         {!loadingSummary && selectedClass && summary?.studentDetails?.length === 0 && (
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-12 text-center">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8 sm:p-12 text-center">
             <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Users className="w-8 h-8 text-gray-400" />
             </div>

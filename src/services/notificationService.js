@@ -8,6 +8,12 @@ const notificationService = {
     return response.data
   },
 
+  getSentNotifications: async (page = 1, limit = 20) => {
+    const params = new URLSearchParams({ page, limit })
+    const response = await api.get(`/notifications/sent?${params}`)
+    return response.data
+  },
+
   markAsRead: async (notificationId) => {
     const response = await api.put(`/notifications/${notificationId}/read`)
     return response.data

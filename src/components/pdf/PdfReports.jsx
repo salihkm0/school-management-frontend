@@ -24,6 +24,43 @@ import { fetchExams } from '../../store/slices/examSlice';
 import pdfService, { openPDF, downloadPDF } from '../../services/pdfService';
 import LoadingSpinner from '../common/LoadingSpinner';
 import toast from 'react-hot-toast';
+import AsyncSelect from 'react-select/async';
+import studentService from '../../services/studentService';
+
+const ReportCard = ({ title, description, children }) => (
+  <div className="bg-white rounded-lg border border-gray-200">
+    <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 rounded-t-lg">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+          <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+        </div>
+      </div>
+    </div>
+    <div className="p-4">{children}</div>
+  </div>
+);
+
+const ActionButtons = ({ onView, onDownload, viewDisabled, downloadDisabled }) => (
+  <div className="flex gap-2">
+    <button
+      onClick={onView}
+      disabled={viewDisabled}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+    >
+      <EyeIcon className="w-4 h-4" />
+      <span className="hidden sm:inline">View</span>
+    </button>
+    <button
+      onClick={onDownload}
+      disabled={downloadDisabled}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+    >
+      <ArrowDownTrayIcon className="w-4 h-4" />
+      <span className="hidden sm:inline">Download</span>
+    </button>
+  </div>
+);
 
 const PdfReports = () => {
   const dispatch = useDispatch();
@@ -36,7 +73,7 @@ const PdfReports = () => {
   const [activeCategory, setActiveCategory] = useState('noon-meal');
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedAcademicYear, setSelectedAcademicYear] = useState('');
-  const [selectedStudent, setSelectedStudent] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedExam, setSelectedExam] = useState('');
   const [selectedStaff, setSelectedStaff] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
@@ -44,6 +81,9 @@ const PdfReports = () => {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedDistributionType, setSelectedDistributionType] = useState('');
+  const [marklistAcademicYear, setMarklistAcademicYear] = useState('');
+  const [certificateAcademicYear, setCertificateAcademicYear] = useState('');
+  const [abstractAcademicYear, setAbstractAcademicYear] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
   const [reportStation, setReportStation] = useState('KOTTUKKARA');
@@ -116,43 +156,68 @@ const PdfReports = () => {
     { id: 'staff', name: 'Staff Reports', icon: UserIcon },
     { id: 'admin', name: 'Administrative', icon: ChartBarIcon },
   ];
+  const getStudentOptions = (academicYearId = null) => {
+    let filtered = students;
+    if (academicYearId) {
+      filtered = filtered.filter(s => s.academicYearId === academicYearId || s.academicYearId?._id === academicYearId);
+    }
+    return filtered.map(s => ({
+      value: s._id,
+      label: `${s.fullName} (${s.admissionNo})`
+    }));
+  };
 
-  const ReportCard = ({ title, description, children }) => (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-            <p className="text-xs text-gray-500 mt-0.5">{description}</p>
-          </div>
-        </div>
-      </div>
-      <div className="p-4">{children}</div>
-    </div>
-  );
 
-  const ActionButtons = ({ onView, onDownload, viewDisabled, downloadDisabled }) => (
-    <div className="flex gap-2">
-      <button
-        onClick={onView}
-        disabled={viewDisabled}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-      >
-        <EyeIcon className="w-4 h-4" />
-        <span className="hidden sm:inline">View</span>
-      </button>
-      <button
-        onClick={onDownload}
-        disabled={downloadDisabled}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-      >
-        <ArrowDownTrayIcon className="w-4 h-4" />
-        <span className="hidden sm:inline">Download</span>
-      </button>
-    </div>
-  );
+  const loadStudentOptions = async (inputValue, academicYearId) => {
+    if (!inputValue) return getStudentOptions(academicYearId).slice(0, 50);
+    try {
+      const response = await studentService.getStudents({ search: inputValue, academicYearId, limit: 50 });
+      return (response.data || []).map(s => ({
+        value: s._id,
+        label: `${s.fullName} (${s.admissionNo})`
+      }));
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      return [];
+    }
+  };
 
-  if (isLoading) return <LoadingSpinner />;
+  const reactSelectStyles = {
+    control: (base, state) => ({
+      ...base,
+      borderColor: state.isFocused ? '#10b981' : '#e5e7eb',
+      boxShadow: state.isFocused ? '0 0 0 1px #10b981' : 'none',
+      '&:hover': { borderColor: state.isFocused ? '#10b981' : '#d1d5db' },
+      borderRadius: '0.5rem',
+      padding: '0.125rem',
+      fontSize: '0.875rem',
+      minHeight: '38px',
+      backgroundColor: '#ffffff',
+    }),
+    option: (base, state) => ({
+      ...base,
+      backgroundColor: state.isSelected ? '#10b981' : state.isFocused ? '#ecfdf5' : 'white',
+      color: state.isSelected ? 'white' : '#374151',
+      fontSize: '0.875rem',
+      cursor: 'pointer',
+      '&:active': { backgroundColor: '#10b981', color: 'white' }
+    }),
+    menu: (base) => ({
+      ...base,
+      borderRadius: '0.5rem',
+      zIndex: 50,
+      border: '1px solid #e5e7eb',
+      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+    }),
+    placeholder: (base) => ({
+      ...base,
+      color: '#9ca3af'
+    }),
+    singleValue: (base) => ({
+      ...base,
+      color: '#111827'
+    })
+  };  if (isLoading) return <LoadingSpinner />;
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
@@ -431,11 +496,26 @@ const PdfReports = () => {
           </ReportCard>
 
           <ReportCard title="Student Certificate" description="Generate bonafide/study certificate">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-1"><label className="block text-xs font-medium text-gray-700 mb-1">Student <span className="text-rose-500">*</span></label>
-                <select value={selectedStudent} onChange={(e) => setSelectedStudent(e.target.value)} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg">
-                  <option value="">Select Student</option>{students.map(s => (<option key={s._id} value={s._id}>{s.fullName} ({s.admissionNo})</option>))}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div className="sm:col-span-1"><label className="block text-xs font-medium text-gray-700 mb-1">Academic Year</label>
+                <select value={certificateAcademicYear} onChange={(e) => { setCertificateAcademicYear(e.target.value); setSelectedStudent(null); }} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                  <option value="">Select Year...</option>
+                  {academicYears.map(y => (<option key={y._id} value={y._id}>{y.name}</option>))}
                 </select>
+              </div>
+              <div className="sm:col-span-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Student <span className="text-rose-500">*</span></label>
+                <AsyncSelect
+                  cacheOptions
+                  defaultOptions={getStudentOptions(certificateAcademicYear).slice(0, 50)}
+                  loadOptions={(inputValue) => loadStudentOptions(inputValue, certificateAcademicYear)}
+                  value={selectedStudent}
+                  onChange={setSelectedStudent}
+                  placeholder="Search student..."
+                  styles={reactSelectStyles}
+                  isClearable
+                  isDisabled={!certificateAcademicYear}
+                />
               </div>
               <div><label className="block text-xs font-medium text-gray-700 mb-1">Date</label>
                 <input type="date" value={certificateDate} onChange={(e) => setCertificateDate(e.target.value)} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg" />
@@ -446,19 +526,34 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getCertificatePDF(selectedStudent, { date: certificateDate, place: certificatePlace }); }, {}, 'Select student')}
-                onDownload={() => handleDownloadPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getCertificatePDF(selectedStudent, { date: certificateDate, place: certificatePlace }); }, {}, `Certificate_${selectedStudent}.pdf`, 'Select student')}
+                onView={() => handleViewPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getCertificatePDF(selectedStudent?.value, { date: certificateDate, place: certificatePlace }); }, {}, 'Select student')}
+                onDownload={() => handleDownloadPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getCertificatePDF(selectedStudent?.value, { date: certificateDate, place: certificatePlace }); }, {}, `Certificate_${selectedStudent?.value}.pdf`, 'Select student')}
                 viewDisabled={!selectedStudent} downloadDisabled={!selectedStudent}
               />
             </div>
           </ReportCard>
 
           <ReportCard title="Abstract of Admission Register" description="Generate admission abstract for student">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div><label className="block text-xs font-medium text-gray-700 mb-1">Student <span className="text-rose-500">*</span></label>
-                <select value={selectedStudent} onChange={(e) => setSelectedStudent(e.target.value)} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg">
-                  <option value="">Select Student</option>{students.map(s => (<option key={s._id} value={s._id}>{s.fullName} ({s.admissionNo})</option>))}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div className="sm:col-span-1"><label className="block text-xs font-medium text-gray-700 mb-1">Academic Year</label>
+                <select value={abstractAcademicYear} onChange={(e) => { setAbstractAcademicYear(e.target.value); setSelectedStudent(null); }} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                  <option value="">Select Year...</option>
+                  {academicYears.map(y => (<option key={y._id} value={y._id}>{y.name}</option>))}
                 </select>
+              </div>
+              <div className="sm:col-span-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Student <span className="text-rose-500">*</span></label>
+                <AsyncSelect
+                  cacheOptions
+                  defaultOptions={getStudentOptions(abstractAcademicYear).slice(0, 50)}
+                  loadOptions={(inputValue) => loadStudentOptions(inputValue, abstractAcademicYear)}
+                  value={selectedStudent}
+                  onChange={setSelectedStudent}
+                  placeholder="Search student..."
+                  styles={reactSelectStyles}
+                  isClearable
+                  isDisabled={!abstractAcademicYear}
+                />
               </div>
               <div><label className="block text-xs font-medium text-gray-700 mb-1">Date</label>
                 <input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg" />
@@ -469,8 +564,8 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getAbstractPDF(selectedStudent, { date: reportDate, station: reportStation }); }, {}, 'Select student')}
-                onDownload={() => handleDownloadPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getAbstractPDF(selectedStudent, { date: reportDate, station: reportStation }); }, {}, `Abstract_${selectedStudent}.pdf`, 'Select student')}
+                onView={() => handleViewPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getAbstractPDF(selectedStudent?.value, { date: reportDate, station: reportStation }); }, {}, 'Select student')}
+                onDownload={() => handleDownloadPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getAbstractPDF(selectedStudent?.value, { date: reportDate, station: reportStation }); }, {}, `Abstract_${selectedStudent?.value}.pdf`, 'Select student')}
                 viewDisabled={!selectedStudent} downloadDisabled={!selectedStudent}
               />
             </div>
@@ -482,22 +577,38 @@ const PdfReports = () => {
       {activeCategory === 'exam' && (
         <div className="space-y-4">
           <ReportCard title="Marklist" description="Generate student marklist for exams">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><label className="block text-xs font-medium text-gray-700 mb-1">Student <span className="text-rose-500">*</span></label>
-                <select value={selectedStudent} onChange={(e) => setSelectedStudent(e.target.value)} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg">
-                  <option value="">Select Student</option>{students.map(s => (<option key={s._id} value={s._id}>{s.fullName} ({s.admissionNo})</option>))}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div><label className="block text-xs font-medium text-gray-700 mb-1">Academic Year</label>
+                <select value={marklistAcademicYear} onChange={(e) => { setMarklistAcademicYear(e.target.value); setSelectedStudent(null); setSelectedExam(''); }} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg">
+                  <option value="">Select Academic Year</option>
+                  {academicYears.map(y => (<option key={y._id} value={y._id}>{y.name}</option>))}
                 </select>
+              </div>
+              <div className="sm:col-span-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Student <span className="text-rose-500">*</span></label>
+                <AsyncSelect
+                  cacheOptions
+                  defaultOptions={getStudentOptions(marklistAcademicYear).slice(0, 50)}
+                  loadOptions={(inputValue) => loadStudentOptions(inputValue, marklistAcademicYear)}
+                  value={selectedStudent}
+                  onChange={setSelectedStudent}
+                  placeholder="Search student..."
+                  styles={reactSelectStyles}
+                  isClearable
+                  isDisabled={!marklistAcademicYear}
+                />
               </div>
               <div><label className="block text-xs font-medium text-gray-700 mb-1">Exam</label>
                 <select value={selectedExam} onChange={(e) => setSelectedExam(e.target.value)} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg">
-                  <option value="">Latest Exam</option>{exams.map(e => (<option key={e._id} value={e._id}>{e.displayName || e.name}</option>))}
+                  <option value="">Select Annual Exam</option>
+                  {exams.filter(e => e.examType === 'annual' && (!marklistAcademicYear || e.academicYearId === marklistAcademicYear || e.academicYearId?._id === marklistAcademicYear)).map(e => (<option key={e._id} value={e._id}>{e.displayName || e.name}</option>))}
                 </select>
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getMarklistPDF(selectedStudent, selectedExam); }, {}, 'Select student')}
-                onDownload={() => handleDownloadPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getMarklistPDF(selectedStudent, selectedExam); }, {}, `Marklist_${selectedStudent}.pdf`, 'Select student')}
+                onView={() => handleViewPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getMarklistPDF(selectedStudent?.value, selectedExam); }, {}, 'Select student')}
+                onDownload={() => handleDownloadPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getMarklistPDF(selectedStudent?.value, selectedExam); }, {}, `Marklist_${selectedStudent?.value}.pdf`, 'Select student')}
                 viewDisabled={!selectedStudent} downloadDisabled={!selectedStudent}
               />
             </div>

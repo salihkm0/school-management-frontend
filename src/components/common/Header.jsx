@@ -16,6 +16,7 @@ import { markAllAsRead, fetchNotifications } from '../../store/slices/notificati
 import { disconnectSocket } from '../../services/socketService'
 import useNotification from '../../hooks/useNotification'
 import { formatRelativeTime } from '../../utils/formatters'
+import { globalSearch } from '../../services/searchService'
 
 const Header = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
   const dispatch = useDispatch()
@@ -26,9 +27,32 @@ const Header = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [searchResults, setSearchResults] = useState(null)
+  const [isSearching, setIsSearching] = useState(false)
   const notificationRef = useRef(null)
   const userMenuRef = useRef(null)
   const searchRef = useRef(null)
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (searchTerm.trim()) {
+        setIsSearching(true)
+        try {
+          const results = await globalSearch(searchTerm)
+          setSearchResults(results.data)
+          setShowSearch(true)
+        } catch (error) {
+          console.error("Search failed:", error)
+        } finally {
+          setIsSearching(false)
+        }
+      } else {
+        setSearchResults(null)
+        setShowSearch(false)
+      }
+    }, 300)
+    return () => clearTimeout(delayDebounceFn)
+  }, [searchTerm])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -135,17 +159,104 @@ const Header = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
           )}
           
           {/* Desktop Search - Hidden on mobile */}
-          <div className="hidden md:flex items-center">
+          <div className="hidden md:flex items-center relative" ref={searchRef}>
             <form onSubmit={handleSearch} className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder="Search students, staff, classes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => { if (searchTerm.trim()) setShowSearch(true) }}
                 className="w-56 lg:w-72 xl:w-80 pl-9 pr-4 py-1.5 bg-gray-50 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:bg-white transition-all"
               />
+              {isSearching && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
             </form>
+
+            {/* Search Dropdown */}
+            {showSearch && searchResults && !isMobile && (
+              <div className="absolute top-full left-0 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto">
+                {searchResults.students?.length === 0 && searchResults.staff?.length === 0 && searchResults.classes?.length === 0 ? (
+                  <div className="p-4 text-sm text-center text-gray-500">No results found</div>
+                ) : (
+                  <div className="py-2">
+                    {searchResults.students?.length > 0 && (
+                      <div className="mb-2">
+                        <div className="px-3 py-1 text-xs font-semibold text-gray-500 bg-gray-50">Students</div>
+                        {searchResults.students.map(student => (
+                          <Link 
+                            key={`student-${student._id}`} 
+                            to={`/students/profile/${student._id}`}
+                            className="block px-4 py-2 hover:bg-emerald-50 transition-colors"
+                            onClick={() => { setShowSearch(false); setSearchTerm(''); }}
+                          >
+                            <div className="flex items-center gap-2">
+                              {student.photoUrl ? (
+                                <img src={student.photoUrl} alt="" className="w-6 h-6 rounded-full object-cover" />
+                              ) : (
+                                <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs font-bold">
+                                  {getInitials(student.fullName)}
+                                </div>
+                              )}
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">{student.fullName}</div>
+                                <div className="text-xs text-gray-500">Ad No: {student.admissionNo} • Class: {student.className || 'N/A'}</div>
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                    {searchResults.staff?.length > 0 && (
+                      <div className="mb-2">
+                        <div className="px-3 py-1 text-xs font-semibold text-gray-500 bg-gray-50">Staff</div>
+                        {searchResults.staff.map(staff => (
+                          <Link 
+                            key={`staff-${staff._id}`} 
+                            to={`/staff/profile/${staff._id}`}
+                            className="block px-4 py-2 hover:bg-emerald-50 transition-colors"
+                            onClick={() => { setShowSearch(false); setSearchTerm(''); }}
+                          >
+                            <div className="flex items-center gap-2">
+                              {staff.photoUrl ? (
+                                <img src={staff.photoUrl} alt="" className="w-6 h-6 rounded-full object-cover" />
+                              ) : (
+                                <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold">
+                                  {getInitials(staff.name)}
+                                </div>
+                              )}
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">{staff.name}</div>
+                                <div className="text-xs text-gray-500 capitalize">{staff.role} • {staff.staffCode}</div>
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                    {searchResults.classes?.length > 0 && (
+                      <div>
+                        <div className="px-3 py-1 text-xs font-semibold text-gray-500 bg-gray-50">Classes</div>
+                        {searchResults.classes.map(cls => (
+                          <Link 
+                            key={`class-${cls._id}`} 
+                            to={`/classes/info/${cls._id}`}
+                            className="block px-4 py-2 hover:bg-emerald-50 transition-colors"
+                            onClick={() => { setShowSearch(false); setSearchTerm(''); }}
+                          >
+                            <div className="text-sm font-medium text-gray-900">{cls.displayName || `${cls.name} - ${cls.section}`}</div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -281,22 +392,110 @@ const Header = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
 
       {/* Mobile Search Modal */}
       {showSearch && (
-        <div className="fixed inset-0 bg-white z-50 md:hidden">
-          <div className="flex items-center gap-3 p-4 border-b border-gray-200">
+        <div className="fixed inset-0 bg-white z-50 md:hidden flex flex-col">
+          <div className="flex items-center gap-3 p-4 border-b border-gray-200 shrink-0">
             <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
-            <form onSubmit={handleSearch} className="flex-1">
+            <form onSubmit={handleSearch} className="flex-1 relative">
               <input 
                 type="text" 
-                placeholder="Search..." 
+                placeholder="Search students, staff, classes..." 
                 value={searchTerm} 
                 onChange={(e) => setSearchTerm(e.target.value)} 
-                className="w-full py-2 text-base focus:outline-none" 
+                className="w-full py-2 text-base focus:outline-none bg-transparent" 
                 autoFocus 
               />
+              {isSearching && (
+                <div className="absolute right-0 top-1/2 -translate-y-1/2">
+                  <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
             </form>
-            <button onClick={() => setShowSearch(false)} className="p-2 text-gray-400 hover:text-gray-600">
+            <button onClick={() => { setShowSearch(false); setSearchTerm(''); setSearchResults(null); }} className="p-2 text-gray-400 hover:text-gray-600">
               <XMarkIcon className="w-5 h-5" />
             </button>
+          </div>
+          
+          {/* Mobile Search Results */}
+          <div className="flex-1 overflow-y-auto bg-gray-50">
+            {searchTerm && !isSearching && searchResults && (
+              searchResults.students?.length === 0 && searchResults.staff?.length === 0 && searchResults.classes?.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">No results found for "{searchTerm}"</div>
+              ) : (
+                <div className="py-2 bg-white">
+                  {searchResults.students?.length > 0 && (
+                    <div className="mb-4">
+                      <div className="px-4 py-2 text-xs font-semibold text-gray-500 bg-gray-50 uppercase tracking-wider">Students</div>
+                      {searchResults.students.map(student => (
+                        <Link 
+                          key={`mob-student-${student._id}`} 
+                          to={`/students/profile/${student._id}`}
+                          className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 active:bg-gray-50"
+                          onClick={() => { setShowSearch(false); setSearchTerm(''); }}
+                        >
+                          {student.photoUrl ? (
+                            <img src={student.photoUrl} alt="" className="w-10 h-10 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-sm font-bold">
+                              {getInitials(student.fullName)}
+                            </div>
+                          )}
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{student.fullName}</div>
+                            <div className="text-xs text-gray-500">Ad No: {student.admissionNo} • Class: {student.className || 'N/A'}</div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                  {searchResults.staff?.length > 0 && (
+                    <div className="mb-4">
+                      <div className="px-4 py-2 text-xs font-semibold text-gray-500 bg-gray-50 uppercase tracking-wider">Staff</div>
+                      {searchResults.staff.map(staff => (
+                        <Link 
+                          key={`mob-staff-${staff._id}`} 
+                          to={`/staff/profile/${staff._id}`}
+                          className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 active:bg-gray-50"
+                          onClick={() => { setShowSearch(false); setSearchTerm(''); }}
+                        >
+                          {staff.photoUrl ? (
+                            <img src={staff.photoUrl} alt="" className="w-10 h-10 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-sm font-bold">
+                              {getInitials(staff.name)}
+                            </div>
+                          )}
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{staff.name}</div>
+                            <div className="text-xs text-gray-500 capitalize">{staff.role} • {staff.staffCode}</div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                  {searchResults.classes?.length > 0 && (
+                    <div className="mb-4">
+                      <div className="px-4 py-2 text-xs font-semibold text-gray-500 bg-gray-50 uppercase tracking-wider">Classes</div>
+                      {searchResults.classes.map(cls => (
+                        <Link 
+                          key={`mob-class-${cls._id}`} 
+                          to={`/classes/info/${cls._id}`}
+                          className="flex items-center px-4 py-3 border-b border-gray-50 active:bg-gray-50"
+                          onClick={() => { setShowSearch(false); setSearchTerm(''); }}
+                        >
+                          <div className="text-sm font-medium text-gray-900">{cls.displayName || `${cls.name} - ${cls.section}`}</div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            )}
+            {!searchTerm && (
+              <div className="p-8 text-center flex flex-col items-center justify-center h-full text-gray-400">
+                <MagnifyingGlassIcon className="w-12 h-12 mb-2 text-gray-300" />
+                <p>Search for students, staff, or classes</p>
+              </div>
+            )}
           </div>
         </div>
       )}

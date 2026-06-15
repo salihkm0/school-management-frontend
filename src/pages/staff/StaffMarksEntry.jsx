@@ -546,7 +546,7 @@ const StaffMarksEntry = () => {
   if (allMyClasses.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center max-w-sm shadow-sm">
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 text-center max-w-sm shadow-sm">
           <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4">
             <AcademicCapIcon className="w-8 h-8 text-emerald-400" />
           </div>
@@ -564,7 +564,7 @@ const StaffMarksEntry = () => {
   // ─────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-full px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <div className="max-w-full px-2 sm:px-6 lg:px-8 py-3 sm:py-6">
 
         {/* ── Page Header ── */}
         <div className="flex items-center gap-3 mb-5">
@@ -718,7 +718,7 @@ const StaffMarksEntry = () => {
 
             {/* ── No Subjects ── */}
             {examSubjects.length === 0 && !isLoading && (
-              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+              <div className="bg-white rounded-xl border border-gray-200 p-6 sm:p-8 text-center">
                 <LockClosedIcon className="w-10 h-10 text-gray-300 mx-auto mb-3" />
                 <h3 className="text-sm font-semibold text-gray-700 mb-1">
                   No subjects available
@@ -838,7 +838,7 @@ const StaffMarksEntry = () => {
                       <tr>
                         <td
                           colSpan={1 + examSubjects.length * 5}
-                          className="text-center py-10 text-gray-400 text-sm"
+                          className="text-center py-6 sm:py-10 text-gray-400 text-sm"
                         >
                           No students found.
                         </td>
@@ -1011,7 +1011,7 @@ const StaffMarksEntry = () => {
 
             {/* ── No Edit Permission State ── */}
             {!hasEditPermission && examSubjects.length > 0 && !isLoading && (
-              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center mt-4">
+              <div className="bg-white rounded-xl border border-gray-200 p-6 sm:p-8 text-center mt-4">
                 <LockClosedIcon className="w-12 h-12 text-gray-200 mx-auto mb-3" />
                 <h3 className="text-sm font-semibold text-gray-700 mb-1">View Only Mode</h3>
                 <p className="text-xs text-gray-500">
@@ -1024,7 +1024,7 @@ const StaffMarksEntry = () => {
 
         {/* ── Empty: no exam+class selected ── */}
         {(!selectedExam || !selectedClass) && (
-          <div className="bg-white rounded-xl border border-dashed border-gray-300 p-10 text-center mt-4">
+          <div className="bg-white rounded-xl border border-dashed border-gray-300 p-6 sm:p-10 text-center mt-4">
             <BookOpenIcon className="w-12 h-12 text-gray-200 mx-auto mb-3" />
             <h3 className="text-sm font-semibold text-gray-600 mb-1">Select Exam & Class</h3>
             <p className="text-xs text-gray-400">

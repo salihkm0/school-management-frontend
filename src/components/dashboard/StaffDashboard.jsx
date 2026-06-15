@@ -16,16 +16,175 @@ import {
   ArrowRightIcon,
   CheckBadgeIcon,
   PlusCircleIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+  MinusIcon,
+  UsersIcon,
+  DocumentTextIcon,
+  BellIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline'
 import useSocket from '../../hooks/useSocket'
 import { fetchStaffDashboard, updateStats, addActivity } from '../../store/slices/dashboardSlice'
 import LoadingSpinner from '../common/LoadingSpinner'
 
+// Stat Card Component
+const StatCard = ({ config, value, trend }) => {
+  const Icon = config.icon
+  const display = config.unit === "₹"
+    ? `₹${Number(value || 0).toLocaleString("en-IN")}`
+    : config.suffix === '%'
+    ? `${Number(value || 0).toFixed(1)}%`
+    : Number(value || 0).toLocaleString()
+
+  const TrendIcon = trend?.value > 0 ? ArrowUpIcon : trend?.value < 0 ? ArrowDownIcon : MinusIcon
+  const trendColor = trend?.value > 0 ? "text-emerald-600" : trend?.value < 0 ? "text-rose-600" : "text-gray-500"
+
+  return (
+    <div className={`bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 ${config.animation}`}>
+      <div className="p-4">
+        <div className="flex items-start justify-between mb-3">
+          <p className="text-xs font-semibold tracking-wide text-gray-500 uppercase">{config.label}</p>
+          <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${config.bgColor}`}>
+            <Icon className={`h-5 w-5 ${config.iconColor}`} />
+          </div>
+        </div>
+        <div>
+          <div className="text-2xl font-bold text-gray-900 tracking-tight">{display}</div>
+          {trend && (
+            <div className={`flex items-center gap-0.5 text-xs font-semibold mt-1 ${trendColor}`}>
+              <TrendIcon className="w-3 h-3" />
+              <span>{Math.abs(trend.value)}%</span>
+              <span className="text-gray-400 font-normal ml-1">vs last month</span>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className={`h-0.5 bg-gradient-to-r ${config.gradient} w-0 hover:w-full transition-all duration-300`} />
+    </div>
+  )
+}
+
+// Recent Activities Component
+const RecentActivities = ({ activities = [], isLoading = false }) => {
+  const getActivityIcon = (type) => {
+    const iconMap = {
+      user_login: <UsersIcon className="w-4 h-4" />,
+      user_logout: <UsersIcon className="w-4 h-4" />,
+      student_added: <UsersIcon className="w-4 h-4" />,
+      exam_created: <BookOpenIcon className="w-4 h-4" />,
+      exam_published: <DocumentTextIcon className="w-4 h-4" />,
+      attendance_marked: <CalendarIcon className="w-4 h-4" />,
+      default: <BellIcon className="w-4 h-4" />,
+    }
+    return iconMap[type] || iconMap.default
+  }
+
+  const getActivityColor = (type) => {
+    const colorMap = {
+      user_login: 'bg-emerald-500',
+      user_logout: 'bg-gray-500',
+      student_added: 'bg-emerald-500',
+      exam_created: 'bg-purple-500',
+      exam_published: 'bg-amber-500',
+      attendance_marked: 'bg-blue-500',
+      default: 'bg-gray-500',
+    }
+    return colorMap[type] || colorMap.default
+  }
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden h-full">
+        <div className="px-4 py-3 border-b border-gray-100">
+          <div className="h-5 w-32 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+        <div className="divide-y divide-gray-100">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="px-4 py-3 animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                <div className="flex-1">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-1"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  const formatTimeAgo = (date) => {
+    if (!date) return 'Just now'
+    const now = new Date()
+    const diff = now - new Date(date)
+    const minutes = Math.floor(diff / 60000)
+    const hours = Math.floor(diff / 3600000)
+    const days = Math.floor(diff / 86400000)
+
+    if (minutes < 1) return 'Just now'
+    if (minutes < 60) return `${minutes} min ago`
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
+    return `${days} day${days > 1 ? 's' : ''} ago`
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden h-full flex flex-col">
+      <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/30">
+        <div className="flex items-center gap-2">
+          <ClockIcon className="w-4 h-4 text-gray-500" />
+          <h2 className="text-sm font-medium text-gray-900">Recent Activities</h2>
+        </div>
+        <p className="text-xs text-gray-500 mt-0.5">Latest updates</p>
+      </div>
+      <div className="divide-y divide-gray-100 flex-1 overflow-y-auto max-h-[400px]">
+        {!activities || activities.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <ClockIcon className="w-5 h-5 text-gray-400" />
+            </div>
+            <p className="text-sm text-gray-500">No recent activities</p>
+            <p className="text-xs text-gray-400 mt-1">Activities will appear here as they happen</p>
+          </div>
+        ) : (
+          activities.slice(0, 6).map((activity, index) => (
+            <div key={activity.id || index} className="px-4 py-3 hover:bg-gray-50/50 transition-colors duration-150 group">
+              <div className="flex items-start gap-3">
+                <div className="relative flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    {getActivityIcon(activity.type)}
+                  </div>
+                  <div className={`absolute -top-0.5 -right-0.5 w-2 h-2 ${getActivityColor(activity.type)} rounded-full ring-2 ring-white`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center flex-wrap gap-2 mb-0.5">
+                    <span className="text-sm font-medium text-gray-900">{activity.title}</span>
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 capitalize">
+                      {activity.performedByRole || 'System'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 line-clamp-1">{activity.description}</p>
+                  <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
+                    <ClockIcon className="w-3 h-3" />
+                    {formatTimeAgo(activity.timestamp)}
+                  </div>
+                </div>
+                <ChevronRightIcon className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
 const StaffDashboard = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { staffData: dashboardData, isLoading, error, lastUpdated } = useSelector((state) => state.dashboard || {})
-  const { user } = useSelector((state) => state.auth || {})
   const { socket, isConnected } = useSocket()
   const [showRefreshIndicator, setShowRefreshIndicator] = useState(false)
 
@@ -76,21 +235,6 @@ const StaffDashboard = () => {
     return 'Good Evening'
   }
 
-  const getPriorityColor = (priority) => {
-    switch(priority) {
-      case 'high': return 'bg-rose-50 text-rose-700 ring-1 ring-rose-600/20'
-      case 'medium': return 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20'
-      case 'low': return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20'
-      default: return 'bg-gray-50 text-gray-600 ring-1 ring-gray-500/20'
-    }
-  }
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A'
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-  }
-
   if (isLoading && !dashboardData) return <LoadingSpinner />
 
   if (error) {
@@ -110,21 +254,13 @@ const StaffDashboard = () => {
 
   // Extract data from API response
   const staffInfo = dashboardData?.staffInfo || {}
-  const quickStats = dashboardData?.quickStats || { classesTaught: 0, subjectsTaught: 0, totalStudents: 0, pendingTasks: 0 }
-  const todaySchedule = dashboardData?.todaySchedule || []
-  const pendingTasks = dashboardData?.pendingTasks || []
-  const upcomingDuties = dashboardData?.upcomingDuties || []
-  const recentActivities = dashboardData?.recentActivities || []
   const classTeacherInfo = dashboardData?.classTeacherInfo || null
+  const subjectClasses = dashboardData?.subjectClasses || []
+  const recentActivities = dashboardData?.recentActivities || []
   const academicYear = dashboardData?.academicYear || {}
 
-  // Get class teacher classes
-  const classTeacherClasses = classTeacherInfo?.classes || []
-  const averageAttendance = classTeacherInfo?.averageAttendance || '0'
-  const pendingParentRequests = classTeacherInfo?.pendingParentRequests || 0
-
   return (
-    <div className="space-y-5 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+    <div className="space-y-4 sm:space-y-5 max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-3 sm:py-6">
       {/* Refresh Indicator */}
       {showRefreshIndicator && (
         <div className="fixed bottom-4 right-4 bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs shadow-lg z-50 animate-in fade-in slide-in-from-bottom-2">
@@ -133,354 +269,181 @@ const StaffDashboard = () => {
       )}
 
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-xl p-5 text-white">
+      <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-xl p-4 sm:p-5 text-white shadow-lg">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold">
+            <h1 className="text-2xl font-bold tracking-tight">
               {greeting()}, {staffInfo.name?.split(' ')[0] || 'Teacher'}! 👋
             </h1>
-            <p className="text-emerald-100 text-sm mt-0.5">
+            <p className="text-emerald-100 text-sm mt-1">
               Staff Code: {staffInfo.staffCode || 'N/A'} • {staffInfo.role ? staffInfo.role.charAt(0).toUpperCase() + staffInfo.role.slice(1) : 'Staff'}
             </p>
             {academicYear?.name && (
               <p className="text-emerald-100/80 text-xs mt-1">{academicYear.name}</p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 bg-black/10 px-3 py-1.5 rounded-lg backdrop-blur-sm">
             {!isConnected && (
-              <div className="bg-amber-500/20 text-amber-100 px-2 py-1 rounded-lg text-xs inline-flex items-center gap-1">
-                <ExclamationCircleIcon className="w-3 h-3" />
+              <div className="text-amber-200 text-xs inline-flex items-center gap-1 font-medium">
+                <ExclamationCircleIcon className="w-4 h-4" />
                 Reconnecting...
               </div>
             )}
-            {lastUpdated && (
-              <div className="text-emerald-100/70 text-xs">
-                Updated: {new Date(lastUpdated).toLocaleTimeString()}
+            {lastUpdated && isConnected && (
+              <div className="text-emerald-50 text-xs font-medium flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                Live Sync
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500">Classes Taught</p>
-              <p className="text-2xl font-bold text-gray-900">{quickStats.classesTaught || 0}</p>
+      {/* Class Assignments */}
+      <div className="space-y-6">
+        {classTeacherInfo && classTeacherInfo.class && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <AcademicCapIcon className="w-5 h-5 text-emerald-600" />
+              <h2 className="text-lg font-semibold text-gray-900">Class Teacher For</h2>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-              <BookOpenIcon className="w-5 h-5 text-blue-500" />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500">Subjects</p>
-              <p className="text-2xl font-bold text-gray-900">{quickStats.subjectsTaught || 0}</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
-              <AcademicCapIcon className="w-5 h-5 text-purple-500" />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500">Total Students</p>
-              <p className="text-2xl font-bold text-gray-900">{quickStats.totalStudents || 0}</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-              <UserGroupIcon className="w-5 h-5 text-emerald-500" />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500">Pending Tasks</p>
-              <p className="text-2xl font-bold text-amber-600">{quickStats.pendingTasks || 0}</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
-              <ClipboardDocumentListIcon className="w-5 h-5 text-amber-500" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Today's Schedule */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="w-4 h-4 text-gray-500" />
-              <h2 className="text-sm font-semibold text-gray-900">Today's Schedule</h2>
-            </div>
-            <button onClick={() => navigate('/classes/timetable')} className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
-              View All <ArrowRightIcon className="w-3 h-3" />
-            </button>
-          </div>
-          <div className="p-4 space-y-3">
-            {todaySchedule.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <CalendarIcon className="w-6 h-6 text-gray-400" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="bg-white rounded-xl border border-emerald-100 p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-50 rounded-bl-full -z-0"></div>
+                <div className="flex items-center justify-between mb-2 relative z-10">
+                  <h3 className="text-xl font-bold text-gray-900">{classTeacherInfo.class.name}</h3>
+                  <div className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-medium">Class Teacher</div>
                 </div>
-                <p className="text-sm text-gray-500">No classes scheduled for today</p>
-                <p className="text-xs text-gray-400 mt-1">Enjoy your day off!</p>
-              </div>
-            ) : (
-              todaySchedule.slice(0, 4).map((item, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                  <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <BookOpenIcon className="w-5 h-5 text-blue-600" />
+                <div className="flex items-center gap-2 text-gray-500 text-sm mt-3 relative z-10">
+                  <UserGroupIcon className="w-4 h-4" />
+                  <span>{classTeacherInfo.class.studentCount} Students</span>
+                </div>
+                <div className="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between relative z-10">
+                  <div className="text-center">
+                    <p className="text-xs text-gray-400">Avg Attendance</p>
+                    <p className="text-sm font-semibold text-gray-700">{classTeacherInfo.averageAttendance}%</p>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{item.subject || 'Class'}</p>
-                    <p className="text-xs text-gray-500">{item.className} • {item.time || 'Regular period'}</p>
-                    {item.room && <p className="text-xs text-gray-400">Room: {item.room}</p>}
+                  <div className="text-center">
+                    <p className="text-xs text-gray-400">Requests</p>
+                    <p className="text-sm font-semibold text-gray-700">{classTeacherInfo.pendingParentRequests}</p>
                   </div>
-                  <button 
-                    onClick={() => navigate(`/attendance?classId=${item.classId}`)} 
-                    className="px-3 py-1.5 text-xs font-medium bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors whitespace-nowrap"
-                  >
-                    Mark Attendance
-                  </button>
-                </div>
-              ))
-            )}
-            {todaySchedule.length > 4 && (
-              <button onClick={() => navigate('/classes/timetable')} className="w-full text-center text-xs text-emerald-600 hover:text-emerald-700 py-2">
-                +{todaySchedule.length - 4} more classes
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Pending Tasks */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <ClipboardDocumentListIcon className="w-4 h-4 text-gray-500" />
-              <h2 className="text-sm font-semibold text-gray-900">Pending Tasks</h2>
-            </div>
-            <span className="text-xs text-gray-500">{pendingTasks.length} tasks pending</span>
-          </div>
-          <div className="p-4 space-y-3">
-            {pendingTasks.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <CheckBadgeIcon className="w-6 h-6 text-emerald-500" />
-                </div>
-                <p className="text-sm text-gray-500">No pending tasks!</p>
-                <p className="text-xs text-gray-400 mt-1">Great job staying on top of everything</p>
-              </div>
-            ) : (
-              pendingTasks.slice(0, 3).map((task) => (
-                <div 
-                  key={task.id} 
-                  className="p-3 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition-all hover:shadow-sm"
-                  onClick={() => navigate(task.link)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{task.title}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{task.description}</p>
-                      <div className="flex items-center gap-3 mt-1.5">
-                        <p className="text-xs text-gray-400">📅 Deadline: {task.deadline}</p>
-                      </div>
-                    </div>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ml-2 whitespace-nowrap ${getPriorityColor(task.priority)}`}>
-                      {task.priority}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
-            {pendingTasks.length > 3 && (
-              <button className="w-full text-center text-xs text-emerald-600 hover:text-emerald-700 py-2 font-medium">
-                View all {pendingTasks.length} tasks →
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Upcoming Duties */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <BriefcaseIcon className="w-4 h-4 text-gray-500" />
-              <h2 className="text-sm font-semibold text-gray-900">Upcoming Duties</h2>
-            </div>
-            <button onClick={() => navigate('/duties')} className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
-              View All <ArrowRightIcon className="w-3 h-3" />
-            </button>
-          </div>
-          <div className="p-4">
-            {upcomingDuties.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <BriefcaseIcon className="w-6 h-6 text-gray-400" />
-                </div>
-                <p className="text-sm text-gray-500">No upcoming duties assigned</p>
-                <p className="text-xs text-gray-400 mt-1">You're all set!</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {upcomingDuties.slice(0, 4).map((duty) => (
-                  <div key={duty.id} className="p-3 bg-amber-50 rounded-xl border border-amber-100 hover:shadow-sm transition-shadow">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-semibold text-amber-700 capitalize">{duty.type}</span>
-                      <span className="text-xs text-gray-500 bg-white px-2 py-0.5 rounded-full capitalize">{duty.shift}</span>
-                    </div>
-                    <p className="text-xs text-gray-600">📍 {duty.location}</p>
-                    <p className="text-xs text-amber-600 mt-2">📅 {formatDate(duty.date)}</p>
-                    <span className="inline-block mt-2 text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full capitalize">
-                      {duty.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {upcomingDuties.length > 4 && (
-              <button onClick={() => navigate('/duties')} className="w-full text-center text-xs text-emerald-600 hover:text-emerald-700 py-3 mt-3 font-medium">
-                View all {upcomingDuties.length} duties →
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Class Teacher Info */}
-        {classTeacherClasses.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-              <div className="flex items-center gap-2">
-                <AcademicCapIcon className="w-4 h-4 text-gray-500" />
-                <h2 className="text-sm font-semibold text-gray-900">Class Teacher Responsibilities</h2>
-              </div>
-              <p className="text-xs text-gray-500 mt-0.5">Classes you're responsible for</p>
-            </div>
-            <div className="p-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                {classTeacherClasses.map((cls) => (
-                  <div key={cls.id} className="p-3 bg-blue-50 rounded-xl border border-blue-100">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">{cls.name}</p>
-                        <p className="text-xs text-gray-500">{cls.studentCount || 0} students</p>
-                      </div>
-                      <button 
-                        onClick={() => navigate(`/attendance?classId=${cls.id}`)} 
-                        className="px-2 py-1 text-xs font-medium bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
-                      >
-                        Mark Attendance
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
-                <div className="text-center">
-                  <p className="text-xs text-gray-500">Average Attendance</p>
-                  <p className="text-xl font-bold text-emerald-600">{averageAttendance}%</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-gray-500">Pending Parent Requests</p>
-                  <p className="text-xl font-bold text-amber-600">{pendingParentRequests}</p>
                 </div>
               </div>
             </div>
           </div>
         )}
+
+        {subjectClasses.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <BookOpenIcon className="w-5 h-5 text-blue-600" />
+              <h2 className="text-lg font-semibold text-gray-900">Subjects Taught</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              {subjectClasses.map(cls => (
+                <div key={cls.id} className="bg-white rounded-xl border border-blue-100 p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-blue-50 rounded-bl-full -z-0"></div>
+                  <div className="flex items-center justify-between mb-2 relative z-10">
+                    <h3 className="text-lg font-bold text-gray-900">{cls.name}</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-2 relative z-10">
+                    {cls.subjects?.map((sub, idx) => (
+                      <span key={idx} className="bg-blue-50 border border-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-medium">
+                        {sub}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <PlusCircleIcon className="w-4 h-4 text-gray-500" />
-            <h2 className="text-sm font-semibold text-gray-900">Quick Actions</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+        {/* Main Area: Recent Activities & Info */}
+        <div className="lg:col-span-2 space-y-4 sm:space-y-5 flex flex-col">
+          {/* Quick Actions */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <PlusCircleIcon className="w-4 h-4 text-gray-500" />
+                <h2 className="text-sm font-semibold text-gray-900">Quick Actions</h2>
+              </div>
+              <p className="text-xs text-gray-500 mt-0.5">Common tasks at your fingertips</p>
+            </div>
+            <div className="p-3 sm:p-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                <button onClick={() => navigate('/attendance')} className="flex flex-col items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all group">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                    <CalendarIcon className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <span className="text-xs font-medium text-gray-700">Mark Attendance</span>
+                </button>
+                <button onClick={() => navigate('/exams/marks')} className="flex flex-col items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all group">
+                  <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                    <ClipboardDocumentListIcon className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <span className="text-xs font-medium text-gray-700">Enter Marks</span>
+                </button>
+                <button onClick={() => navigate('/classes/timetable')} className="flex flex-col items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all group">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                    <BookOpenIcon className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <span className="text-xs font-medium text-gray-700">View Schedule</span>
+                </button>
+                <button onClick={() => navigate('/reports')} className="flex flex-col items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all group">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                    <ChartBarIcon className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <span className="text-xs font-medium text-gray-700">Reports</span>
+                </button>
+              </div>
+            </div>
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">Common tasks at your fingertips</p>
-        </div>
-        <div className="p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <button onClick={() => navigate('/attendance')} className="flex flex-col items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all group">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                <CalendarIcon className="w-5 h-5 text-blue-600" />
-              </div>
-              <span className="text-xs font-medium text-gray-700">Mark Attendance</span>
-            </button>
-            <button onClick={() => navigate('/exams/marks')} className="flex flex-col items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all group">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                <ClipboardDocumentListIcon className="w-5 h-5 text-purple-600" />
-              </div>
-              <span className="text-xs font-medium text-gray-700">Enter Marks</span>
-            </button>
-            <button onClick={() => navigate('/classes/timetable')} className="flex flex-col items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all group">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                <BookOpenIcon className="w-5 h-5 text-emerald-600" />
-              </div>
-              <span className="text-xs font-medium text-gray-700">View Schedule</span>
-            </button>
-            <button onClick={() => navigate('/reports')} className="flex flex-col items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all group">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                <ChartBarIcon className="w-5 h-5 text-amber-600" />
-              </div>
-              <span className="text-xs font-medium text-gray-700">Reports</span>
-            </button>
-          </div>
-        </div>
-      </div>
 
-      {/* Staff Information Card */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <UserGroupIcon className="w-4 h-4 text-gray-500" />
-            <h2 className="text-sm font-semibold text-gray-900">Staff Information</h2>
+          {/* Staff Information Card */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <UserGroupIcon className="w-4 h-4 text-gray-500" />
+                <h2 className="text-sm font-semibold text-gray-900">Staff Information</h2>
+              </div>
+            </div>
+            <div className="p-3 sm:p-4">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                <div>
+                  <p className="text-xs text-gray-500">Full Name</p>
+                  <p className="text-sm font-medium text-gray-900">{staffInfo.name || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Staff Code</p>
+                  <p className="text-sm font-medium text-gray-900">{staffInfo.staffCode || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Role</p>
+                  <p className="text-sm font-medium text-gray-900 capitalize">{staffInfo.role || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Email</p>
+                  <p className="text-sm font-medium text-gray-900 truncate">{staffInfo.email || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Phone</p>
+                  <p className="text-sm font-medium text-gray-900">{staffInfo.phone || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Subjects Taught</p>
+                  <p className="text-sm font-medium text-gray-900">{dashboardData?.quickStats?.subjectsTaught || 0}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <p className="text-xs text-gray-500">Full Name</p>
-              <p className="text-sm font-medium text-gray-900">{staffInfo.name || '-'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Staff Code</p>
-              <p className="text-sm font-medium text-gray-900">{staffInfo.staffCode || '-'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Role</p>
-              <p className="text-sm font-medium text-gray-900 capitalize">{staffInfo.role || '-'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Email</p>
-              <p className="text-sm font-medium text-gray-900 truncate">{staffInfo.email || '-'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Phone</p>
-              <p className="text-sm font-medium text-gray-900">{staffInfo.phone || '-'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Subjects Taught</p>
-              <p className="text-sm font-medium text-gray-900">{quickStats.subjectsTaught || 0}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Classes</p>
-              <p className="text-sm font-medium text-gray-900">{quickStats.classesTaught || 0}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Total Students</p>
-              <p className="text-sm font-medium text-gray-900">{quickStats.totalStudents || 0}</p>
-            </div>
-          </div>
+
+        {/* Sidebar Area: Recent Activities */}
+        <div className="lg:col-span-1 h-[600px] flex">
+          <RecentActivities activities={recentActivities} isLoading={isLoading} />
         </div>
       </div>
     </div>
