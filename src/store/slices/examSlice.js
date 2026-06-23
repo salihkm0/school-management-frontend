@@ -15,6 +15,18 @@ export const fetchExams = createAsyncThunk(
   }
 )
 
+export const fetchStaffExams = createAsyncThunk(
+  'exams/fetchStaffExams',
+  async (academicYearId, { rejectWithValue }) => {
+    try {
+      const response = await examService.getStaffExams(academicYearId)
+      return response
+    } catch (error) {
+      return rejectWithValue(error.response?.data)
+    }
+  }
+)
+
 export const fetchExamById = createAsyncThunk(
   'exams/fetchById',
   async (id, { rejectWithValue }) => {
@@ -32,6 +44,20 @@ export const createExam = createAsyncThunk(
   async (examData, { rejectWithValue }) => {
     try {
       const response = await examService.createExam(examData)
+      toast.success('Exam created successfully')
+      return response
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to create exam')
+      return rejectWithValue(error.response?.data)
+    }
+  }
+)
+
+export const createStaffExam = createAsyncThunk(
+  'exams/createStaffExam',
+  async (examData, { rejectWithValue }) => {
+    try {
+      const response = await examService.createStaffExam(examData)
       toast.success('Exam created successfully')
       return response
     } catch (error) {
@@ -305,6 +331,19 @@ const examSlice = createSlice({
         state.error = action.payload?.message
       })
       
+      // Fetch Staff Exams
+      .addCase(fetchStaffExams.pending, (state) => {
+        state.isLoading = true
+      })
+      .addCase(fetchStaffExams.fulfilled, (state, action) => {
+        state.isLoading = false
+        state.exams = action.payload.data || action.payload || []
+      })
+      .addCase(fetchStaffExams.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.payload?.message
+      })
+      
       // Fetch Exam By Id
       .addCase(fetchExamById.pending, (state) => {
         state.isLoading = true
@@ -335,6 +374,12 @@ const examSlice = createSlice({
       
       // Create Exam
       .addCase(createExam.fulfilled, (state, action) => {
+        const newExam = action.payload.data || action.payload
+        state.exams.unshift(newExam)
+      })
+      
+      // Create Staff Exam
+      .addCase(createStaffExam.fulfilled, (state, action) => {
         const newExam = action.payload.data || action.payload
         state.exams.unshift(newExam)
       })

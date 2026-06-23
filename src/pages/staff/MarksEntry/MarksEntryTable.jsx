@@ -2,7 +2,7 @@
 // src/pages/staff/StaffMarksEntry.jsx
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   BookOpenIcon,
   AcademicCapIcon,
@@ -19,25 +19,25 @@ import {
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import { CheckIcon } from "@heroicons/react/24/solid";
-import { fetchExams } from "../../store/slices/examSlice";
-import { fetchClasses } from "../../store/slices/classSlice";
-import { fetchStaff } from "../../store/slices/staffSlice";
-import { fetchAcademicYears } from "../../store/slices/academicYearSlice";
+import { fetchExams, fetchStaffExams } from "../../../store/slices/examSlice";
+import { fetchClasses } from "../../../store/slices/classSlice";
+import { fetchStaff } from "../../../store/slices/staffSlice";
+import { fetchAcademicYears } from "../../../store/slices/academicYearSlice";
 import {
   fetchTeacherClassTeacherClasses,
   clearTeacherClasses,
-} from "../../store/slices/classSlice";
+} from "../../../store/slices/classSlice";
 
 import {
   getMarksheetsByClass,
   bulkUpdateMarks,
   getTeacherPermissions,
   submitMarksForReview,
-} from "../../services/markService";
-import { generateClassReportCardsPDF } from "../../services/analyticsService";
-import LoadingSpinner from "../../components/common/LoadingSpinner.jsx";
+} from "../../../services/markService";
+import { generateClassReportCardsPDF } from "../../../services/analyticsService";
+import LoadingSpinner from "../../../components/common/LoadingSpinner.jsx";
 import toast from "react-hot-toast";
-import useDebounce from "../../hooks/useDebounce";
+import useDebounce from "../../../hooks/useDebounce";
 
 // ─────────────────────────────────────────────
 // Helper: compute grade label from percentage
@@ -97,11 +97,9 @@ const SubjectProgressCard = ({ subject }) => {
 // ─────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────
-const StaffMarksEntry = () => {
+const MarksEntryTable = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const examIdFromUrl = searchParams.get("examId");
-  const classIdFromUrl = searchParams.get("classId");
+  const { examId, classId } = useParams();
 
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
@@ -112,15 +110,6 @@ const StaffMarksEntry = () => {
   );
   const { academicYears } = useSelector((s) => s.academicYears);
   const { classes } = useSelector((s) => s.classes);
-
-  // ── Selection state ──
-  const [myClasses, setMyClasses] = useState([]);
-  const [mySubjectTeacherClasses, setMySubjectTeacherClasses] = useState([]);
-  const [allMyClasses, setAllMyClasses] = useState([]);
-  const [availableExams, setAvailableExams] = useState([]);
-  const [selectedExam, setSelectedExam] = useState(examIdFromUrl || "");
-  const [selectedClass, setSelectedClass] = useState(classIdFromUrl || "");
-  const [availableClassesForExam, setAvailableClassesForExam] = useState([]);
 
   // ── Data state ──
   const [students, setStudents] = useState([]);
@@ -147,43 +136,15 @@ const StaffMarksEntry = () => {
   // ─────────────────────────────────────────
   useEffect(() => {
     loadInitialData();
-    return () => { dispatch(clearTeacherClasses()); };
   }, [dispatch]);
 
   useEffect(() => {
-    if (academicYears.length > 0) {
-      setCurrentAcademicYear(academicYears.find((y) => y.isCurrent));
+    if (examId && classId) {
+      loadData();
+    } else {
+      resetClassData();
     }
-  }, [academicYears]);
-
-  useEffect(() => {
-    if (staff.length > 0 && user && currentAcademicYear && allMyClasses.length === 0) {
-      getAllMyAssignedClasses();
-    }
-  }, [staff, user, currentAcademicYear]);
-
-  useEffect(() => {
-    if (allMyClasses.length > 0 && exams.length > 0) filterAvailableExams();
-  }, [exams, allMyClasses]);
-
-  useEffect(() => {
-    if (selectedExam && allMyClasses.length > 0) {
-      const examData = exams.find((e) => e._id === selectedExam);
-      if (examData?.classIds) {
-        const examClassIds = examData.classIds.map((cid) => cid._id || cid);
-        const filtered = allMyClasses.filter((cls) => examClassIds.includes(cls._id));
-        setAvailableClassesForExam(filtered);
-        if (selectedClass && !filtered.find((c) => c._id === selectedClass)) {
-          resetClassData();
-        }
-      }
-    }
-  }, [selectedExam, allMyClasses, exams]);
-
-  useEffect(() => {
-    if (selectedExam && selectedClass) loadData();
-    else resetClassData();
-  }, [selectedExam, selectedClass]);
+  }, [examId, classId]);
 
   // ─────────────────────────────────────────
   // Data Fetching
@@ -191,11 +152,8 @@ const StaffMarksEntry = () => {
   async function loadInitialData() {
     setIsLoading(true);
     try {
-      // Only re-fetch if store is empty (skip redundant fetches on navigation)
       const fetchTasks = [];
-      if (exams.length === 0) fetchTasks.push(dispatch(fetchExams({ limit: 100 })));
-      if (classes.length === 0) fetchTasks.push(dispatch(fetchClasses({ limit: 100 })));
-      if (staff.length === 0) fetchTasks.push(dispatch(fetchStaff({ limit: 100 })));
+      if (classes.length === 0) fetchTasks.push(dispatch(fetchClasses({ limit: 1000 })));
       if (academicYears.length === 0) fetchTasks.push(dispatch(fetchAcademicYears({ limit: 10 })));
       if (fetchTasks.length > 0) await Promise.all(fetchTasks);
     } catch (e) {
@@ -205,66 +163,13 @@ const StaffMarksEntry = () => {
     }
   };
 
-  async function getAllMyAssignedClasses() {
-    const currentStaff = staff.find((s) => {
-      const su = s.userId?._id || s.userId;
-      return su === user?.id;
-    });
-    if (!currentStaff) return;
-    const staffId = currentStaff._id;
-
-    try {
-      const ctResult = await dispatch(
-        fetchTeacherClassTeacherClasses({
-          teacherId: staffId,
-          academicYearId: currentAcademicYear?._id,
-        })
-      ).unwrap();
-      const ctClasses = ctResult?.data || [];
-      setMyClasses(ctClasses);
-
-      const allClassesResult = await dispatch(fetchClasses({ limit: 100 })).unwrap();
-      const classesList = allClassesResult.data || [];
-
-      const stClasses = classesList.filter((cls) =>
-        (cls.subjectTeachers || []).some(
-          (st) => st.teacherId?._id === staffId || st.teacherId === staffId
-        )
-      );
-      setMySubjectTeacherClasses(stClasses);
-
-      const allAssigned = [...ctClasses, ...stClasses];
-      const unique = Array.from(new Map(allAssigned.map((c) => [c._id, c])).values());
-      setAllMyClasses(unique);
-
-      if (classIdFromUrl && unique.find((c) => c._id === classIdFromUrl)) {
-        setSelectedClass(classIdFromUrl);
-      }
-    } catch (e) {
-      console.error("Failed to fetch teacher classes:", e);
-    }
-  };
-
-  function filterAvailableExams() {
-    const classIds = allMyClasses.map((c) => c._id);
-    const relevant = exams.filter((exam) => {
-      const ecIds = (exam.classIds || []).map((cid) => cid._id || cid);
-      return ecIds.some((cid) => classIds.includes(cid));
-    });
-    relevant.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
-    setAvailableExams(relevant);
-    if (examIdFromUrl && relevant.find((e) => e._id === examIdFromUrl)) {
-      setSelectedExam(examIdFromUrl);
-    }
-  };
-
   async function loadData() {
-    if (!selectedExam || !selectedClass) return;
+    if (!examId || !classId) return;
     setIsLoading(true);
     try {
       const [permRes, markRes] = await Promise.all([
-        getTeacherPermissions(selectedExam, selectedClass),
-        getMarksheetsByClass(selectedExam, selectedClass),
+        getTeacherPermissions(examId, classId),
+        getMarksheetsByClass(examId, classId),
       ]);
 
       setPermissions(permRes.data);
@@ -406,8 +311,8 @@ const StaffMarksEntry = () => {
   // Save Handler
   // ─────────────────────────────────────────
   const handleSave = async () => {
-    if (!selectedExam || !selectedClass) {
-      toast.error("Please select exam and class");
+    if (!examId || !classId) {
+      toast.error("Invalid exam or class");
       return;
     }
 
@@ -434,6 +339,7 @@ const StaffMarksEntry = () => {
           practicalScore: (tm.practicalScore === "" ? 0 : tm.practicalScore) ?? subject.practicalScore ?? 0,
           ceMarks: (tm.ceMarks === "" ? 0 : tm.ceMarks) ?? (subject.ceMarks || subject.ceScore) ?? 0,
           isAbsent: tm.isAbsent ?? subject.isAbsent ?? false,
+          isEntered: tm.isEntered ?? subject.isEntered ?? false,
           remarks: subject.remarks || "",
         };
       }),
@@ -442,7 +348,7 @@ const StaffMarksEntry = () => {
 
     setIsSubmitting(true);
     try {
-      await bulkUpdateMarks(selectedExam, selectedClass, studentsData);
+      await bulkUpdateMarks(examId, classId, studentsData);
       toast.success(`Saved marks for ${targetStudents.length} student${targetStudents.length !== 1 ? 's' : ''}!`);
       dirtyStudents.current.clear(); // clear dirty set after successful save
       await loadData();
@@ -455,14 +361,16 @@ const StaffMarksEntry = () => {
   };
 
   const handleSubmitForReview = async () => {
-    if (!permissions?.canSubmit) {
-      toast.error("You don't have permission to submit for review");
+    if (!examId || !classId) return;
+    if (dirtyStudents.current.size > 0) {
+      toast.error("Please save your changes first");
       return;
     }
-    if (!window.confirm("Submit all marks for review? You won't be able to edit after submission.")) return;
+    if (!window.confirm("Submit marks for review? They will be locked for editing.")) return;
+
     setIsSubmitting(true);
     try {
-      await submitMarksForReview(selectedExam, selectedClass);
+      await submitMarksForReview(examId, classId);
       toast.success("Marks submitted for review successfully");
       await loadData();
     } catch (e) {
@@ -477,21 +385,14 @@ const StaffMarksEntry = () => {
   // PDF Download
   // ─────────────────────────────────────────
   const handleDownloadClassPDF = async () => {
-    if (!canDownloadPDF) {
-      if (!allMarksEntered) {
-        toast.error("All student marks must be entered before downloading the report.");
-      } else {
-        toast.error("Only class teachers and admins can download class reports.");
-      }
-      return;
-    }
+    if (!examId || !classId) return;
     setIsDownloadingPDF(true);
     try {
-      const pdfBlob = await generateClassReportCardsPDF(selectedClass, selectedExam);
+      const pdfBlob = await generateClassReportCardsPDF(examId, classId);
       const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Class_ReportCards_${selectedClass}_${selectedExam}.pdf`;
+      a.download = `Class_ReportCards_${classId}_${examId}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -526,37 +427,11 @@ const StaffMarksEntry = () => {
     return classItem.displayName || classItem.name || classItem._id;
   };
 
-  const getExamClassIds = () => {
-    const examData = exams.find((e) => e._id === selectedExam);
-    return examData?.classIds || examData?.classes || [];
-  };
-
-  // ─────────────────────────────────────────
-  // Derived values
-  // ─────────────────────────────────────────
-  // Variables removed as they are computed per subject in the grid.
-
   // ─────────────────────────────────────────
   // Early returns
   // ─────────────────────────────────────────
   if (isLoading || staffLoading || examsLoading || classesLoading) {
     return <LoadingSpinner />;
-  }
-
-  if (allMyClasses.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 text-center max-w-sm shadow-sm">
-          <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AcademicCapIcon className="w-8 h-8 text-emerald-400" />
-          </div>
-          <h3 className="text-base font-semibold text-gray-800 mb-1">No Classes Assigned</h3>
-          <p className="text-sm text-gray-500">
-            You are not assigned to any classes as a class teacher or subject teacher.
-          </p>
-        </div>
-      </div>
-    );
   }
 
   // ─────────────────────────────────────────
@@ -569,7 +444,7 @@ const StaffMarksEntry = () => {
         {/* ── Page Header ── */}
         <div className="flex items-center gap-3 mb-5">
           <button
-            onClick={() => navigate("/staff-exams")}
+            onClick={() => navigate("..")}
             className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-white border border-transparent hover:border-gray-200 transition-all"
           >
             <ArrowLeftIcon className="w-5 h-5" />
@@ -577,7 +452,9 @@ const StaffMarksEntry = () => {
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Marks Entry</h1>
             <p className="text-xs text-gray-500 mt-0.5">
-              {isClassTeacher
+              {user?.role === 'admin'
+                ? "Admin – Enter marks for any class and subject"
+                : isClassTeacher
                 ? "Class Teacher – Enter marks for your subject(s)"
                 : hasEditPermission
                 ? "Subject Teacher – Enter marks for your assigned subject(s)"
@@ -586,71 +463,8 @@ const StaffMarksEntry = () => {
           </div>
         </div>
 
-        {/* ── Selection Row ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-          {/* Exam */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
-              <AcademicCapIcon className="w-4 h-4 text-emerald-600" />
-              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Exam</span>
-            </div>
-            <div className="p-3">
-              <select
-                value={selectedExam}
-                onChange={(e) => {
-                  setSelectedExam(e.target.value);
-                  setSelectedClass("");
-                  resetClassData();
-                  setAvailableClassesForExam([]);
-                }}
-                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-              >
-                <option value="">Choose an exam…</option>
-                {availableExams.map((e) => (
-                  <option key={e._id} value={e._id}>
-                    {e.displayName || e.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Class */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
-              <UserGroupIcon className="w-4 h-4 text-emerald-600" />
-              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Class</span>
-            </div>
-            <div className="p-3">
-              <select
-                value={selectedClass}
-                onChange={(e) => {
-                  setSelectedClass(e.target.value);
-                  resetClassData();
-                }}
-                disabled={!selectedExam}
-                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
-              >
-                <option value="">Choose a class…</option>
-                {getExamClassIds().map((classId) => {
-                  const cls = getClassById(classId);
-                  if (!cls) return null;
-                  const isCT = myClasses.some((c) => c._id === cls._id);
-                  const isST = mySubjectTeacherClasses.some((c) => c._id === cls._id);
-                  const badge = isCT ? " (Class Teacher)" : isST ? " (Subject Teacher)" : "";
-                  return (
-                    <option key={cls._id} value={cls._id}>
-                      {getClassDisplayName(cls)}{badge}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Content Area (after selections) ── */}
-        {selectedExam && selectedClass && (
+        {/* ── Content Area ── */}
+        {examId && classId && (
           <>
             {/* ── Subject Progress Panel ── */}
             {subjectProgress.length > 0 && (
@@ -787,10 +601,10 @@ const StaffMarksEntry = () => {
                       {examSubjects.map((subj) => {
                         const hasPrac = subj.hasPractical && subj.practicalMaxMarks > 0;
                         const hasCE = subj.ceEnabled && subj.ceMaxMarks > 0;
-                        let colSpan = 1; // Theory
+                        let colSpan = 1; // TE
                         if (hasPrac) colSpan++;
                         if (hasCE) colSpan++;
-                        colSpan += 2; // Absent, Total
+                        colSpan += 3; // Absent, Total, Grade
                         return (
                           <th
                             key={subj.examSubjectId}
@@ -809,24 +623,27 @@ const StaffMarksEntry = () => {
                         const theoryMax = subj.theoryMaxMarks || subj.termMaxMarks || subj.maxMarks || 100;
                         return (
                           <React.Fragment key={subj.examSubjectId}>
-                            <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-500 whitespace-nowrap border-l border-gray-200">
-                              Th <span className="text-gray-400">/{theoryMax}</span>
-                            </th>
-                            {hasPrac && (
-                              <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-500 whitespace-nowrap border-l border-gray-200">
-                                Pr <span className="text-gray-400">/{subj.practicalMaxMarks}</span>
-                              </th>
-                            )}
                             {hasCE && (
                               <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-500 whitespace-nowrap border-l border-gray-200">
                                 CE <span className="text-gray-400">/{subj.ceMaxMarks}</span>
                               </th>
                             )}
                             <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-500 whitespace-nowrap border-l border-gray-200">
+                              TE <span className="text-gray-400">/{theoryMax}</span>
+                            </th>
+                            {hasPrac && (
+                              <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-500 whitespace-nowrap border-l border-gray-200">
+                                Pr <span className="text-gray-400">/{subj.practicalMaxMarks}</span>
+                              </th>
+                            )}
+                            <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-500 whitespace-nowrap border-l border-gray-200">
                               Abs
                             </th>
+                            <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-700 whitespace-nowrap border-l border-gray-200 bg-gray-100/50">
+                              Total <span className="text-gray-400">/{subj.maxMarks || 100}</span>
+                            </th>
                             <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-700 whitespace-nowrap border-l border-r border-gray-200 bg-gray-100/50">
-                              Tot <span className="text-gray-400">/{subj.maxMarks || 100}</span>
+                              Grade
                             </th>
                           </React.Fragment>
                         );
@@ -892,7 +709,23 @@ const StaffMarksEntry = () => {
 
                             return (
                               <React.Fragment key={key}>
-                                {/* Theory */}
+                                {/* CE */}
+                                {hasCE && (
+                                  <td className="px-1 py-1 text-center border-l border-gray-200">
+                                    <input
+                                      type="number" onWheel={(e) => e.target.blur()}
+                                      value={absent ? "" : ce}
+                                      onChange={(e) => handleMarkChange(student.studentId, key, "ceMarks", e.target.value)}
+                                      disabled={!canEdit || absent}
+                                      min={0}
+                                      max={subj.ceMaxMarks}
+                                      placeholder="0"
+                                      className={inputClass}
+                                    />
+                                  </td>
+                                )}
+
+                                {/* TE (Theory) */}
                                 <td className="px-1 py-1 text-center border-l border-gray-200">
                                   <input
                                     type="number" onWheel={(e) => e.target.blur()}
@@ -922,22 +755,6 @@ const StaffMarksEntry = () => {
                                   </td>
                                 )}
 
-                                {/* CE */}
-                                {hasCE && (
-                                  <td className="px-1 py-1 text-center border-l border-gray-200">
-                                    <input
-                                      type="number" onWheel={(e) => e.target.blur()}
-                                      value={absent ? "" : ce}
-                                      onChange={(e) => handleMarkChange(student.studentId, key, "ceMarks", e.target.value)}
-                                      disabled={!canEdit || absent}
-                                      min={0}
-                                      max={subj.ceMaxMarks}
-                                      placeholder="0"
-                                      className={inputClass}
-                                    />
-                                  </td>
-                                )}
-
                                 {/* Absent Toggle */}
                                 <td className="px-1 py-1 text-center border-l border-gray-200">
                                   <button
@@ -955,16 +772,28 @@ const StaffMarksEntry = () => {
                                   </button>
                                 </td>
 
-                                {/* Total */}
-                                <td className="px-2 py-1 text-center border-l border-r border-gray-200 bg-gray-50/50">
+                                {/* Total and % */}
+                                <td className="px-2 py-1 text-center border-l border-gray-200 bg-gray-50/50">
                                   {absent ? (
                                     <span className="text-red-500 font-bold text-xs">AB</span>
                                   ) : (
                                     <div className="flex flex-col items-center">
-                                      <span className={`text-xs font-bold font-mono ${gradeInfo.color.split(' ')[0]}`}>
+                                      <span className="text-xs font-bold font-mono text-gray-900">
                                         {total}
                                       </span>
+                                      <span className="text-[9px] text-gray-500">
+                                        {maxM > 0 ? Math.round((total / maxM) * 100) : 0}%
+                                      </span>
                                     </div>
+                                  )}
+                                </td>
+
+                                {/* Grade */}
+                                <td className="px-2 py-1 text-center border-l border-r border-gray-200 bg-gray-50/50">
+                                  {!absent && (
+                                    <span className={`text-xs font-bold font-mono px-1.5 py-0.5 rounded-md ${gradeInfo.color}`}>
+                                      {gradeInfo.grade}
+                                    </span>
                                   )}
                                 </td>
                               </React.Fragment>
@@ -1022,19 +851,10 @@ const StaffMarksEntry = () => {
           </>
         )}
 
-        {/* ── Empty: no exam+class selected ── */}
-        {(!selectedExam || !selectedClass) && (
-          <div className="bg-white rounded-xl border border-dashed border-gray-300 p-6 sm:p-10 text-center mt-4">
-            <BookOpenIcon className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-            <h3 className="text-sm font-semibold text-gray-600 mb-1">Select Exam & Class</h3>
-            <p className="text-xs text-gray-400">
-              Choose an exam and class above to start entering marks.
-            </p>
-          </div>
-        )}
+
       </div>
     </div>
   );
 };
 
-export default StaffMarksEntry;
+export default MarksEntryTable;

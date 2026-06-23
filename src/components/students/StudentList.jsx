@@ -1,7 +1,7 @@
 // src/components/students/StudentList.jsx
 import React, { useEffect, useState, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { Link } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import {
   MagnifyingGlassIcon,
@@ -10,6 +10,7 @@ import {
   TrashIcon,
   EyeIcon,
   DocumentArrowUpIcon,
+  DocumentArrowDownIcon,
   AcademicCapIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -17,11 +18,14 @@ import {
   FunnelIcon,
   UserGroupIcon,
   EllipsisVerticalIcon,
+  ArrowLeftIcon,
 } from '@heroicons/react/24/outline'
 import { fetchStudents, deleteStudent } from '../../store/slices/studentSlice'
 import { fetchClasses } from '../../store/slices/classSlice'
 import { fetchAcademicYears } from '../../store/slices/academicYearSlice'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
+import * as XLSX from 'xlsx'
+import toast from 'react-hot-toast'
 
 const StudentList = () => {
   const dispatch = useDispatch()
@@ -29,11 +33,14 @@ const StudentList = () => {
   const { classes } = useSelector((state) => state.classes)
   const { academicYears } = useSelector((state) => state.academicYears)
   
+  const { classId: urlClassId } = useParams()
+  const navigate = useNavigate()
+
   const [searchParams, setSearchParams] = useState({
     page: 1,
     limit: 20,
     search: '',
-    classId: '',
+    classId: urlClassId || '',
     academicYearId: '',
     status: 'active',
   })
@@ -46,11 +53,19 @@ const StudentList = () => {
   const { register, handleSubmit, reset, watch } = useForm({
     defaultValues: {
       search: '',
-      classId: '',
+      classId: urlClassId || '',
       academicYearId: '',
       status: 'active',
     }
   })
+
+  // Listen to URL classId changes
+  useEffect(() => {
+    if (urlClassId && urlClassId !== searchParams.classId) {
+      setSearchParams(prev => ({ ...prev, classId: urlClassId, page: 1 }))
+      reset({ ...watch(), classId: urlClassId })
+    }
+  }, [urlClassId])
 
   const searchValue = watch('search')
 
@@ -93,7 +108,7 @@ const StudentList = () => {
   const handleReset = () => {
     reset({
       search: '',
-      classId: '',
+      classId: urlClassId || '',
       academicYearId: '',
       status: 'active',
     })
@@ -101,7 +116,7 @@ const StudentList = () => {
       page: 1,
       limit: 20,
       search: '',
-      classId: '',
+      classId: urlClassId || '',
       academicYearId: '',
       status: 'active',
     })
@@ -120,6 +135,43 @@ const StudentList = () => {
 
   const handlePageChange = (newPage) => {
     setSearchParams({ ...searchParams, page: newPage })
+  }
+
+  const handleExport = () => {
+    if (!students || students.length === 0) {
+      toast.error('No students to export')
+      return
+    }
+
+    const exportData = students.map((student, index) => ({
+      'SL No': index + 1,
+      'Admission No': student.admissionNo,
+      'Student Name': student.fullName,
+      'Class': student.classId ? `${student.classId.name} ${student.classId.section || ''}`.trim() : 'N/A',
+      'Roll No': student.rollNumber || 'N/A',
+      'Gender': student.gender === 'M' ? 'Male' : student.gender === 'F' ? 'Female' : 'Other',
+      'Contact': student.contact?.primaryPhone || 'N/A',
+      'Status': student.status
+    }))
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Students')
+    
+    // Auto-size columns roughly
+    const colWidths = [
+      { wch: 6 }, // SL No
+      { wch: 15 }, // Admission No
+      { wch: 25 }, // Student Name
+      { wch: 10 }, // Class
+      { wch: 8 }, // Roll No
+      { wch: 10 }, // Gender
+      { wch: 15 }, // Contact
+      { wch: 10 }, // Status
+    ]
+    worksheet['!cols'] = colWidths
+
+    XLSX.writeFile(workbook, `Students_Export_${new Date().getTime()}.xlsx`)
   }
 
   const getStatusBadge = (status) => {
@@ -144,7 +196,17 @@ const StudentList = () => {
     return labels[status] || status
   }
 
-  const hasActiveFilters = searchParams.search || searchParams.classId || searchParams.academicYearId || searchParams.status !== 'active'
+  const hasActiveFilters = Boolean(
+    searchParams.search || 
+    (!urlClassId && searchParams.classId) || 
+    (searchParams.status && searchParams.status !== 'active')
+  )
+
+  const activeFilterCount = [
+    searchParams.search,
+    !urlClassId && searchParams.classId,
+    searchParams.status && searchParams.status !== 'active'
+  ].filter(Boolean).length;
 
   if (isLoading && students.length === 0) {
     return <LoadingSpinner />
@@ -154,9 +216,34 @@ const StudentList = () => {
     <div className="space-y-5 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Students</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage all student records and academic information</p>
+        <div className="flex items-center gap-3">
+          {urlClassId && (
+            <button
+              onClick={() => {
+                const currentClass = classes.find(c => c._id === urlClassId)
+                if (currentClass) {
+                  const yearId = currentClass.academicYearId?._id || currentClass.academicYearId;
+                  if (yearId) {
+                    navigate(`/students/years/${yearId}/standards/${encodeURIComponent(currentClass.name)}`)
+                  } else {
+                    navigate(`/students/standards/${encodeURIComponent(currentClass.name)}`)
+                  }
+                } else {
+                  navigate('/students')
+                }
+              }}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              title="Back"
+            >
+              <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
+            </button>
+          )}
+          <div>
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
+              Students {urlClassId && classes.find(c => c._id === urlClassId) ? `- ${classes.find(c => c._id === urlClassId).name} ${classes.find(c => c._id === urlClassId).section || ''}` : ''}
+            </h1>
+            <p className="text-sm text-gray-500 mt-0.5">Manage all student records and academic information</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Link
@@ -167,14 +254,14 @@ const StudentList = () => {
             <span className="hidden sm:inline">Promotion List</span>
             <span className="sm:hidden">Promote</span>
           </Link>
-          <Link
-            to="/students/import"
+          <button
+            onClick={handleExport}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-all"
           >
-            <DocumentArrowUpIcon className="w-4 h-4" />
-            <span className="hidden sm:inline">Import</span>
-            <span className="sm:hidden">Import</span>
-          </Link>
+            <DocumentArrowDownIcon className="w-4 h-4" />
+            <span className="hidden sm:inline">Export</span>
+            <span className="sm:hidden">Export</span>
+          </button>
           <Link
             to="/students/new"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all shadow-sm"
@@ -220,9 +307,9 @@ const StudentList = () => {
           >
             <FunnelIcon className="w-4 h-4" />
             <span>Filters</span>
-            {hasActiveFilters && (
+            {hasActiveFilters && activeFilterCount > 0 && (
               <span className="w-5 h-5 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center">
-                {Object.values(searchParams).filter(v => v && v !== 'active').length}
+                {activeFilterCount}
               </span>
             )}
           </button>
@@ -243,34 +330,23 @@ const StudentList = () => {
         <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
           <form onSubmit={handleSubmit(handleSearch)} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Class</label>
-                <select
-                  {...register('classId')}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-                >
-                  <option value="">All Classes</option>
-                  {classes.map((cls) => (
-                    <option key={cls._id} value={cls._id}>
-                      {cls.displayName || cls.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Academic Year</label>
-                <select
-                  {...register('academicYearId')}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-                >
-                  <option value="">All Years</option>
-                  {academicYears.map((year) => (
-                    <option key={year._id} value={year._id}>
-                      {year.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {!urlClassId && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Class</label>
+                  <select
+                    {...register('classId')}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
+                  >
+                    <option value="">All Classes</option>
+                    {classes.map((cls) => (
+                      <option key={cls._id} value={cls._id}>
+                        {cls.displayName || cls.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {/* Academic Year filter removed as per user request */}
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
                 <select

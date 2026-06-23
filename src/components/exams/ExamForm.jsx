@@ -1,5 +1,5 @@
 // src/components/exams/ExamForm.jsx
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm, useFieldArray } from 'react-hook-form'
@@ -19,7 +19,8 @@ import {
 import { fetchClasses } from '../../store/slices/classSlice'
 import { fetchSubjects } from '../../store/slices/subjectSlice'
 import { fetchAcademicYears } from '../../store/slices/academicYearSlice'
-import { createExam, updateExam, fetchExamById, clearCurrentExam } from '../../store/slices/examSlice'
+import { fetchStaff } from '../../store/slices/staffSlice'
+import { createExam, createStaffExam, updateExam, fetchExamById, clearCurrentExam } from '../../store/slices/examSlice'
 import examService from '../../services/examService'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
@@ -32,6 +33,8 @@ const ExamForm = () => {
   const { classes } = useSelector((state) => state.classes)
   const { subjects: availableSubjects } = useSelector((state) => state.subjects)
   const { academicYears } = useSelector((state) => state.academicYears)
+  const { user } = useSelector((state) => state.auth)
+  const { staff } = useSelector((state) => state.staff)
   const { currentExam, isLoading } = useSelector((state) => state.exams)
   const [examTypes, setExamTypes] = useState([])
   const [sessionTimes, setSessionTimes] = useState([])
@@ -58,6 +61,7 @@ const ExamForm = () => {
   const { fields: scheduleFields, append: appendSchedule, remove: removeSchedule, update: updateSchedule } = useFieldArray({ control, name: 'schedule' })
   
   const watchedSchedule = watch('schedule')
+  const watchedClassIds = watch('classIds')
 
   useEffect(() => {
     loadData()
@@ -112,6 +116,7 @@ const ExamForm = () => {
     dispatch(fetchClasses({ limit: 100 }))
     dispatch(fetchSubjects({ limit: 100 }))
     dispatch(fetchAcademicYears({ limit: 100 }))
+    dispatch(fetchStaff({ limit: 100 }))
     
     try {
       const typesRes = await examService.getExamTypes()
@@ -134,6 +139,76 @@ const ExamForm = () => {
       [index]: !prev[index]
     }))
   }
+
+  // Calculate available classes based on user role
+  let availableClasses = classes
+  let filteredSubjects = availableSubjects
+  if (user?.role === 'staff') {
+    const currentStaff = staff?.find((s) => {
+      const su = s.userId?._id || s.userId
+      return su === user?.id || s._id === user?.id
+    })
+
+    if (currentStaff) {
+      const staffId = currentStaff._id
+      availableClasses = classes.filter((cls) => {
+        const isCT = cls.classTeacher?._id === staffId || cls.classTeacher === staffId
+        const isST = (cls.subjectTeachers || []).some(
+          (st) => st.teacherId?._id === staffId || st.teacherId === staffId
+        )
+        return isCT || isST
+      })
+      
+      const allowedSubjectIds = new Set();
+      availableClasses.forEach(cls => {
+        const isCT = cls.classTeacher?._id === staffId || cls.classTeacher === staffId;
+        
+        // If class teacher, they can manage all subjects for this class
+        if (isCT) {
+          (cls.subjects || []).forEach(s => {
+             const subjId = s._id || s;
+             if (subjId) allowedSubjectIds.add(String(subjId));
+          });
+          (cls.subjectTeachers || []).forEach(st => {
+             const subjId = st.subjectId?._id || st.subjectId;
+             if (subjId) allowedSubjectIds.add(String(subjId));
+          });
+        }
+        
+        // Add subjects they specifically teach
+        const staffSubjects = (cls.subjectTeachers || []).filter(
+          st => st.teacherId?._id === staffId || st.teacherId === staffId
+        );
+        staffSubjects.forEach(st => {
+          const subjId = st.subjectId?._id || st.subjectId;
+          if (subjId) allowedSubjectIds.add(String(subjId));
+        });
+      });
+      
+      filteredSubjects = availableSubjects.filter(s => allowedSubjectIds.has(String(s._id)));
+    } else {
+      availableClasses = []
+      filteredSubjects = []
+    }
+  }
+
+  const uniqueStandards = useMemo(() => {
+    const standards = new Set(availableClasses.map(c => c.name));
+    return Array.from(standards).sort((a, b) => {
+      const numA = parseInt(a);
+      const numB = parseInt(b);
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+      return a.localeCompare(b);
+    });
+  }, [availableClasses]);
+
+  const handleSelectAllClasses = () => {
+    setValue('classIds', availableClasses.map(c => String(c._id)), { shouldDirty: true, shouldValidate: true });
+  };
+  
+  const handleDeselectAllClasses = () => {
+    setValue('classIds', [], { shouldDirty: true, shouldValidate: true });
+  };
 
   const addCeComponent = (scheduleIndex) => {
     const currentComponents = watchedSchedule[scheduleIndex]?.ceComponents || []
@@ -297,10 +372,18 @@ const ExamForm = () => {
       if (isEditing) {
         await dispatch(updateExam({ id, data: examData })).unwrap()
       } else {
-        await dispatch(createExam(examData)).unwrap()
+        if (user?.role === 'staff') {
+          await dispatch(createStaffExam(examData)).unwrap()
+        } else {
+          await dispatch(createExam(examData)).unwrap()
+        }
       }
       toast.success(`Exam ${isEditing ? 'updated' : 'created'} successfully`)
-      navigate('/exams')
+      if (user?.role === 'staff') {
+        navigate('/staff/exams')
+      } else {
+        navigate('/exams')
+      }
     } catch (error) { 
       console.error('Failed to save exam:', error)
       toast.error(error.response?.data?.message || 'Failed to save exam')
@@ -331,6 +414,11 @@ const ExamForm = () => {
     { id: 'settings', name: 'Settings', icon: BuildingOfficeIcon },
   ]
 
+  const handleCancel = () => {
+    reset()
+    navigate(-1)
+  }
+
   if (isLoading) return <LoadingSpinner />
 
   return (
@@ -339,7 +427,13 @@ const ExamForm = () => {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => navigate('/exams')}
+            onClick={() => {
+              if (user?.role === 'staff') {
+                navigate('/staff/exams');
+              } else {
+                navigate('/exams');
+              }
+            }}
             className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-4 transition-colors"
           >
             <ChevronLeftIcon className="w-5 h-5" />
@@ -469,12 +563,18 @@ const ExamForm = () => {
               
               <div className="p-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Select Classes <span className="text-red-500">*</span>
-                  </label>
+                  <div className="flex flex-col xl:flex-row xl:items-center justify-between mb-3 gap-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Select Classes <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button type="button" onClick={handleSelectAllClasses} className="text-xs px-2.5 py-1.5 font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 rounded hover:bg-emerald-100 transition-colors">Select All</button>
+                      <button type="button" onClick={handleDeselectAllClasses} className="text-xs px-2.5 py-1.5 font-medium bg-rose-50 text-rose-700 border border-rose-200 rounded hover:bg-rose-100 transition-colors">Deselect All</button>
+                    </div>
+                  </div>
                   <div className="bg-gray-50 rounded-md border border-gray-200 p-3">
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                      {classes.map(cls => (
+                      {availableClasses.map(cls => (
                         <label key={cls._id} className="flex items-center gap-2 p-2 rounded-md hover:bg-white transition-colors cursor-pointer">
                           <input
                             type="checkbox"
@@ -563,12 +663,17 @@ const ExamForm = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                               <div>
                                 <label className="block text-xs font-medium text-gray-600 mb-1">Subject *</label>
-                                <select 
-                                  {...register(`schedule.${index}.subjectId`, { required: 'Subject is required' })} 
-                                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                                <select
+                                  {...register(`schedule.${index}.subjectId`, { required: true })}
+                                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white ${
+                                    errors.schedule?.[index]?.subjectId ? 'border-red-500' : 'border-gray-200'
+                                  }`}
+                                  onChange={(e) => {
+                                    // Set default marks based on subject if needed
+                                  }}
                                 >
                                   <option value="">Select Subject</option>
-                                  {availableSubjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+                                  {filteredSubjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
                                 </select>
                               </div>
                               <div>

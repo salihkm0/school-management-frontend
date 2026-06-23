@@ -114,7 +114,7 @@ const StaffForm = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number *</label>
-              <input {...register("contact", { required: "Contact required" })} className={`w-full px-3 py-2 text-sm border rounded-lg ${errors.contact ? "border-rose-500" : "border-gray-200"} focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
+              <input {...register("phone", { required: "Contact required" })} className={`w-full px-3 py-2 text-sm border rounded-lg ${errors.phone ? "border-rose-500" : "border-gray-200"} focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Date of Joining *</label>

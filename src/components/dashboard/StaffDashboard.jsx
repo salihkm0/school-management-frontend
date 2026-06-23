@@ -301,7 +301,7 @@ const StaffDashboard = () => {
 
       {/* Class Assignments */}
       <div className="space-y-6">
-        {classTeacherInfo && classTeacherInfo.class && (
+        {classTeacherInfo && classTeacherInfo.classes && classTeacherInfo.classes.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
               <AcademicCapIcon className="w-5 h-5 text-emerald-600" />
@@ -311,12 +311,12 @@ const StaffDashboard = () => {
               <div className="bg-white rounded-xl border border-emerald-100 p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-50 rounded-bl-full -z-0"></div>
                 <div className="flex items-center justify-between mb-2 relative z-10">
-                  <h3 className="text-xl font-bold text-gray-900">{classTeacherInfo.class.name}</h3>
+                  <h3 className="text-xl font-bold text-gray-900">{classTeacherInfo.classes[0].name}</h3>
                   <div className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-medium">Class Teacher</div>
                 </div>
                 <div className="flex items-center gap-2 text-gray-500 text-sm mt-3 relative z-10">
                   <UserGroupIcon className="w-4 h-4" />
-                  <span>{classTeacherInfo.class.studentCount} Students</span>
+                  <span>{classTeacherInfo.classes[0].studentCount} Students</span>
                 </div>
                 <div className="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between relative z-10">
                   <div className="text-center">

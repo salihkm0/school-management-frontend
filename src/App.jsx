@@ -29,9 +29,10 @@ import MyClassesPage from './pages/staff/MyClassesPage'
 import MyDutiesPage from './pages/staff/MyDutiesPage'
 import StaffAttendancePage from './pages/staff/StaffAttendancePage'
 import StaffExamsPage from './pages/staff/StaffExamsPage'
-import StaffMarksEntry from './pages/staff/StaffMarksEntry'
+import MarksEntryRouter from './pages/staff/MarksEntry/MarksEntryRouter'
 import ExamForm from './components/exams/ExamForm'
 import ExamReview from './components/exams/ExamReview'
+import HistoricalRecordsFlow from './pages/admin/HistoricalRecords/HistoricalRecordsFlow'
 
 //parent pages
 import MyChildrenPage from './pages/parent/MyChildrenPage'
@@ -125,7 +126,7 @@ function App() {
           <Route path="staff/exams/create" element={<ExamForm />} />
           <Route path="staff/exams/edit/:id" element={<ExamForm />} />
           <Route path="staff/exams/results/:examId" element={<ExamReview />} />
-          <Route path="staff/marks-entry" element={<StaffMarksEntry />} />
+          <Route path="staff/marks-entry/*" element={<MarksEntryRouter />} />
 
           {/* Parent routes */}
           <Route path="my-children" element={<MyChildrenPage />} />
@@ -133,7 +134,8 @@ function App() {
           <Route path="my-child-results" element={<MyChildResultsPage />} />  
 
           {/* Historical import — admin only */}
-          <Route path="historical-import" element={<HistoricalImport />} />
+          <Route path="historical-records/*" element={<HistoricalRecordsFlow />} />
+          <Route path="admin/marks-entry/*" element={<MarksEntryRouter />} />
         </Route>        
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -59,4 +59,14 @@ export const historicalImportService = {
       await jobService.downloadJobResult(data.jobId, `MarkSheet_${safeName}_${admNo || studentId}.pdf`);
     }
   },
+
+  // Hierarchical endpoints
+  getHierarchicalYears: () => api.get(`${BASE}/hierarchical/years`),
+  getHierarchicalStandards: (year) => api.get(`${BASE}/hierarchical/standards`, { params: { year } }),
+  getHierarchicalMediums: (year, standard) => api.get(`${BASE}/hierarchical/mediums`, { params: { year, standard } }),
+  getHierarchicalClasses: (year, standard, medium) => api.get(`${BASE}/hierarchical/classes`, { params: { year, standard, medium } }),
+  getHierarchicalStudents: (year, standard, medium, cls) => api.get(`${BASE}/hierarchical/students`, { params: { year, standard, medium, class: cls } }),
+
+  // Generate from DB
+  generateFromDB: (academicYearId, examId) => api.post(`${BASE}/generate-from-db`, { academicYearId, examId }),
 };

@@ -41,7 +41,8 @@ const menuItems = [
   { path: '/duties', name: 'Duties', icon: CalendarIcon, roles: ['admin'] },
   { path: '/reports', name: 'Reports', icon: ChartBarIcon, roles: ['admin'] },
   { path: '/pdf-reports', name: 'PDF Reports', icon: DocumentTextIcon, roles: ['admin'] },
-  { path: '/historical-import', name: 'Historical Records', icon: ArchiveBoxIcon, roles: ['admin'] },
+  { path: '/historical-records', name: 'Historical Records', icon: ArchiveBoxIcon, roles: ['admin'] },
+  { path: '/admin/marks-entry', name: 'Mark Entry', icon: ClipboardDocumentListIcon, roles: ['admin'] },
 
   // Staff-specific routes
   { path: '/staff/exams', name: 'Exams', icon: ClipboardDocumentListIcon, roles: ['staff'] },
