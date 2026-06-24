@@ -179,7 +179,19 @@ const HistoricalMarksList = () => {
                   if (standard === '9') effectiveMaxTotal = 650;
                   if (standard === '8') effectiveMaxTotal = 425;
                   
-                  const percentage = effectiveMaxTotal > 0 ? ((student.total / effectiveMaxTotal) * 100).toFixed(2) : 0;
+                  // Calculate dynamic effective total because of fallback columns (e.g. IT)
+                  let effectiveTotal = 0;
+                  uniqueSubjects.forEach(subj => {
+                    let found = student.subjects?.find(s => s.subjectCode === subj.code || s.subjectLabel === subj.label);
+                    if (!found && (subj.code === 'IT' || subj.label === 'Information Technology')) {
+                      found = student.subjects?.find(s => s.subjectCode === 'MAL II' || s.subjectLabel === 'Malayalam II');
+                    }
+                    if (found && typeof found.obtained === 'number') {
+                      effectiveTotal += found.obtained;
+                    }
+                  });
+
+                  const percentage = effectiveMaxTotal > 0 ? ((effectiveTotal / effectiveMaxTotal) * 100).toFixed(2) : 0;
                   return (
                     <tr key={student._id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
@@ -214,7 +226,7 @@ const HistoricalMarksList = () => {
                         )
                       })}
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm text-gray-900 font-medium">{student.total} <span className="text-gray-400 text-xs font-normal">/ {effectiveMaxTotal}</span></div>
+                        <div className="text-sm text-gray-900 font-medium">{effectiveTotal} <span className="text-gray-400 text-xs font-normal">/ {effectiveMaxTotal}</span></div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
