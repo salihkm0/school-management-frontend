@@ -87,7 +87,18 @@ const HistoricalMarksList = () => {
         }
       })
     })
-    return Object.values(subjectsMap).sort((a, b) => a.code.localeCompare(b.code))
+    const result = Object.values(subjectsMap).sort((a, b) => a.code.localeCompare(b.code))
+    // Ensure IT is always present
+    if (!result.some(s => s.code === 'IT' || s.label === 'Information Technology')) {
+      result.push({
+        code: 'IT',
+        label: 'Information Technology',
+        maxMarks: 50
+      })
+      // Sort again
+      result.sort((a, b) => a.code.localeCompare(b.code))
+    }
+    return result
   }, [filteredStudents])
 
   if (isLoading) return <LoadingSpinner />
@@ -164,7 +175,11 @@ const HistoricalMarksList = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredStudents.length > 0 ? (
                 filteredStudents.map((student) => {
-                  const percentage = student.maxTotal > 0 ? ((student.total / student.maxTotal) * 100).toFixed(2) : 0;
+                  let effectiveMaxTotal = student.maxTotal || 0;
+                  if (standard === '9') effectiveMaxTotal = 650;
+                  if (standard === '8') effectiveMaxTotal = 425;
+                  
+                  const percentage = effectiveMaxTotal > 0 ? ((student.total / effectiveMaxTotal) * 100).toFixed(2) : 0;
                   return (
                     <tr key={student._id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
@@ -178,7 +193,13 @@ const HistoricalMarksList = () => {
                         <div className="text-xs text-gray-500">{student.gender === 'F' ? 'Female' : (student.gender === 'M' ? 'Male' : '')}</div>
                       </td>
                       {uniqueSubjects.map(subj => {
-                        const found = student.subjects?.find(s => s.subjectCode === subj.code);
+                        let found = student.subjects?.find(s => s.subjectCode === subj.code || s.subjectLabel === subj.label);
+                        
+                        // Fallback IT to Malayalam II if missing
+                        if (!found && (subj.code === 'IT' || subj.label === 'Information Technology')) {
+                          found = student.subjects?.find(s => s.subjectCode === 'MAL II' || s.subjectLabel === 'Malayalam II');
+                        }
+
                         const val = found?.obtained ?? '-';
                         const pct = found ? (found.obtained / (subj.maxMarks || 100)) * 100 : -1;
                         return (
@@ -193,7 +214,7 @@ const HistoricalMarksList = () => {
                         )
                       })}
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm text-gray-900 font-medium">{student.total} <span className="text-gray-400 text-xs font-normal">/ {student.maxTotal}</span></div>
+                        <div className="text-sm text-gray-900 font-medium">{student.total} <span className="text-gray-400 text-xs font-normal">/ {effectiveMaxTotal}</span></div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
