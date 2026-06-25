@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ChevronLeftIcon, ChartBarSquareIcon } from '@heroicons/react/24/outline'
 import { historicalImportService } from '../../../services/historicalImportService'
 import LoadingSpinner from '../../../components/common/LoadingSpinner'
@@ -8,6 +8,8 @@ import toast from 'react-hot-toast'
 const HistoricalStandardsList = () => {
   const { year } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const basePath = location.pathname.startsWith('/open') ? '/open/marklist' : '/historical-records'
   const [standards, setStandards] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -32,13 +34,15 @@ const HistoricalStandardsList = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <button
-        onClick={() => navigate('/historical-records')}
-        className="flex items-center text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors"
-      >
-        <ChevronLeftIcon className="w-4 h-4 mr-1" />
-        Back to Academic Years
-      </button>
+      {basePath !== '/open/marklist' && (
+        <button
+          onClick={() => navigate(basePath)}
+          className="flex items-center text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors"
+        >
+          <ChevronLeftIcon className="w-4 h-4 mr-1" />
+          Back to Academic Years
+        </button>
+      )}
 
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Academic Year: {year}</h1>
@@ -49,8 +53,8 @@ const HistoricalStandardsList = () => {
         {standards.map((std) => (
           <div
             key={std.item || std}
-            onClick={() => navigate(`/historical-records/${year}/${std.item || std}`)}
-            className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 hover:shadow-md transition-all group relative"
+            onClick={() => navigate(`${basePath}/${year}/${std.item || std}`)}
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col items-center justify-center cursor-pointer hover:shadow-md hover:border-primary-100 transition-all group"
           >
             <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
               <ChartBarSquareIcon className="w-5 h-5 text-emerald-600" />

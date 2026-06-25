@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ChevronLeftIcon, GlobeAltIcon } from '@heroicons/react/24/outline'
 import { historicalImportService } from '../../../services/historicalImportService'
 import LoadingSpinner from '../../../components/common/LoadingSpinner'
@@ -8,6 +8,8 @@ import toast from 'react-hot-toast'
 const HistoricalMediumsList = () => {
   const { year, standard } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const basePath = location.pathname.startsWith('/open') ? '/open/marklist' : '/historical-records'
   const [mediums, setMediums] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -33,7 +35,7 @@ const HistoricalMediumsList = () => {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <button
-        onClick={() => navigate(`/historical-records/${year}`)}
+        onClick={() => navigate(`${basePath}/${year}`)}
         className="flex items-center text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors"
       >
         <ChevronLeftIcon className="w-4 h-4 mr-1" />
@@ -49,7 +51,7 @@ const HistoricalMediumsList = () => {
         {mediums.map((med) => (
           <div
             key={med.item || med}
-            onClick={() => navigate(`/historical-records/${year}/${standard}/${med.item || med}`)}
+            onClick={() => navigate(`${basePath}/${year}/${standard}/${med.item || med}`)}
             className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 hover:shadow-md transition-all group relative"
           >
             <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">

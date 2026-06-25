@@ -1,7 +1,7 @@
 // src/components/students/StudentDetails.jsx - Fixed Imports
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import {
   PencilIcon,
   ArrowLeftIcon,
@@ -58,9 +58,11 @@ const getGradeIcon = (grade) => {
 };
 
 const StudentDetails = () => {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
   const { id } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const dispatch = useDispatch();
+  const isReadOnly = location.pathname.startsWith('/open');
   const { currentStudent, isLoading } = useSelector((state) => state.students);
   const { academicYears } = useSelector((state) => state.academicYears);
 
@@ -205,7 +207,7 @@ const StudentDetails = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => navigate("/students")}
+            onClick={() => isReadOnly ? navigate(-1) : navigate("/students")}
             className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
           >
             <ArrowLeftIcon className="w-5 h-5" />
@@ -217,13 +219,15 @@ const StudentDetails = () => {
             <p className="text-xs sm:text-sm text-gray-500">ID: {currentStudent.studentCode}</p>
           </div>
         </div>
-        <Link
-          to={`/students/${id}/edit`}
-          className="inline-flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-all"
-        >
-          <PencilIcon className="w-4 h-4" />
-          <span>Edit</span>
-        </Link>
+        {!isReadOnly && (
+          <Link
+            to={`/students/${id}/edit`}
+            className="inline-flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-all"
+          >
+            <PencilIcon className="w-4 h-4" />
+            <span>Edit</span>
+          </Link>
+        )}
       </div>
 
       {/* Tabs */}

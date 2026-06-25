@@ -73,7 +73,11 @@ const LoginPage = () => {
     
     const result = await dispatch(login(loginData))
     if (result.payload?.success) {
-      navigate('/dashboard')
+      if (result.payload.user?.role === 'open') {
+        navigate('/open/marklist/2025-2026')
+      } else {
+        navigate('/dashboard')
+      }
     }
   }
 
