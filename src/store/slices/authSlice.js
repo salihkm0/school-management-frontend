@@ -18,7 +18,6 @@ export const login = createAsyncThunk(
       if (response.refreshToken) {
         localStorage.setItem('refreshToken', response.refreshToken)
       }
-      toast.success('Login successful!')
       return response
     } catch (error) {
       const message = error.response?.data?.message || 'Login failed'
@@ -55,7 +54,6 @@ export const logout = createAsyncThunk(
       localStorage.removeItem('refreshToken')
       sessionStorage.clear()
       dispatch(clearAuthData())
-      toast.success('Logged out successfully')
       return true
     }
   }

@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { EyeIcon, EyeSlashIcon, UserPlusIcon, XMarkIcon, PhoneIcon, EnvelopeIcon } from '@heroicons/react/24/outline'
-import { login } from '../store/slices/authSlice'
+import { login, logout } from '../store/slices/authSlice'
 import { registerParent } from '../store/slices/parentSlice'
 import toast from 'react-hot-toast'
 
@@ -73,9 +73,14 @@ const LoginPage = () => {
     
     const result = await dispatch(login(loginData))
     if (result.payload?.success) {
-      if (result.payload.user?.role === 'open') {
+      if (result.payload.user?.role === 'administration') {
+        toast.error('No user found', { duration: 3000 })
+        await dispatch(logout())
+      } else if (result.payload.user?.role === 'open') {
+        toast.success('Login successful!')
         navigate('/open/marklist/2025-2026')
       } else {
+        toast.success('Login successful!')
         navigate('/dashboard')
       }
     }
@@ -100,7 +105,13 @@ const LoginPage = () => {
     
     const result = await dispatch(login(loginData))
     if (result.payload?.success) {
-      navigate('/dashboard')
+      if (result.payload.user?.role === 'administration') {
+        toast.error('No user found', { duration: 3000 })
+        await dispatch(logout())
+      } else {
+        toast.success('Login successful!')
+        navigate('/dashboard')
+      }
     }
   }
 
@@ -212,7 +223,7 @@ const LoginPage = () => {
                 }`}
               >
                 <EnvelopeIcon className="w-4 h-4" />
-                Staff / Admin
+                Staff
               </button>
               <button
                 type="button"

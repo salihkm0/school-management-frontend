@@ -39,6 +39,7 @@ const OpenLogin = () => {
     const result = await dispatch(login(loginData));
     
     if (result.payload?.success) {
+      toast.success('Login successful!');
       navigate('/open/marklist/2025-2026');
     } else {
       toast.error(result.payload?.message || 'Login failed');
