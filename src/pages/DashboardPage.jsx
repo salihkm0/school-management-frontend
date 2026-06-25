@@ -12,6 +12,7 @@ const DashboardPage = () => {
   const renderDashboard = () => {
     switch(userRole) {
       case 'admin':
+      case 'administration':
         return <AdminDashboard />
       case 'staff':
         return <StaffDashboard />

@@ -28,21 +28,21 @@ import toast from 'react-hot-toast'
 const menuItems = [
 
   // Common routes for all roles
-  { path: '/dashboard', name: 'Dashboard', icon: HomeIcon, roles: ['admin', 'staff', 'parent'] },
+  { path: '/dashboard', name: 'Dashboard', icon: HomeIcon, roles: ['admin', 'administration', 'staff', 'parent'] },
 
   // Admin-specific routes
-  { path: '/students', name: 'Students', icon: UsersIcon, roles: ['admin'] },
-  { path: '/staff', name: 'Staff', icon: UserGroupIcon, roles: ['admin'] },
-  { path: '/parents', name: 'Parents', icon: UserIcon, roles: ['admin'] },
-  { path: '/classes', name: 'Classes', icon: AcademicCapIcon, roles: ['admin'] },
-  { path: '/subjects', name: 'Subjects', icon: BookOpenIcon, roles: ['admin'] },
-  { path: '/exams', name: 'Exams', icon: ClipboardDocumentListIcon, roles: ['admin'] },
-  { path: '/attendance', name: 'Attendance', icon: CalendarIcon, roles: ['admin'] },
-  { path: '/duties', name: 'Duties', icon: CalendarIcon, roles: ['admin'] },
-  { path: '/reports', name: 'Reports', icon: ChartBarIcon, roles: ['admin'] },
-  { path: '/pdf-reports', name: 'PDF Reports', icon: DocumentTextIcon, roles: ['admin'] },
-  { path: '/historical-records', name: 'Historical Records', icon: ArchiveBoxIcon, roles: ['admin'] },
-  { path: '/admin/marks-entry', name: 'Mark Entry', icon: ClipboardDocumentListIcon, roles: ['admin'] },
+  { path: '/students', name: 'Students', icon: UsersIcon, roles: ['admin', 'administration'] },
+  { path: '/staff', name: 'Staff', icon: UserGroupIcon, roles: ['admin', 'administration'] },
+  { path: '/parents', name: 'Parents', icon: UserIcon, roles: ['admin', 'administration'] },
+  { path: '/classes', name: 'Classes', icon: AcademicCapIcon, roles: ['admin', 'administration'] },
+  { path: '/subjects', name: 'Subjects', icon: BookOpenIcon, roles: ['admin', 'administration'] },
+  { path: '/exams', name: 'Exams', icon: ClipboardDocumentListIcon, roles: ['admin', 'administration'] },
+  { path: '/attendance', name: 'Attendance', icon: CalendarIcon, roles: ['admin', 'administration'] },
+  { path: '/duties', name: 'Duties', icon: CalendarIcon, roles: ['admin', 'administration'] },
+  { path: '/reports', name: 'Reports', icon: ChartBarIcon, roles: ['admin', 'administration'] },
+  { path: '/pdf-reports', name: 'PDF Reports', icon: DocumentTextIcon, roles: ['admin', 'administration'] },
+  { path: '/historical-records', name: 'Historical Records', icon: ArchiveBoxIcon, roles: ['admin', 'administration'] },
+  { path: '/admin/marks-entry', name: 'Mark Entry', icon: ClipboardDocumentListIcon, roles: ['admin', 'administration'] },
 
   // Staff-specific routes
   { path: '/staff/exams', name: 'Exams', icon: ClipboardDocumentListIcon, roles: ['staff'] },
@@ -55,8 +55,8 @@ const menuItems = [
   { path: 'my-child-results', name: 'Results', icon: ChartBarIcon, roles: ['parent'] },
 
   // common routes
-  { path: '/notifications', name: 'Notifications', icon: BellIcon, roles: ['admin', 'staff', 'parent'] },
-  { path: '/settings', name: 'Settings', icon: Cog6ToothIcon, roles: ['admin', 'staff', 'parent'] },
+  { path: '/notifications', name: 'Notifications', icon: BellIcon, roles: ['admin', 'administration', 'staff', 'parent'] },
+  { path: '/settings', name: 'Settings', icon: Cog6ToothIcon, roles: ['admin', 'administration', 'staff', 'parent'] },
 ]
 
 const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
