@@ -209,7 +209,7 @@ function App() {
             <AdministrationLogin />
           </PublicRoute>
         } />
-        <Route path="/administration/*" element={
+        <Route path="/administration" element={
           <ProtectedRoute allowedRoles={['administration']}>
             <AdministrationLayout />
           </ProtectedRoute>

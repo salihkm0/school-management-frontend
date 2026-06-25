@@ -18,9 +18,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   }
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    // Redirect open user to their dashboard if they try to access admin routes
     if (user.role === 'open') {
       return <Navigate to="/open/marklist/2025-2026" replace />
+    }
+    if (user.role === 'administration') {
+      return <Navigate to="/administration" replace />
     }
     // Redirect others to home
     return <Navigate to="/" replace />
