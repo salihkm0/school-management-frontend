@@ -104,7 +104,7 @@ const AdministrationLayout = () => {
             <Menu className="w-6 h-6" />
           </button>
           <div className="flex-1 flex justify-between items-center">
-            <h1 className="text-sm font-medium text-gray-400">System Control Panel</h1>
+            <h1 className="text-sm font-medium text-gray-400">System Control Panel - PPM HSS Kottukkara</h1>
             <div className="flex items-center gap-3">
               <span className="flex h-3 w-3 relative">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>

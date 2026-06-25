@@ -52,6 +52,10 @@ api.interceptors.response.use(
       }
     }
     
+    if (error.response?.status === 503) {
+      window.dispatchEvent(new Event('maintenance_mode_on'))
+    }
+    
     return Promise.reject(error)
   }
 )

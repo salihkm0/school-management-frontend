@@ -85,7 +85,7 @@ export const initSocket = (userId, userRole) => {
   // Connect with the token in the query string (like Postman)
   socket = io(SOCKET_URL, {
     query: { token },
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'], // Use polling first, then upgrade (better for hosted links/load balancers)
     reconnection: true,
     reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
     reconnectionDelay: 1000,
