@@ -16,8 +16,13 @@ const administrationService = {
     return response.data;
   },
 
-  updateUserRole: async (id, roleData) => {
-    const response = await api.put(`/administration/users/${id}/role`, roleData);
+  createUser: async (userData) => {
+    const response = await api.post('/administration/users', userData);
+    return response.data;
+  },
+
+  updateUser: async (id, userData) => {
+    const response = await api.put(`/administration/users/${id}`, userData);
     return response.data;
   },
 

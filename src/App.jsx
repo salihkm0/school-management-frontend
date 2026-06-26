@@ -54,6 +54,7 @@ import SystemLogs from './pages/administration/SystemLogs'
 import AuditLog from './pages/administration/AuditLog'
 import BroadcastCenter from './pages/administration/BroadcastCenter'
 import UserManagement from './pages/administration/UserManagement'
+import ActiveUsers from './pages/administration/ActiveUsers'
 
 function App() {
   const dispatch = useDispatch()
@@ -238,6 +239,7 @@ function App() {
           <Route path="audit" element={<AuditLog />} />
           <Route path="broadcast" element={<BroadcastCenter />} />
           <Route path="users" element={<UserManagement />} />
+          <Route path="active-users" element={<ActiveUsers />} />
         </Route>
 
         <Route path="/open/*" element={

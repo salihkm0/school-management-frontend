@@ -8,15 +8,18 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // Edit form state
-  const [editForm, setEditForm] = useState({
+  // Edit/Create form state
+  const [form, setForm] = useState({
     name: '',
     email: '',
     phone: '',
-    role: '',
+    role: 'parent',
+    password: '',
     isActive: true
   });
+
 
   const fetchUsers = async () => {
     try {
@@ -34,13 +37,26 @@ const UserManagement = () => {
     fetchUsers();
   }, []);
 
+  const handleCreateClick = () => {
+    setForm({
+      name: '',
+      email: '',
+      phone: '',
+      role: 'parent',
+      password: '',
+      isActive: true
+    });
+    setIsCreateModalOpen(true);
+  };
+
   const handleEditClick = (user) => {
     setSelectedUser(user);
-    setEditForm({
+    setForm({
       name: user.name || '',
       email: user.email || '',
       phone: user.phone || '',
       role: user.role || 'parent',
+      password: '', // blank password unless changing
       isActive: user.isActive !== false
     });
     setIsEditModalOpen(true);
@@ -61,12 +77,24 @@ const UserManagement = () => {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     try {
-      await administrationService.updateUser(selectedUser._id, editForm);
+      await administrationService.updateUser(selectedUser._id, form);
       toast.success('User updated successfully');
       setIsEditModalOpen(false);
       fetchUsers();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update user');
+    }
+  };
+
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await administrationService.createUser(form);
+      toast.success('User created successfully');
+      setIsCreateModalOpen(false);
+      fetchUsers();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to create user');
     }
   };
 
@@ -87,6 +115,13 @@ const UserManagement = () => {
           <h1 className="text-2xl font-bold text-white tracking-tight">User Management</h1>
           <p className="text-sm text-gray-400 mt-1">Manage system accounts and access</p>
         </div>
+        <button
+          onClick={handleCreateClick}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-blue-500/20"
+        >
+          <UserCircleIcon className="w-5 h-5" />
+          Add User
+        </button>
       </div>
 
       <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl">
@@ -185,8 +220,8 @@ const UserManagement = () => {
                 <input
                   type="text"
                   required
-                  value={editForm.name}
-                  onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                  value={form.name}
+                  onChange={(e) => setForm({...form, name: e.target.value})}
                   className="w-full bg-gray-950 border border-gray-800 text-white rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 />
               </div>
@@ -194,8 +229,8 @@ const UserManagement = () => {
                 <label className="block text-sm font-medium text-gray-400 mb-1">Email</label>
                 <input
                   type="email"
-                  value={editForm.email}
-                  onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                  value={form.email}
+                  onChange={(e) => setForm({...form, email: e.target.value})}
                   className="w-full bg-gray-950 border border-gray-800 text-white rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 />
               </div>
@@ -204,16 +239,16 @@ const UserManagement = () => {
                 <input
                   type="text"
                   required
-                  value={editForm.phone}
-                  onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                  value={form.phone}
+                  onChange={(e) => setForm({...form, phone: e.target.value})}
                   className="w-full bg-gray-950 border border-gray-800 text-white rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Role</label>
                 <select
-                  value={editForm.role}
-                  onChange={(e) => setEditForm({...editForm, role: e.target.value})}
+                  value={form.role}
+                  onChange={(e) => setForm({...form, role: e.target.value})}
                   className="w-full bg-gray-950 border border-gray-800 text-white rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 >
                   <option value="parent">Parent</option>
@@ -222,12 +257,21 @@ const UserManagement = () => {
                   <option value="administration">Administration</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">New Password (leave blank to keep current)</label>
+                <input
+                  type="password"
+                  value={form.password}
+                  onChange={(e) => setForm({...form, password: e.target.value})}
+                  className="w-full bg-gray-950 border border-gray-800 text-white rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                />
+              </div>
               <div className="flex items-center gap-3 pt-2">
                 <input
                   type="checkbox"
                   id="isActive"
-                  checked={editForm.isActive}
-                  onChange={(e) => setEditForm({...editForm, isActive: e.target.checked})}
+                  checked={form.isActive}
+                  onChange={(e) => setForm({...form, isActive: e.target.checked})}
                   className="w-5 h-5 rounded border-gray-700 bg-gray-950 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
                 />
                 <label htmlFor="isActive" className="text-sm font-medium text-gray-300">
@@ -248,6 +292,106 @@ const UserManagement = () => {
                   className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-colors shadow-lg shadow-blue-500/20"
                 >
                   Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-gray-950/80 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-gray-900">
+              <h3 className="text-lg font-bold text-white">Add New User</h3>
+              <button 
+                onClick={() => setIsCreateModalOpen(false)}
+                className="text-gray-400 hover:text-gray-200"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Name</label>
+                <input
+                  type="text"
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm({...form, name: e.target.value})}
+                  className="w-full bg-gray-950 border border-gray-800 text-white rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({...form, email: e.target.value})}
+                  className="w-full bg-gray-950 border border-gray-800 text-white rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Phone</label>
+                <input
+                  type="text"
+                  required
+                  value={form.phone}
+                  onChange={(e) => setForm({...form, phone: e.target.value})}
+                  className="w-full bg-gray-950 border border-gray-800 text-white rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Role</label>
+                <select
+                  value={form.role}
+                  onChange={(e) => setForm({...form, role: e.target.value})}
+                  className="w-full bg-gray-950 border border-gray-800 text-white rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                >
+                  <option value="parent">Parent</option>
+                  <option value="staff">Staff</option>
+                  <option value="admin">Admin</option>
+                  <option value="administration">Administration</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Password</label>
+                <input
+                  type="password"
+                  required
+                  value={form.password}
+                  onChange={(e) => setForm({...form, password: e.target.value})}
+                  className="w-full bg-gray-950 border border-gray-800 text-white rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                />
+              </div>
+              <div className="flex items-center gap-3 pt-2">
+                <input
+                  type="checkbox"
+                  id="isActiveNew"
+                  checked={form.isActive}
+                  onChange={(e) => setForm({...form, isActive: e.target.checked})}
+                  className="w-5 h-5 rounded border-gray-700 bg-gray-950 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
+                />
+                <label htmlFor="isActiveNew" className="text-sm font-medium text-gray-300">
+                  Account is Active
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-6">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-colors shadow-lg shadow-blue-500/20"
+                >
+                  Create User
                 </button>
               </div>
             </form>
