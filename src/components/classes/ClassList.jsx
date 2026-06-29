@@ -15,9 +15,10 @@ import {
   FunnelIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  EllipsisVerticalIcon
+  EllipsisVerticalIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline'
-import { fetchClasses, deleteClass } from '../../store/slices/classSlice'
+import { fetchClasses, deleteClass, syncAllTemplates } from '../../store/slices/classSlice'
 import { fetchAcademicYears } from '../../store/slices/academicYearSlice'
 import LoadingSpinner from '../common/LoadingSpinner'
 import useDebounce from '../../hooks/useDebounce'
@@ -32,6 +33,8 @@ const ClassList = () => {
   const [searchInput, setSearchInput] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
+  const [isSyncingTemplates, setIsSyncingTemplates] = useState(false)
+  const [showSyncModal, setShowSyncModal] = useState(false)
   const [openMenuId, setOpenMenuId] = useState(null)
   const menuRef = useRef(null)
   const debouncedSearch = useDebounce(searchInput, 500)
@@ -79,6 +82,20 @@ const ClassList = () => {
     }
   }
 
+  const handleSyncTemplates = async () => {
+    if (selectedYear) {
+      setIsSyncingTemplates(true)
+      try {
+        await dispatch(syncAllTemplates(selectedYear)).unwrap()
+        setShowSyncModal(false)
+      } catch (error) {
+        console.error('Failed to sync templates:', error)
+      } finally {
+        setIsSyncingTemplates(false)
+      }
+    }
+  }
+
   const handlePageChange = (page) => setCurrentPage(page)
   const clearSearch = () => setSearchInput('')
   const hasActiveFilters = searchInput
@@ -95,10 +112,21 @@ const ClassList = () => {
           <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Classes</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage all classes and sections</p>
         </div>
-        <Link to="/classes/new" className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all shadow-sm">
-          <PlusIcon className="w-4 h-4" />
-          <span>Add Class</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          {selectedYear && (
+            <button 
+              onClick={() => setShowSyncModal(true)} 
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all"
+            >
+              <ArrowPathIcon className="w-4 h-4" />
+              <span>Sync Templates</span>
+            </button>
+          )}
+          <Link to="/classes/new" className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all shadow-sm">
+            <PlusIcon className="w-4 h-4" />
+            <span>Add Class</span>
+          </Link>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -338,32 +366,72 @@ const ClassList = () => {
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteModal(false)} />
-          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-auto overflow-hidden">
-            <div className="p-5">
+          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-auto overflow-hidden border border-rose-200">
+            <div className="p-4 sm:p-6 bg-rose-50">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center">
-                  <TrashIcon className="w-5 h-5 text-rose-600" />
+                <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center">
+                  <TrashIcon className="w-5 h-5 text-rose-700" />
                 </div>
                 <div>
-                  <h3 className="text-base font-semibold text-gray-900">Delete Class</h3>
-                  <p className="text-xs text-gray-500">This action cannot be undone</p>
+                  <h3 className="text-base sm:text-lg font-bold text-rose-900">Delete Class</h3>
+                  <p className="text-xs sm:text-sm text-rose-700">This action cannot be undone.</p>
                 </div>
               </div>
-              <p className="text-sm text-gray-600 mb-5">
-                Are you sure you want to delete <span className="font-medium text-gray-900">{selectedClass?.displayName || selectedClass?.name}</span>?
+              <p className="text-sm sm:text-base text-rose-800 mb-5 sm:mb-6">
+                Are you sure you want to delete <span className="font-bold">{selectedClass?.name} {selectedClass?.section && `- ${selectedClass.section}`}</span>? All associated data will be removed.
               </p>
               <div className="flex justify-end gap-3">
-                <button
+                <button 
                   onClick={() => setShowDeleteModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
                   Cancel
                 </button>
-                <button
+                <button 
                   onClick={handleDelete}
-                  className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 shadow-sm shadow-rose-600/30"
                 >
-                  Delete Class
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sync Templates Modal */}
+      {showSyncModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !isSyncingTemplates && setShowSyncModal(false)} />
+          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-auto overflow-hidden">
+            <div className="p-4 sm:p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+                  <ArrowPathIcon className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">Sync All Templates</h3>
+                  <p className="text-xs sm:text-sm text-gray-500">Apply templates to all classes in current year</p>
+                </div>
+              </div>
+              <p className="text-sm sm:text-base text-gray-600 mb-5 sm:mb-6">
+                Are you sure you want to sync subject templates for all classes in the selected academic year? This will update the subjects for all matching classes.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => setShowSyncModal(false)}
+                  disabled={isSyncingTemplates}
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSyncTemplates}
+                  disabled={isSyncingTemplates}
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isSyncingTemplates && <LoadingSpinner className="w-4 h-4 text-white" />}
+                  <span>{isSyncingTemplates ? 'Syncing...' : 'Start Sync'}</span>
                 </button>
               </div>
             </div>

@@ -135,6 +135,11 @@ const classService = {
     return response.data
   },
 
+  syncAllSubjectTemplates: async (academicYearId) => {
+    const response = await api.post(`/classes/sync-all-templates/${academicYearId}`)
+    return response.data
+  },
+
   getClassLanguageSubjects: async (id) => {
     const response = await api.get(`/classes/${id}/language-subjects`)
     return response.data

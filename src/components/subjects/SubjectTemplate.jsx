@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { ArrowLeftIcon, PlusIcon, TrashIcon, CheckIcon, AcademicCapIcon } from '@heroicons/react/24/outline'
 import { fetchSubjects } from '../../store/slices/subjectSlice'
+import { fetchAcademicYears } from '../../store/slices/academicYearSlice'
 import subjectService from '../../services/subjectService'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
@@ -13,8 +14,10 @@ const SubjectTemplate = () => {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const { subjects } = useSelector((state) => state.subjects)
+  const { academicYears } = useSelector((state) => state.academicYears)
   const [classNames, setClassNames] = useState([])
   const [selectedClass, setSelectedClass] = useState('')
+  const [selectedYear, setSelectedYear] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { register, handleSubmit, control, setValue, reset, watch } = useForm({ 
     defaultValues: { subjects: [], sectionSpecific: false, sectionSubjects: {} } 
@@ -24,8 +27,16 @@ const SubjectTemplate = () => {
 
   useEffect(() => {
     dispatch(fetchSubjects({ limit: 100 }))
+    dispatch(fetchAcademicYears({ limit: 100 }))
     loadClassNames()
   }, [dispatch])
+
+  useEffect(() => {
+    if (academicYears.length > 0 && !selectedYear) {
+      const currentYear = academicYears.find(y => y.isCurrent)
+      setSelectedYear(currentYear?._id || academicYears[0]?._id || '')
+    }
+  }, [academicYears, selectedYear])
 
   const loadClassNames = async () => {
     setIsLoading(true)
@@ -41,13 +52,13 @@ const SubjectTemplate = () => {
   }
 
   useEffect(() => {
-    if (selectedClass) loadTemplate()
-  }, [selectedClass])
+    if (selectedClass && selectedYear) loadTemplate()
+  }, [selectedClass, selectedYear])
 
   const loadTemplate = async () => {
     setIsLoading(true)
     try {
-      const template = await subjectService.getTemplateByClassName(selectedClass)
+      const template = await subjectService.getTemplateByClassName(`${selectedClass}?academicYearId=${selectedYear}`)
       if (template) {
         setValue('subjects', template.subjects.map(s => ({ subjectId: s._id || s })))
         setValue('sectionSpecific', template.sectionSpecific || false)
@@ -64,9 +75,11 @@ const SubjectTemplate = () => {
 
   const onSubmit = async (data) => {
     if (!selectedClass) { toast.error('Please select a class'); return }
+    if (!selectedYear) { toast.error('Please select an academic year'); return }
     setIsLoading(true)
     try {
       await subjectService.upsertTemplateByClassName(selectedClass, {
+        academicYearId: selectedYear,
         subjects: data.subjects.map(s => s.subjectId),
         sectionSpecific: data.sectionSpecific,
         sectionSubjects: data.sectionSubjects
@@ -95,20 +108,39 @@ const SubjectTemplate = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Select Class</label>
-        <select 
-          value={selectedClass} 
-          onChange={(e) => setSelectedClass(e.target.value)} 
-          className="w-full sm:w-80 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
-        >
-          <option value="">Select Class</option>
-          {classNames.map(c => (
-            <option key={c.className} value={c.className}>
-              {c.className} {c.hasTemplate && '(Has Template)'}
-            </option>
-          ))}
-        </select>
+      <div className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col sm:flex-row gap-4">
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+          <select 
+            value={selectedYear} 
+            onChange={(e) => setSelectedYear(e.target.value)} 
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+          >
+            <option value="">Select Academic Year</option>
+            {academicYears.map(year => (
+              <option key={year._id} value={year._id}>
+                {year.year} {year.isCurrent ? '(Current)' : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Select Class</label>
+          <select 
+            value={selectedClass} 
+            onChange={(e) => setSelectedClass(e.target.value)} 
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+            disabled={!selectedYear}
+          >
+            <option value="">Select Class</option>
+            {classNames.map(c => (
+              <option key={c.className} value={c.className}>
+                {c.className} {c.hasTemplate && '(Has Template)'}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {selectedClass && (

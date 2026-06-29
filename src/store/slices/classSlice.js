@@ -235,6 +235,22 @@ export const syncClassSubjects = createAsyncThunk(
   }
 )
 
+export const syncAllTemplates = createAsyncThunk(
+  'classes/syncAllTemplates',
+  async (academicYearId, { rejectWithValue, dispatch }) => {
+    try {
+      const response = await classService.syncAllSubjectTemplates(academicYearId)
+      toast.success(response.message || `Successfully synced templates`)
+      // Refresh classes list after bulk sync
+      dispatch(fetchClasses({ academicYearId }))
+      return response
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to sync templates')
+      return rejectWithValue(error.response?.data)
+    }
+  }
+)
+
 // ==================== LANGUAGE SUBJECT ACTIONS ====================
 
 export const syncLanguageSubjects = createAsyncThunk(
