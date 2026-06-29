@@ -27,6 +27,11 @@ const staffService = {
     return response.data
   },
 
+  forceDeleteStaff: async (id) => {
+    const response = await api.delete(`/staff/${id}?force=true`)
+    return response.data
+  },
+
   // Add this function - fetch available roles
   fetchRoles: async () => {
     // You can either fetch from API or return static list

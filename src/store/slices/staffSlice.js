@@ -68,6 +68,20 @@ export const deleteStaff = createAsyncThunk(
   }
 )
 
+export const forceDeleteStaff = createAsyncThunk(
+  'staff/forceDelete',
+  async (id, { rejectWithValue }) => {
+    try {
+      await staffService.forceDeleteStaff(id)
+      toast.success('Staff permanently deleted')
+      return id
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to force delete staff')
+      return rejectWithValue(error.response?.data)
+    }
+  }
+)
+
 export const assignStaffSubjects = createAsyncThunk(
   'staff/assignSubjects',
   async ({ staffId, academicYearId, subjects }, { rejectWithValue }) => {
@@ -158,7 +172,15 @@ const staffSlice = createSlice({
         }
       })
       .addCase(deleteStaff.fulfilled, (state, action) => {
-        state.staff = state.staff.filter(s => s._id !== action.payload)
+        // Find and mark as inactive
+        const index = state.staff.findIndex(s => s._id === action.payload)
+        if (index !== -1) {
+          state.staff[index].isActive = false
+        }
+      })
+      .addCase(forceDeleteStaff.fulfilled, (state, action) => {
+        state.staff = state.staff.filter((s) => s._id !== action.payload)
+        state.pagination.total -= 1
         if (state.currentStaff?._id === action.payload) {
           state.currentStaff = null
         }

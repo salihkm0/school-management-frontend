@@ -30,7 +30,8 @@ const SubjectForm = () => {
         type: currentSubject.type, 
         creditHours: currentSubject.creditHours, 
         department: currentSubject.department, 
-        gradeLevel: currentSubject.gradeLevel 
+        gradeLevel: currentSubject.gradeLevel,
+        isActive: currentSubject.isActive
       })
     }
   }, [isEditing, currentSubject, reset])
@@ -110,6 +111,14 @@ const SubjectForm = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <textarea {...register('description')} rows={3} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none" placeholder="Subject description" />
           </div>
+
+          {isEditing && (
+            <div className="flex items-center gap-2 mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+              <input type="checkbox" id="isActive" {...register('isActive')} className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500" />
+              <label htmlFor="isActive" className="text-sm font-medium text-gray-700">Active Subject</label>
+              <p className="text-xs text-gray-500 ml-2">Uncheck to soft delete/deactivate this subject.</p>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-3 px-5 py-4 bg-gray-50 border-t border-gray-200">

@@ -25,6 +25,7 @@ const SubjectList = () => {
   const [searchInput, setSearchInput] = useState('')
   const [filterType, setFilterType] = useState('')
   const [filterDepartment, setFilterDepartment] = useState('')
+  const [filterStatus, setFilterStatus] = useState('true')
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [selectedSubject, setSelectedSubject] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
@@ -38,10 +39,11 @@ const SubjectList = () => {
       search: debouncedSearch, 
       type: filterType,
       department: filterDepartment,
+      isActive: filterStatus === 'all' ? undefined : filterStatus,
       limit: 20,
       page: currentPage
     }))
-  }, [dispatch, debouncedSearch, filterType, filterDepartment, currentPage])
+  }, [dispatch, debouncedSearch, filterType, filterDepartment, filterStatus, currentPage])
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -67,11 +69,12 @@ const SubjectList = () => {
   const clearFilters = () => {
     setFilterType('')
     setFilterDepartment('')
+    setFilterStatus('true')
     setSearchInput('')
     setCurrentPage(1)
   }
   
-  const hasActiveFilters = searchInput || filterType || filterDepartment
+  const hasActiveFilters = searchInput || filterType || filterDepartment || filterStatus !== 'true'
   const totalSubjects = pagination?.total || subjects.length
 
   // Get unique departments from subjects
@@ -137,7 +140,7 @@ const SubjectList = () => {
           <span>Filters</span>
           {hasActiveFilters && (
             <span className="w-5 h-5 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center">
-              {(searchInput ? 1 : 0) + (filterType ? 1 : 0) + (filterDepartment ? 1 : 0)}
+              {(searchInput ? 1 : 0) + (filterType ? 1 : 0) + (filterDepartment ? 1 : 0) + (filterStatus !== 'true' ? 1 : 0)}
             </span>
           )}
         </button>
@@ -152,7 +155,7 @@ const SubjectList = () => {
       {/* Filters Panel */}
       {showFilters && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Subject Type</label>
               <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white">
@@ -176,6 +179,14 @@ const SubjectList = () => {
                 {departments.filter(d => !['Languages', 'Sciences', 'Mathematics', 'Social Sciences', 'Computer Science', 'Commerce', 'Humanities'].includes(d)).map(d => (
                   <option key={d} value={d}>{d}</option>
                 ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white">
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+                <option value="all">All Status</option>
               </select>
             </div>
           </div>
@@ -246,7 +257,12 @@ const SubjectList = () => {
                           <span className="text-emerald-700 font-semibold text-sm">{subject.name?.charAt(0).toUpperCase()}</span>
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-gray-900">{subject.name}</div>
+                          <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                            {subject.name}
+                            {subject.isActive === false && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-rose-100 text-rose-700">Deactivated</span>
+                            )}
+                          </div>
                           <div className="text-xs text-gray-500 sm:hidden">{subject.code}</div>
                         </div>
                       </div>

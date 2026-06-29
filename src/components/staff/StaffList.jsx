@@ -15,7 +15,7 @@ import {
   ChevronRightIcon,
   EllipsisVerticalIcon,
 } from "@heroicons/react/24/outline";
-import { fetchStaff, deleteStaff } from "../../store/slices/staffSlice";
+import { fetchStaff, deleteStaff, forceDeleteStaff } from "../../store/slices/staffSlice";
 import { fetchRoles } from "../../services/staffService";
 import LoadingSpinner from "../common/LoadingSpinner";
 
@@ -31,6 +31,7 @@ const StaffList = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showForceDeleteModal, setShowForceDeleteModal] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [roles, setRoles] = useState([]);
@@ -94,6 +95,16 @@ const StaffList = () => {
     if (selectedStaff) {
       await dispatch(deleteStaff(selectedStaff._id));
       setShowDeleteModal(false);
+      setSelectedStaff(null);
+      setOpenMenuId(null);
+      loadStaff();
+    }
+  };
+
+  const handleForceDelete = async () => {
+    if (selectedStaff) {
+      await dispatch(forceDeleteStaff(selectedStaff._id));
+      setShowForceDeleteModal(false);
       setSelectedStaff(null);
       setOpenMenuId(null);
       loadStaff();
@@ -262,7 +273,11 @@ const StaffList = () => {
                       <div className="hidden sm:flex items-center justify-end gap-1">
                         <Link to={`/staff/${s._id}`} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"><EyeIcon className="w-4 h-4" /></Link>
                         <Link to={`/staff/${s._id}/edit`} className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors"><PencilIcon className="w-4 h-4" /></Link>
-                        <button onClick={() => { setSelectedStaff(s); setShowDeleteModal(true); }} className="p-1.5 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"><TrashIcon className="w-4 h-4" /></button>
+                        {s.isActive ? (
+                          <button onClick={() => { setSelectedStaff(s); setShowDeleteModal(true); }} className="p-1.5 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors" title="Deactivate"><TrashIcon className="w-4 h-4" /></button>
+                        ) : (
+                          <button onClick={() => { setSelectedStaff(s); setShowForceDeleteModal(true); }} className="p-1.5 text-rose-500 hover:text-white rounded-lg hover:bg-rose-600 transition-colors" title="Force Delete"><TrashIcon className="w-4 h-4" /></button>
+                        )}
                       </div>
                       <div className="relative sm:hidden" ref={menuRef}>
                         <button onClick={() => setOpenMenuId(openMenuId === s._id ? null : s._id)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
@@ -272,7 +287,11 @@ const StaffList = () => {
                           <div className="absolute right-0 top-full mt-1 w-36 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
                             <Link to={`/staff/${s._id}`} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setOpenMenuId(null)}><EyeIcon className="w-4 h-4" /> View</Link>
                             <Link to={`/staff/${s._id}/edit`} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => setOpenMenuId(null)}><PencilIcon className="w-4 h-4" /> Edit</Link>
-                            <button onClick={() => { setSelectedStaff(s); setShowDeleteModal(true); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"> <TrashIcon className="w-4 h-4" /> Delete</button>
+                            {s.isActive ? (
+                              <button onClick={() => { setSelectedStaff(s); setShowDeleteModal(true); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"> <TrashIcon className="w-4 h-4" /> Deactivate</button>
+                            ) : (
+                              <button onClick={() => { setSelectedStaff(s); setShowForceDeleteModal(true); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white bg-rose-600 hover:bg-rose-700"> <TrashIcon className="w-4 h-4" /> Force Delete</button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -316,6 +335,26 @@ const StaffList = () => {
               <div className="flex justify-end gap-3">
                 <button onClick={() => setShowDeleteModal(false)} className="px-3 sm:px-4 py-1.5 sm:py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
                 <button onClick={handleDelete} className="px-3 sm:px-4 py-1.5 sm:py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700">Deactivate</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Force Delete Modal */}
+      {showForceDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowForceDeleteModal(false)} />
+          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-auto overflow-hidden border border-rose-200">
+            <div className="p-4 sm:p-6 bg-rose-50">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center"><TrashIcon className="w-5 h-5 text-rose-700" /></div>
+                <div><h3 className="text-base sm:text-lg font-bold text-rose-900">Permanent Delete</h3><p className="text-xs sm:text-sm text-rose-700">This action CANNOT be undone.</p></div>
+              </div>
+              <p className="text-sm sm:text-base text-rose-800 mb-5 sm:mb-6">Are you sure you want to permanently delete <span className="font-bold">{selectedStaff?.name}</span>? All associated data will be removed forever.</p>
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setShowForceDeleteModal(false)} className="px-3 sm:px-4 py-1.5 sm:py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+                <button onClick={handleForceDelete} className="px-3 sm:px-4 py-1.5 sm:py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 shadow-sm shadow-rose-600/30">Force Delete</button>
               </div>
             </div>
           </div>
