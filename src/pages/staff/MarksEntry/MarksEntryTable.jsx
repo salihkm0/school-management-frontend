@@ -604,7 +604,7 @@ const MarksEntryTable = () => {
                         let colSpan = 1; // TE
                         if (hasPrac) colSpan++;
                         if (hasCE) colSpan++;
-                        colSpan += 3; // Absent, Total, Grade
+                        colSpan += 2; // Total, Grade
                         return (
                           <th
                             key={subj.examSubjectId}
@@ -636,11 +636,8 @@ const MarksEntryTable = () => {
                                 Pr <span className="text-gray-400">/{subj.practicalMaxMarks}</span>
                               </th>
                             )}
-                            <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-500 whitespace-nowrap border-l border-gray-200">
-                              Abs
-                            </th>
                             <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-700 whitespace-nowrap border-l border-gray-200 bg-gray-100/50">
-                              Total <span className="text-gray-400">/{subj.maxMarks || 100}</span>
+                              Total with % <span className="text-gray-400">/{subj.maxMarks || 100}</span>
                             </th>
                             <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-700 whitespace-nowrap border-l border-r border-gray-200 bg-gray-100/50">
                               Grade
@@ -754,23 +751,6 @@ const MarksEntryTable = () => {
                                     />
                                   </td>
                                 )}
-
-                                {/* Absent Toggle */}
-                                <td className="px-1 py-1 text-center border-l border-gray-200">
-                                  <button
-                                    type="button"
-                                    onClick={() => canEdit && handleAbsentToggle(student.studentId, key)}
-                                    disabled={!canEdit}
-                                    className={`w-6 h-6 rounded border flex items-center justify-center mx-auto transition-all ${
-                                      absent
-                                        ? "bg-red-500 border-red-500 text-white"
-                                        : "bg-white border-gray-300 text-transparent hover:border-red-300"
-                                    } ${!canEdit ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
-                                    title={absent ? "Mark as Present" : "Mark as Absent"}
-                                  >
-                                    <XMarkIcon className="w-3 h-3" />
-                                  </button>
-                                </td>
 
                                 {/* Total and % */}
                                 <td className="px-2 py-1 text-center border-l border-gray-200 bg-gray-50/50">

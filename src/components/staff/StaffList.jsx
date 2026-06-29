@@ -35,7 +35,9 @@ const StaffList = () => {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [roles, setRoles] = useState([]);
   const menuRef = useRef(null);
-  const { register, handleSubmit, reset, watch } = useForm();
+  const { register, handleSubmit, reset, watch } = useForm({
+    defaultValues: { search: "", role: "", isActive: "true" }
+  });
 
   useEffect(() => {
     loadRoles();

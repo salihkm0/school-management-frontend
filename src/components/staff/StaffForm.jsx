@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/solid";
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { createStaff, updateStaff, fetchStaffById, clearCurrentStaff } from "../../store/slices/staffSlice";
 import { fetchRoles } from "../../services/staffService";
 import LoadingSpinner from "../common/LoadingSpinner";
@@ -15,6 +16,7 @@ const StaffForm = () => {
   const isEditing = !!id;
   const { currentStaff, isLoading } = useSelector((state) => state.staff);
   const [roles, setRoles] = React.useState([]);
+  const [showPassword, setShowPassword] = React.useState(false);
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
     defaultValues: {
       employeeType: "Permanent"
@@ -114,7 +116,7 @@ const StaffForm = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number *</label>
-              <input {...register("phone", { required: "Contact required" })} className={`w-full px-3 py-2 text-sm border rounded-lg ${errors.phone ? "border-rose-500" : "border-gray-200"} focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
+              <input {...register("contact", { required: "Contact required" })} className={`w-full px-3 py-2 text-sm border rounded-lg ${errors.contact ? "border-rose-500" : "border-gray-200"} focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Date of Joining *</label>
@@ -128,7 +130,24 @@ const StaffForm = () => {
            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Password {!isEditing && "*"}</label>
-              <input type="password" {...register("password", { required: !isEditing && "Password required", minLength: { value: 6, message: "Min 6 characters" } })} className={`w-full px-3 py-2 text-sm border rounded-lg ${errors.password ? "border-rose-500" : "border-gray-200"} focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
+              <div className="relative">
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  {...register("password", { required: !isEditing && "Password required", minLength: { value: 6, message: "Min 6 characters" } })} 
+                  className={`w-full px-3 py-2 text-sm border rounded-lg ${errors.password ? "border-rose-500" : "border-gray-200"} focus:outline-none focus:ring-1 focus:ring-emerald-500`} 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? (
+                    <EyeSlashIcon className="h-5 w-5" aria-hidden="true" />
+                  ) : (
+                    <EyeIcon className="h-5 w-5" aria-hidden="true" />
+                  )}
+                </button>
+              </div>
               {errors.password && <p className="mt-1 text-xs text-rose-500">{errors.password.message}</p>}
             </div>
           </div>
