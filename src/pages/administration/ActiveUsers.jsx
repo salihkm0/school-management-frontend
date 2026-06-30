@@ -12,6 +12,7 @@ const ActiveUsers = () => {
     try {
       setLoading(true);
       const response = await administrationService.getActiveUsers();
+      // API returns { success, count, data: [...users] }
       setUsers(response.data || []);
     } catch (error) {
       toast.error('Failed to fetch active users');
