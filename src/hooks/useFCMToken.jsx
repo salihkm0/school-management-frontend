@@ -31,37 +31,11 @@ export const useFCMToken = (isAuthenticated) => {
         if (Notification.permission === 'granted') {
           await handleToken();
         } else if (Notification.permission === 'default') {
-          // Show a toast asking for permission
-          toast(
-            (t) => (
-              <div className="flex flex-col gap-2">
-                <span className="font-semibold text-sm">Enable push notifications?</span>
-                <span className="text-xs text-gray-600">Get instant updates about exams, marks, and attendance.</span>
-                <div className="flex gap-2 mt-1">
-                  <button 
-                    onClick={async () => {
-                      toast.dismiss(t.id);
-                      const permission = await Notification.requestPermission();
-                      if (permission === 'granted') {
-                        await handleToken();
-                        toast.success('Notifications enabled!');
-                      }
-                    }}
-                    className="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-emerald-700"
-                  >
-                    Enable
-                  </button>
-                  <button 
-                    onClick={() => toast.dismiss(t.id)}
-                    className="bg-gray-200 text-gray-800 text-xs px-3 py-1.5 rounded-md hover:bg-gray-300"
-                  >
-                    Not Now
-                  </button>
-                </div>
-              </div>
-            ),
-            { duration: 10000, position: 'top-center' }
-          );
+          // Directly trigger the native browser permission dialog
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            await handleToken();
+          }
         }
 
         // Setup message listener
