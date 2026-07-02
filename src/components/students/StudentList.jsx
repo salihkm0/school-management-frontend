@@ -152,7 +152,7 @@ const StudentList = () => {
       const token = localStorage.getItem('token') || sessionStorage.getItem('token')
       const baseUrl = import.meta.env.VITE_API_URL || '/api'
 
-      const response = await fetch(`${baseUrl}/students/export/csv?${params.toString()}`, {
+      const response = await fetch(`${baseUrl}/students/export/excel?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
 
@@ -166,13 +166,13 @@ const StudentList = () => {
       // Use filename from Content-Disposition header if available
       const disposition = response.headers.get('Content-Disposition') || ''
       const match = disposition.match(/filename="?([^"]+)"?/)
-      link.download = match ? match[1] : `Students_Export_${Date.now()}.csv`
+      link.download = match ? match[1] : `Students_Export_${Date.now()}.xlsx`
 
       document.body.appendChild(link)
       link.click()
       link.remove()
       window.URL.revokeObjectURL(url)
-      toast.success(`CSV exported successfully`)
+      toast.success(`Excel exported successfully`)
     } catch (error) {
       console.error('Export error:', error)
       toast.error('Failed to export students')
@@ -267,7 +267,7 @@ const StudentList = () => {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <DocumentArrowDownIcon className="w-4 h-4" />
-            <span>{isExporting ? 'Exporting...' : 'Export CSV'}</span>
+            <span>{isExporting ? 'Exporting...' : 'Export Excel'}</span>
           </button>
           <Link
             to="/students/new"
