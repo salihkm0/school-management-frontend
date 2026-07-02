@@ -137,41 +137,48 @@ const StudentList = () => {
     setSearchParams({ ...searchParams, page: newPage })
   }
 
-  const handleExport = () => {
-    if (!students || students.length === 0) {
-      toast.error('No students to export')
-      return
+  const [isExporting, setIsExporting] = useState(false)
+
+  const handleExport = async () => {
+    setIsExporting(true)
+    try {
+      // Build query params matching the current filters (no page/limit)
+      const params = new URLSearchParams()
+      if (searchParams.classId)       params.set('classId', searchParams.classId)
+      if (searchParams.academicYearId) params.set('academicYearId', searchParams.academicYearId)
+      if (searchParams.status)        params.set('status', searchParams.status)
+      if (searchParams.search)        params.set('search', searchParams.search)
+
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+      const baseUrl = import.meta.env.VITE_API_URL || '/api'
+
+      const response = await fetch(`${baseUrl}/students/export/csv?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      if (!response.ok) throw new Error('Export failed')
+
+      const blob = await response.blob()
+      const url  = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href  = url
+
+      // Use filename from Content-Disposition header if available
+      const disposition = response.headers.get('Content-Disposition') || ''
+      const match = disposition.match(/filename="?([^"]+)"?/)
+      link.download = match ? match[1] : `Students_Export_${Date.now()}.csv`
+
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+      toast.success(`CSV exported successfully`)
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error('Failed to export students')
+    } finally {
+      setIsExporting(false)
     }
-
-    const exportData = students.map((student, index) => ({
-      'SL No': index + 1,
-      'Admission No': student.admissionNo,
-      'Student Name': student.fullName,
-      'Class': student.classId ? `${student.classId.name} ${student.classId.section || ''}`.trim() : 'N/A',
-      'Roll No': student.rollNumber || 'N/A',
-      'Gender': student.gender === 'M' ? 'Male' : student.gender === 'F' ? 'Female' : 'Other',
-      'Contact': student.contact?.primaryPhone || 'N/A',
-      'Status': student.status
-    }))
-
-    const worksheet = XLSX.utils.json_to_sheet(exportData)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Students')
-    
-    // Auto-size columns roughly
-    const colWidths = [
-      { wch: 6 }, // SL No
-      { wch: 15 }, // Admission No
-      { wch: 25 }, // Student Name
-      { wch: 10 }, // Class
-      { wch: 8 }, // Roll No
-      { wch: 10 }, // Gender
-      { wch: 15 }, // Contact
-      { wch: 10 }, // Status
-    ]
-    worksheet['!cols'] = colWidths
-
-    XLSX.writeFile(workbook, `Students_Export_${new Date().getTime()}.xlsx`)
   }
 
   const getStatusBadge = (status) => {
@@ -256,11 +263,11 @@ const StudentList = () => {
           </Link>
           <button
             onClick={handleExport}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-all"
+            disabled={isExporting}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <DocumentArrowDownIcon className="w-4 h-4" />
-            <span className="hidden sm:inline">Export</span>
-            <span className="sm:hidden">Export</span>
+            <span>{isExporting ? 'Exporting...' : 'Export CSV'}</span>
           </button>
           <Link
             to="/students/new"
