@@ -100,10 +100,23 @@ const ParentForm = () => {
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email Address <span className="text-rose-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email Address <span className="text-gray-400 text-xs font-normal">(Optional)</span>
+              </label>
               <div className="relative">
                 <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input type="email" {...register('email', { required: 'Email is required', pattern: { value: /^\S+@\S+\.\S+$/, message: 'Invalid email' } })} className={`w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 ${errors.email ? 'border-rose-500' : 'border-gray-200'}`} placeholder="parent@example.com" />
+                <input
+                  type="email"
+                  {...register('email', {
+                    pattern: {
+                      value: /^\S+@\S+\.\S+$/,
+                      message: 'Invalid email format'
+                    },
+                    setValueAs: v => v === '' ? undefined : v
+                  })}
+                  className={`w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 ${errors.email ? 'border-rose-500' : 'border-gray-200'}`}
+                  placeholder="parent@example.com (optional)"
+                />
               </div>
               {errors.email && <p className="mt-1 text-xs text-rose-500">{errors.email.message}</p>}
             </div>
