@@ -188,24 +188,22 @@ const ClassList = () => {
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div className="bg-white rounded-lg border border-gray-200 p-3">
           <p className="text-xs text-gray-500">Total Classes</p>
           <p className="text-xl font-bold text-gray-900">{totalClasses}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-3">
           <p className="text-xs text-gray-500">Total Students</p>
-          <p className="text-xl font-bold text-gray-900">{classes.reduce((sum, cls) => sum + (cls.studentCount || 0), 0)}</p>
+          <p className="text-xl font-bold text-gray-900">{pagination?.totalStudents ?? classes.reduce((sum, cls) => sum + (cls.studentCount || 0), 0)}</p>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-3">
-          <p className="text-xs text-gray-500">Avg Students</p>
+          <p className="text-xs text-gray-500">Avg Students / Class</p>
           <p className="text-xl font-bold text-gray-900">
-            {totalClasses > 0 ? Math.round(classes.reduce((sum, cls) => sum + (cls.studentCount || 0), 0) / totalClasses) : 0}
+            {totalClasses > 0
+              ? Math.round((pagination?.totalStudents ?? classes.reduce((sum, cls) => sum + (cls.studentCount || 0), 0)) / totalClasses)
+              : 0}
           </p>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-3">
-          <p className="text-xs text-gray-500">Total Subjects</p>
-          <p className="text-xl font-bold text-gray-900">{classes.reduce((sum, cls) => sum + (cls.subjects?.length || 0), 0)}</p>
         </div>
       </div>
 
