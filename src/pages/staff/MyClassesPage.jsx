@@ -18,7 +18,7 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline'
 import { CheckIcon } from '@heroicons/react/24/solid'
-import { fetchTeacherClassTeacherClasses, clearTeacherClasses } from '../../store/slices/classSlice'
+import { fetchTeacherClasses, clearTeacherClasses } from '../../store/slices/classSlice'
 import { fetchStaff } from '../../store/slices/staffSlice'
 import { fetchAcademicYears } from '../../store/slices/academicYearSlice'
 import { fetchStudentsByClass, updateStudent } from '../../store/slices/studentSlice'
@@ -29,7 +29,7 @@ const MyClassesPage = () => {
   const dispatch = useDispatch()
   const { user } = useSelector((state) => state.auth)
   const { staff, isLoading: staffLoading } = useSelector((state) => state.staff)
-  const { teacherClassTeacherClasses, isLoading: classesLoading } = useSelector((state) => state.classes)
+  const { teacherClasses, isLoading: classesLoading } = useSelector((state) => state.classes)
   const { students, isLoading: studentsLoading } = useSelector((state) => state.students)
   const { academicYears } = useSelector((state) => state.academicYears)
   
@@ -96,7 +96,7 @@ const MyClassesPage = () => {
     const staffId = currentStaff._id
     
     try {
-      const result = await dispatch(fetchTeacherClassTeacherClasses({ 
+      const result = await dispatch(fetchTeacherClasses({ 
         teacherId: staffId, 
         academicYearId: currentAcademicYear?._id 
       })).unwrap()
@@ -206,7 +206,7 @@ const MyClassesPage = () => {
     return <LoadingSpinner />
   }
 
-  if (teacherClassTeacherClasses.length === 0) {
+  if (teacherClasses.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white">
@@ -239,11 +239,9 @@ const MyClassesPage = () => {
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AcademicCapIcon className="w-10 h-10 text-gray-400" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">
-              No Class Assigned
-            </h3>
-            <p className="text-gray-500">
-              You are not assigned as a class teacher for any class in the academic year {currentAcademicYear?.year}.
+            <h3 className="text-lg font-medium text-gray-900 mt-4 mb-1">No Classes Found</h3>
+            <p className="text-gray-500 max-w-sm mx-auto">
+              You are not assigned to any classes in the academic year {currentAcademicYear?.year}.
             </p>
           </div>
         </div>
@@ -290,7 +288,7 @@ const MyClassesPage = () => {
         <div className="mb-6">
           <h2 className="text-sm font-medium text-gray-700 mb-3">Select Class</h2>
           <div className="flex flex-wrap gap-3">
-            {teacherClassTeacherClasses.map((classObj) => (
+            {teacherClasses.map((classObj) => (
               <button
                 key={classObj._id}
                 onClick={() => handleClassSelect(classObj)}
