@@ -41,6 +41,7 @@ const ExamForm = () => {
   const [schedulingMode, setSchedulingMode] = useState('subject_schedule')
   const [activeSection, setActiveSection] = useState('basic')
   const [expandedCePanels, setExpandedCePanels] = useState({})
+  const [selectedStandard, setSelectedStandard] = useState('')
 
   const { register, handleSubmit, control, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm({
     defaultValues: { 
@@ -109,6 +110,12 @@ const ExamForm = () => {
       }
       reset(transformedExam)
       setSchedulingMode(currentExam.schedulingMode || 'subject_schedule')
+      
+      // Determine selected standard from existing classes
+      if (currentExam.classDetails && currentExam.classDetails.length > 0) {
+        const unique = [...new Set(currentExam.classDetails.map(c => c.className).filter(Boolean))];
+        if (unique.length > 0) setSelectedStandard(unique[0]);
+      }
     }
   }, [isEditing, currentExam, reset])
 
@@ -202,8 +209,30 @@ const ExamForm = () => {
     });
   }, [availableClasses]);
 
+  const filteredClassesByStandard = useMemo(() => {
+    if (!selectedStandard) return [];
+    return availableClasses.filter(c => c.name === selectedStandard);
+  }, [availableClasses, selectedStandard]);
+
+  const filteredSubjectsForStandard = useMemo(() => {
+    if (!selectedStandard) return filteredSubjects;
+    const allowedSubjectIds = new Set();
+    filteredClassesByStandard.forEach(cls => {
+      (cls.subjects || []).forEach(s => {
+        const subjId = s._id || s;
+        if (subjId) allowedSubjectIds.add(String(subjId));
+      });
+      (cls.subjectTeachers || []).forEach(st => {
+        const subjId = st.subjectId?._id || st.subjectId;
+        if (subjId) allowedSubjectIds.add(String(subjId));
+      });
+    });
+    if (allowedSubjectIds.size === 0) return filteredSubjects;
+    return filteredSubjects.filter(s => allowedSubjectIds.has(String(s._id)));
+  }, [filteredSubjects, filteredClassesByStandard, selectedStandard]);
+
   const handleSelectAllClasses = () => {
-    setValue('classIds', availableClasses.map(c => String(c._id)), { shouldDirty: true, shouldValidate: true });
+    setValue('classIds', filteredClassesByStandard.map(c => String(c._id)), { shouldDirty: true, shouldValidate: true });
   };
   
   const handleDeselectAllClasses = () => {
@@ -562,7 +591,25 @@ const ExamForm = () => {
               </div>
               
               <div className="p-5">
-                <div>
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Select Standard <span className="text-red-500">*</span>
+                  </label>
+                  <select 
+                    value={selectedStandard}
+                    onChange={(e) => {
+                      setSelectedStandard(e.target.value);
+                      setValue('classIds', [], { shouldDirty: true });
+                    }}
+                    className="w-full md:w-1/2 px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                  >
+                    <option value="">Select a Standard...</option>
+                    {uniqueStandards.map(std => <option key={std} value={std}>Standard {std}</option>)}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">First select a standard, then select the specific classes below.</p>
+                </div>
+                
+                <div className={!selectedStandard ? 'opacity-50 pointer-events-none' : ''}>
                   <div className="flex flex-col xl:flex-row xl:items-center justify-between mb-3 gap-2">
                     <label className="block text-sm font-medium text-gray-700">
                       Select Classes <span className="text-red-500">*</span>
@@ -574,7 +621,10 @@ const ExamForm = () => {
                   </div>
                   <div className="bg-gray-50 rounded-md border border-gray-200 p-3">
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                      {availableClasses.map(cls => (
+                      {filteredClassesByStandard.length === 0 && selectedStandard && (
+                        <div className="col-span-full p-2 text-sm text-gray-500">No classes found for this standard.</div>
+                      )}
+                      {filteredClassesByStandard.map(cls => (
                         <label key={cls._id} className="flex items-center gap-2 p-2 rounded-md hover:bg-white transition-colors cursor-pointer">
                           <input
                             type="checkbox"
@@ -673,7 +723,7 @@ const ExamForm = () => {
                                   }}
                                 >
                                   <option value="">Select Subject</option>
-                                  {filteredSubjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+                                  {filteredSubjectsForStandard.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
                                 </select>
                               </div>
                               <div>
