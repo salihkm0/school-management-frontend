@@ -159,7 +159,7 @@ const Header = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
           )}
           
           {/* Desktop Search - Hidden on mobile */}
-          {/*
+          {false && (
           <div className="hidden md:flex items-center relative" ref={searchRef}>
             <form onSubmit={handleSearch} className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -259,20 +259,20 @@ const Header = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
               </div>
             )}
           </div>
-          */}
+          )}
         </div>
 
         {/* Right section - Actions */}
         <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
           {/* Mobile Search Button */}
-          {/*
+          {false && (
           <button 
             onClick={() => setShowSearch(true)} 
             className="md:hidden p-1.5 sm:p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
           >
             <MagnifyingGlassIcon className="w-5 h-5" />
           </button>
-          */}
+          )}
 
           {/* Notifications */}
           <div className="relative" ref={notificationRef}>
@@ -395,8 +395,7 @@ const Header = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
       </div>
 
       {/* Mobile Search Modal */}
-      {/*
-      {showSearch && (
+      {false && showSearch && (
         <div className="fixed inset-0 bg-white z-50 md:hidden flex flex-col">
           <div className="flex items-center gap-3 p-4 border-b border-gray-200 shrink-0">
             <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
@@ -504,7 +503,6 @@ const Header = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
           </div>
         </div>
       )}
-      */}
     </header>
   )
 }
