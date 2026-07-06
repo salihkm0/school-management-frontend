@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { fetchStaff } from '../../store/slices/staffSlice'
 import { fetchAcademicYears } from '../../store/slices/academicYearSlice'
-import { fetchTeacherClassTeacherClasses, clearTeacherClasses } from '../../store/slices/classSlice'
+import { fetchTeacherClasses, clearTeacherClasses } from '../../store/slices/classSlice'
 import { fetchExamById, deleteExam } from '../../store/slices/examSlice'
 import examService from '../../services/examService'
 import LoadingSpinner from '../../components/common/LoadingSpinner.jsx'
@@ -34,7 +34,7 @@ const StaffExamsPage = () => {
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
   const { staff, isLoading: staffLoading } = useSelector((state) => state.staff)
-  const { teacherClassTeacherClasses, isLoading: classesLoading } = useSelector((state) => state.classes)
+  const { teacherClasses, isLoading: classesLoading } = useSelector((state) => state.classes)
   const { academicYears } = useSelector((state) => state.academicYears)
   const { currentExam, isLoading: examLoading } = useSelector((state) => state.exams)
   
@@ -71,13 +71,13 @@ const StaffExamsPage = () => {
   }, [staff, user, currentAcademicYear])
 
   useEffect(() => {
-    if (teacherClassTeacherClasses.length > 0) {
-      setMyClasses(teacherClassTeacherClasses)
-      if (teacherClassTeacherClasses.length > 0 && !selectedClass) {
-        setSelectedClass(teacherClassTeacherClasses[0])
+    if (teacherClasses.length > 0) {
+      setMyClasses(teacherClasses)
+      if (teacherClasses.length > 0 && !selectedClass) {
+        setSelectedClass(teacherClasses[0])
       }
     }
-  }, [teacherClassTeacherClasses])
+  }, [teacherClasses])
 
   useEffect(() => {
     if (selectedClass && currentAcademicYear) {
@@ -113,7 +113,7 @@ const StaffExamsPage = () => {
     const staffId = currentStaff._id
     
     try {
-      await dispatch(fetchTeacherClassTeacherClasses({ 
+      await dispatch(fetchTeacherClasses({ 
         teacherId: staffId, 
         academicYearId: currentAcademicYear?._id 
       })).unwrap()
@@ -203,7 +203,7 @@ const StaffExamsPage = () => {
               No Classes Assigned
             </h3>
             <p className="text-gray-500 max-w-md mx-auto text-sm">
-              You are not assigned as a class teacher for any class.
+              You are not assigned to any classes for the current academic year.
             </p>
           </div>
         </div>
