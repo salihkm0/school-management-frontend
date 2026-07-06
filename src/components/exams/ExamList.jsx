@@ -349,6 +349,7 @@ const ExamList = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {paginatedExams.map((exam) => {
                 const canEditDelete = user?.role === 'admin' || exam.createdBy?._id === user?._id || exam.createdBy === user?._id;
+                const uniqueStandards = [...new Set((exam.classDetails || []).map(c => c.className).filter(Boolean))];
                 
                 return (
                   <div key={exam._id} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col">
@@ -377,8 +378,13 @@ const ExamList = () => {
                         </div>
                       </div>
                       
-                      <div className="mt-auto">
+                      <div className="mt-auto flex flex-wrap gap-2">
                         {getTypeBadge(exam.examType)}
+                        {uniqueStandards.length > 0 && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                            Std {uniqueStandards.join(', ')}
+                          </span>
+                        )}
                       </div>
                     </div>
                     

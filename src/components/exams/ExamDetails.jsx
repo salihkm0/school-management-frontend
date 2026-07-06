@@ -157,6 +157,17 @@ const ExamDetails = () => {
               <span className="text-sm text-gray-500">{currentExam.academicYear}</span>
               <span className="text-gray-300">•</span>
               <span className="text-sm text-gray-500 capitalize">{currentExam.term} Term</span>
+              {(() => {
+                const uniqueStandards = [...new Set((currentExam.classDetails || []).map(c => c.className).filter(Boolean))];
+                return uniqueStandards.length > 0 ? (
+                  <>
+                    <span className="text-gray-300">•</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                      Std {uniqueStandards.join(', ')}
+                    </span>
+                  </>
+                ) : null;
+              })()}
               {getStatusBadge(currentExam.overallStatus)}
             </div>
           </div>
