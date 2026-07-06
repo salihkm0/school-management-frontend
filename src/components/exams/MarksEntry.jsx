@@ -508,7 +508,7 @@ const MarksEntry = () => {
                         let colSpan = 1; // Theory
                         if (hasPrac) colSpan++;
                         if (hasCE) colSpan++;
-                        colSpan += 2; // Absent, Total
+                        colSpan += 3; // Absent, Total, Grade
                         return (
                           <th
                             key={subj.examSubjectId}
@@ -528,11 +528,11 @@ const MarksEntry = () => {
                         return (
                           <React.Fragment key={subj.examSubjectId}>
                             <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-500 whitespace-nowrap border-l border-gray-200">
-                              Th <span className="text-gray-400">/{theoryMax}</span>
+                              TE <span className="text-gray-400">/{theoryMax}</span>
                             </th>
                             {hasPrac && (
                               <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-500 whitespace-nowrap border-l border-gray-200">
-                                Pr <span className="text-gray-400">/{subj.practicalMaxMarks}</span>
+                                PR <span className="text-gray-400">/{subj.practicalMaxMarks}</span>
                               </th>
                             )}
                             {hasCE && (
@@ -543,8 +543,11 @@ const MarksEntry = () => {
                             <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-500 whitespace-nowrap border-l border-gray-200">
                               Abs
                             </th>
-                            <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-700 whitespace-nowrap border-l border-r border-gray-200 bg-gray-100/50">
+                            <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-700 whitespace-nowrap border-l border-gray-200 bg-gray-100/50">
                               Tot <span className="text-gray-400">/{subj.maxMarks || 100}</span>
+                            </th>
+                            <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-700 whitespace-nowrap border-l border-r border-gray-200 bg-gray-100/50">
+                              Grade
                             </th>
                           </React.Fragment>
                         );
@@ -677,7 +680,7 @@ const MarksEntry = () => {
                                 </td>
 
                                 {/* Total */}
-                                <td className="px-2 py-1 text-center border-l border-r border-gray-200 bg-gray-50/50">
+                                <td className="px-2 py-1 text-center border-l border-gray-200 bg-gray-50/50">
                                   {absent ? (
                                     <span className="text-red-500 font-bold text-xs">AB</span>
                                   ) : (
@@ -686,6 +689,14 @@ const MarksEntry = () => {
                                         {total}
                                       </span>
                                     </div>
+                                  )}
+                                </td>
+                                {/* Grade */}
+                                <td className="px-2 py-1 text-center border-l border-r border-gray-200 bg-gray-50/50">
+                                  {!absent && (
+                                    <span className={`text-xs font-bold font-mono px-1.5 py-0.5 rounded-md ${gradeInfo.color}`}>
+                                      {gradeInfo.grade}
+                                    </span>
                                   )}
                                 </td>
                               </React.Fragment>
