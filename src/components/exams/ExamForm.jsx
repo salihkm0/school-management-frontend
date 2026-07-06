@@ -63,6 +63,7 @@ const ExamForm = () => {
   
   const watchedSchedule = watch('schedule')
   const watchedClassIds = watch('classIds')
+  const watchedExamType = watch('examType')
 
   useEffect(() => {
     loadData()
@@ -520,12 +521,18 @@ const ExamForm = () => {
                       Exam Name <span className="text-red-500">*</span>
                     </label>
                     <input 
-                      {...register('name', { required: 'Exam name required' })} 
+                      {...register('name', { required: watchedExamType === 'custom' ? 'Exam name required' : false })} 
+                      readOnly={watchedExamType !== 'custom' && !!watchedExamType}
+                      value={watchedExamType !== 'custom' && !!watchedExamType ? `${watchedExamType}_exam` : undefined}
                       className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 ${
-                        errors.name ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-white'
+                        errors.name ? 'border-red-500 bg-red-50' : 
+                        (watchedExamType !== 'custom' && !!watchedExamType) ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-200 bg-white'
                       }`}
                       placeholder="e.g., First Term Examination" 
                     />
+                    {watchedExamType !== 'custom' && !!watchedExamType && (
+                      <p className="mt-1 text-xs text-gray-500">Name is auto-generated based on Exam Type.</p>
+                    )}
                     {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name.message}</p>}
                   </div>
                   
