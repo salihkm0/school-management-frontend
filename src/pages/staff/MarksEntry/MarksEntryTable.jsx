@@ -629,11 +629,11 @@ const MarksEntryTable = () => {
                               </th>
                             )}
                             <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-500 whitespace-nowrap border-l border-gray-200">
-                              TE <span className="text-gray-400">/{theoryMax}</span>
+                                TE <span className="text-gray-400">/{theoryMax}</span>
                             </th>
                             {hasPrac && (
                               <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-500 whitespace-nowrap border-l border-gray-200">
-                                Pr <span className="text-gray-400">/{subj.practicalMaxMarks}</span>
+                                PR <span className="text-gray-400">/{subj.practicalMaxMarks}</span>
                               </th>
                             )}
                             <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-700 whitespace-nowrap border-l border-gray-200 bg-gray-100/50">
