@@ -111,16 +111,16 @@ const StaffForm = () => {
               {errors.employeeType && <p className="mt-1 text-xs text-rose-500">{errors.employeeType.message}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Qualification *</label>
-              <input {...register("qualification", { required: "Qualification required" })} className={`w-full px-3 py-2 text-sm border rounded-lg ${errors.qualification ? "border-rose-500" : "border-gray-200"} focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Qualification</label>
+              <input {...register("qualification")} className={`w-full px-3 py-2 text-sm border rounded-lg ${errors.qualification ? "border-rose-500" : "border-gray-200"} focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number *</label>
               <input {...register("contact", { required: "Contact required" })} className={`w-full px-3 py-2 text-sm border rounded-lg ${errors.contact ? "border-rose-500" : "border-gray-200"} focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date of Joining *</label>
-              <input type="date" {...register("dateOfJoining", { required: "Date of joining required" })} className={`w-full px-3 py-2 text-sm border rounded-lg ${errors.dateOfJoining ? "border-rose-500" : "border-gray-200"} focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date of Joining</label>
+              <input type="date" {...register("dateOfJoining")} className={`w-full px-3 py-2 text-sm border rounded-lg ${errors.dateOfJoining ? "border-rose-500" : "border-gray-200"} focus:outline-none focus:ring-1 focus:ring-emerald-500`} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
