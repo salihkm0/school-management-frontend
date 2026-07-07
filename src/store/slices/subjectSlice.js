@@ -56,11 +56,11 @@ export const updateSubject = createAsyncThunk(
 
 export const deleteSubject = createAsyncThunk(
   'subjects/delete',
-  async (id, { rejectWithValue }) => {
+  async ({ id, force }, { rejectWithValue }) => {
     try {
-      await subjectService.deleteSubject(id)
-      toast.success('Subject deactivated successfully')
-      return id
+      await subjectService.deleteSubject(id, force)
+      toast.success(force ? 'Subject force deleted successfully' : 'Subject deactivated successfully')
+      return { id, force }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to delete subject')
       return rejectWithValue(error.response?.data)
@@ -152,8 +152,15 @@ const subjectSlice = createSlice({
         }
       })
       .addCase(deleteSubject.fulfilled, (state, action) => {
-        state.subjects = state.subjects.filter(s => s._id !== action.payload)
-        if (state.currentSubject?._id === action.payload) {
+        if (action.payload.force) {
+          state.subjects = state.subjects.filter(s => s._id !== action.payload.id)
+        } else {
+          const subject = state.subjects.find(s => s._id === action.payload.id)
+          if (subject) {
+            subject.isActive = false
+          }
+        }
+        if (state.currentSubject?._id === action.payload.id) {
           state.currentSubject = null
         }
       })

@@ -21,8 +21,8 @@ export const updateSubject = async (id, data) => {
   return response.data
 }
 
-export const deleteSubject = async (id) => {
-  const response = await api.delete(`/subjects/${id}`)
+export const deleteSubject = async (id, force = false) => {
+  const response = await api.delete(`/subjects/${id}${force ? '?force=true' : ''}`)
   return response.data
 }
 

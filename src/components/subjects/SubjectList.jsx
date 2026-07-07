@@ -27,6 +27,7 @@ const SubjectList = () => {
   const [filterDepartment, setFilterDepartment] = useState('')
   const [filterStatus, setFilterStatus] = useState('true')
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [isForceDelete, setIsForceDelete] = useState(false)
   const [selectedSubject, setSelectedSubject] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
@@ -57,8 +58,9 @@ const SubjectList = () => {
 
   const handleDelete = async () => {
     if (selectedSubject) {
-      await dispatch(deleteSubject(selectedSubject._id))
+      await dispatch(deleteSubject({ id: selectedSubject._id, force: isForceDelete }))
       setShowDeleteModal(false)
+      setIsForceDelete(false)
       setSelectedSubject(null)
       setOpenMenuId(null)
     }
@@ -327,10 +329,26 @@ const SubjectList = () => {
                 <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center"><TrashIcon className="w-5 h-5 text-rose-600" /></div>
                 <div><h3 className="text-base font-semibold text-gray-900">Deactivate Subject</h3><p className="text-xs text-gray-500">This will mark the subject as inactive</p></div>
               </div>
-              <p className="text-sm text-gray-600 mb-5">Are you sure you want to deactivate <span className="font-medium text-gray-900">{selectedSubject?.name}</span>?</p>
+              <p className="text-sm text-gray-600 mb-5">Are you sure you want to {isForceDelete ? 'force delete' : 'deactivate'} <span className="font-medium text-gray-900">{selectedSubject?.name}</span>?</p>
+              
+              <label className="flex items-start gap-2 mb-6 p-3 rounded-lg bg-rose-50/50 border border-rose-100 cursor-pointer group">
+                <input 
+                  type="checkbox" 
+                  checked={isForceDelete}
+                  onChange={(e) => setIsForceDelete(e.target.checked)}
+                  className="mt-0.5 rounded border-rose-300 text-rose-600 focus:ring-rose-600 bg-white"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-rose-900 group-hover:text-rose-700 transition-colors">Force delete completely</p>
+                  <p className="text-xs text-rose-600 mt-0.5 leading-relaxed">
+                    Checking this will permanently remove the subject from the database instead of just deactivating it.
+                  </p>
+                </div>
+              </label>
+
               <div className="flex justify-end gap-3">
-                <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-                <button onClick={handleDelete} className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700">Deactivate</button>
+                <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+                <button onClick={handleDelete} className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 transition-colors shadow-sm">{isForceDelete ? 'Force Delete' : 'Deactivate'}</button>
               </div>
             </div>
           </div>
