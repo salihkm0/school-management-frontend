@@ -405,37 +405,6 @@ const pdfService = {
   },
 };
 
-// Helper function to open PDF in new tab
-export const openPDF = (blob, filename) => {
-  const url = window.URL.createObjectURL(blob);
-  const newWindow = window.open();
-  if (newWindow) {
-    newWindow.document.write(`
-      <html>
-        <head>
-          <title>${filename || 'PDF Report'}</title>
-          <style>
-            body { margin: 0; padding: 0; height: 100vh; overflow: hidden; }
-            iframe { width: 100%; height: 100%; border: none; }
-          </style>
-        </head>
-        <body>
-          <iframe src="${url}" frameborder="0"></iframe>
-        </body>
-      </html>
-    `);
-  } else {
-    // Fallback: create a link and click it
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename || 'report.pdf';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-  setTimeout(() => window.URL.revokeObjectURL(url), 100);
-};
-
 // Helper function to download PDF
 export const downloadPDF = (blob, filename) => {
   const url = window.URL.createObjectURL(blob);

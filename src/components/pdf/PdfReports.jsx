@@ -21,7 +21,7 @@ import { fetchAcademicYears } from '../../store/slices/academicYearSlice';
 import { fetchStudents } from '../../store/slices/studentSlice';
 import { fetchStaff } from '../../store/slices/staffSlice';
 import { fetchExams } from '../../store/slices/examSlice';
-import pdfService, { openPDF, downloadPDF } from '../../services/pdfService';
+import pdfService, { downloadPDF } from '../../services/pdfService';
 import LoadingSpinner from '../common/LoadingSpinner';
 import toast from 'react-hot-toast';
 import AsyncSelect from 'react-select/async';
@@ -41,16 +41,8 @@ const ReportCard = ({ title, description, children }) => (
   </div>
 );
 
-const ActionButtons = ({ onView, onDownload, viewDisabled, downloadDisabled, isLoading }) => (
+const ActionButtons = ({ onDownload, downloadDisabled, isLoading }) => (
   <div className="flex gap-2">
-    <button
-      onClick={onView}
-      disabled={viewDisabled || isLoading}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-    >
-      <EyeIcon className="w-4 h-4" />
-      <span className="hidden sm:inline">View</span>
-    </button>
     <button
       onClick={onDownload}
       disabled={downloadDisabled || isLoading}
@@ -126,19 +118,7 @@ const PdfReports = () => {
     }));
   };
 
-  const handleViewPDF = async (generator, params, errorMsg = 'Please fill all required fields') => {
-    setIsLoading(true);
-    try {
-      const pdfBlob = await generator(params);
-      openPDF(pdfBlob, `${activeCategory}_report_${Date.now()}.pdf`);
-      toast.success('PDF generated successfully');
-    } catch (error) {
-      console.error('PDF generation error:', error);
-      toast.error(error.message || errorMsg);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+
 
   const handleDownloadPDF = async (generator, params, filename, errorMsg = 'Please fill all required fields') => {
     setIsLoading(true);
@@ -285,9 +265,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getNoonMealPDF(selectedClass, selectedMonth, selectedYear, workingDays); }, {}, 'Select class')}
                 onDownload={() => handleDownloadPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getNoonMealPDF(selectedClass, selectedMonth, selectedYear, workingDays); }, {}, `Noon_Meal_${selectedClass}_${selectedMonth}_${selectedYear}.pdf`, 'Select class')}
-                viewDisabled={!selectedClass} downloadDisabled={!selectedClass}
               />
             </div>
           </ReportCard>
@@ -313,9 +291,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getNoonFeedingRegisterPDF(selectedClass, selectedMonth, selectedYear); }, {}, 'Select class')}
                 onDownload={() => handleDownloadPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getNoonFeedingRegisterPDF(selectedClass, selectedMonth, selectedYear); }, {}, `Noon_Feeding_${selectedClass}_${selectedMonth}_${selectedYear}.pdf`, 'Select class')}
-                viewDisabled={!selectedClass} downloadDisabled={!selectedClass}
               />
             </div>
           </ReportCard>
@@ -337,9 +313,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getMidDayMealPDF(selectedClass, selectedAcademicYear); }, {}, 'Select class')}
                 onDownload={() => handleDownloadPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getMidDayMealPDF(selectedClass, selectedAcademicYear); }, {}, `Mid_Day_Meal_${selectedClass}_${getCurrentAcademicYear()}.pdf`, 'Select class')}
-                viewDisabled={!selectedClass} downloadDisabled={!selectedClass}
               />
             </div>
           </ReportCard>
@@ -361,9 +335,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getBhakshyaBadrathaPDF(selectedClass, selectedAcademicYear); }, {}, 'Select class')}
                 onDownload={() => handleDownloadPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getBhakshyaBadrathaPDF(selectedClass, selectedAcademicYear); }, {}, `Bhakshya_Badratha_${selectedClass}_${getCurrentAcademicYear()}.pdf`, 'Select class')}
-                viewDisabled={!selectedClass} downloadDisabled={!selectedClass}
               />
             </div>
           </ReportCard>
@@ -394,9 +366,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getRiceDistributionPDF(selectedClass, selectedAcademicYear, selectedDistributionType); }, {}, 'Select class')}
                 onDownload={() => handleDownloadPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getRiceDistributionPDF(selectedClass, selectedAcademicYear, selectedDistributionType); }, {}, `Rice_Distribution_${selectedClass}_${getCurrentAcademicYear()}.pdf`, 'Select class')}
-                viewDisabled={!selectedClass} downloadDisabled={!selectedClass}
               />
             </div>
           </ReportCard>
@@ -420,9 +390,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getBalanceRiceDistributionPDF(selectedClass, selectedMonth, selectedYear); }, {}, 'Select class')}
                 onDownload={() => handleDownloadPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getBalanceRiceDistributionPDF(selectedClass, selectedMonth, selectedYear); }, {}, `Balance_Rice_${selectedClass}_${selectedMonth}_${selectedYear}.pdf`, 'Select class')}
-                viewDisabled={!selectedClass} downloadDisabled={!selectedClass}
               />
             </div>
           </ReportCard>
@@ -446,9 +414,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getSpecialRiceDistributionPDF(selectedClass, selectedMonth, selectedYear); }, {}, 'Select class')}
                 onDownload={() => handleDownloadPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getSpecialRiceDistributionPDF(selectedClass, selectedMonth, selectedYear); }, {}, `Special_Rice_${selectedClass}_${selectedMonth}_${selectedYear}.pdf`, 'Select class')}
-                viewDisabled={!selectedClass} downloadDisabled={!selectedClass}
               />
             </div>
           </ReportCard>
@@ -473,9 +439,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getStudentListPDF(selectedClass, selectedAcademicYear); }, {}, 'Select class')}
                 onDownload={() => handleDownloadPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getStudentListPDF(selectedClass, selectedAcademicYear); }, {}, `Student_List_${selectedClass}_${getCurrentAcademicYear()}.pdf`, 'Select class')}
-                viewDisabled={!selectedClass} downloadDisabled={!selectedClass}
               />
             </div>
           </ReportCard>
@@ -495,9 +459,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getIDCardListPDF(selectedClass, selectedAcademicYear); }, {}, 'Select class')}
                 onDownload={() => handleDownloadPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getIDCardListPDF(selectedClass, selectedAcademicYear); }, {}, `ID_Card_List_${selectedClass}_${getCurrentAcademicYear()}.pdf`, 'Select class')}
-                viewDisabled={!selectedClass} downloadDisabled={!selectedClass}
               />
             </div>
           </ReportCard>
@@ -533,9 +495,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getCertificatePDF(selectedStudent?.value, { date: certificateDate, place: certificatePlace }); }, {}, 'Select student')}
                 onDownload={() => handleDownloadPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getCertificatePDF(selectedStudent?.value, { date: certificateDate, place: certificatePlace }); }, {}, `Certificate_${selectedStudent?.value}.pdf`, 'Select student')}
-                viewDisabled={!selectedStudent} downloadDisabled={!selectedStudent} isLoading={isLoading}
               />
             </div>
           </ReportCard>
@@ -571,9 +531,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getAbstractPDF(selectedStudent?.value, { date: reportDate, station: reportStation }); }, {}, 'Select student')}
                 onDownload={() => handleDownloadPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getAbstractPDF(selectedStudent?.value, { date: reportDate, station: reportStation }); }, {}, `Abstract_${selectedStudent?.value}.pdf`, 'Select student')}
-                viewDisabled={!selectedStudent} downloadDisabled={!selectedStudent} isLoading={isLoading}
               />
             </div>
           </ReportCard>
@@ -614,9 +572,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getMarklistPDF(selectedStudent?.value, selectedExam); }, {}, 'Select student')}
                 onDownload={() => handleDownloadPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getMarklistPDF(selectedStudent?.value, selectedExam); }, {}, `Marklist_${selectedStudent?.value}.pdf`, 'Select student')}
-                viewDisabled={!selectedStudent} downloadDisabled={!selectedStudent} isLoading={isLoading}
               />
             </div>
           </ReportCard>
@@ -636,9 +592,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { return await pdfService.getPromotionListPDF(selectedClass, selectedExam); }, {}, '')}
                 onDownload={() => handleDownloadPDF(async () => { return await pdfService.getPromotionListPDF(selectedClass, selectedExam); }, {}, `Promotion_List_${getCurrentAcademicYear()}.pdf`, '')}
-                viewDisabled={false} downloadDisabled={false}
               />
             </div>
           </ReportCard>
@@ -663,9 +617,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { return await pdfService.getFeeCollectionPDF(selectedClass, selectedAcademicYear); }, {}, '')}
                 onDownload={() => handleDownloadPDF(async () => { return await pdfService.getFeeCollectionPDF(selectedClass, selectedAcademicYear); }, {}, `Fee_Collection_${getCurrentAcademicYear()}.pdf`, '')}
-                viewDisabled={false} downloadDisabled={false}
               />
             </div>
           </ReportCard>
@@ -685,9 +637,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { return await pdfService.getBankAccountDetailsPDF(selectedClass, selectedCategory); }, {}, '')}
                 onDownload={() => handleDownloadPDF(async () => { return await pdfService.getBankAccountDetailsPDF(selectedClass, selectedCategory); }, {}, `Bank_Details_${selectedCategory}_${getCurrentAcademicYear()}.pdf`, '')}
-                viewDisabled={false} downloadDisabled={false}
               />
             </div>
           </ReportCard>
@@ -705,9 +655,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { return await pdfService.getStaffListPDF(selectedStatus || null); }, {}, '')}
                 onDownload={() => handleDownloadPDF(async () => { return await pdfService.getStaffListPDF(selectedStatus || null); }, {}, `Staff_List_${getCurrentAcademicYear()}.pdf`, '')}
-                viewDisabled={false} downloadDisabled={false}
               />
             </div>
           </ReportCard>
@@ -720,9 +668,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { return await pdfService.getClassTeacherListPDF(selectedAcademicYear); }, {}, '')}
                 onDownload={() => handleDownloadPDF(async () => { return await pdfService.getClassTeacherListPDF(selectedAcademicYear); }, {}, `Class_Teacher_List_${getCurrentAcademicYear()}.pdf`, '')}
-                viewDisabled={false} downloadDisabled={false}
               />
             </div>
           </ReportCard>
@@ -747,9 +693,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getStatisticalDataPDF(selectedClass, selectedAcademicYear); }, {}, 'Select class')}
                 onDownload={() => handleDownloadPDF(async () => { if (!selectedClass) throw new Error('Select class'); return await pdfService.getStatisticalDataPDF(selectedClass, selectedAcademicYear); }, {}, `Statistical_Data_${selectedClass}_${getCurrentAcademicYear()}.pdf`, 'Select class')}
-                viewDisabled={!selectedClass} downloadDisabled={!selectedClass}
               />
             </div>
           </ReportCard>
@@ -769,9 +713,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { return await pdfService.getClassPTAPDF(selectedClass, selectedAcademicYear); }, {}, '')}
                 onDownload={() => handleDownloadPDF(async () => { return await pdfService.getClassPTAPDF(selectedClass, selectedAcademicYear); }, {}, `Class_PTA_${getCurrentAcademicYear()}.pdf`, '')}
-                viewDisabled={false} downloadDisabled={false}
               />
             </div>
           </ReportCard>
@@ -791,9 +733,7 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onView={() => handleViewPDF(async () => { return await pdfService.getTextBookDistributionPDF(selectedClass, selectedAcademicYear); }, {}, '')}
                 onDownload={() => handleDownloadPDF(async () => { return await pdfService.getTextBookDistributionPDF(selectedClass, selectedAcademicYear); }, {}, `Textbook_Distribution_${getCurrentAcademicYear()}.pdf`, '')}
-                viewDisabled={false} downloadDisabled={false}
               />
             </div>
           </ReportCard>

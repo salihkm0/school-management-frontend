@@ -15,7 +15,7 @@ import {
 import { fetchClasses } from '../../store/slices/classSlice'
 import { fetchStudents } from '../../store/slices/studentSlice'
 import { fetchExams } from '../../store/slices/examSlice'
-import pdfService, { openPDF, downloadPDF } from '../../services/pdfService'
+import pdfService, { downloadPDF } from '../../services/pdfService'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
 
@@ -120,25 +120,6 @@ const PromotionList = () => {
     }
   }
 
-  const handleViewPDF = async () => {
-    if (!selectedClass) {
-      toast.error('Please select a class')
-      return
-    }
-    
-    setIsGenerating(true)
-    try {
-      const pdfBlob = await pdfService.getPromotionListPDF(selectedClass, selectedExam)
-      openPDF(pdfBlob, `Promotion_List_${promotionData?.className}.pdf`)
-      toast.success('PDF generated successfully')
-    } catch (error) {
-      console.error('PDF generation error:', error)
-      toast.error('Failed to generate PDF')
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
   const handleDownloadPDF = async () => {
     if (!selectedClass) {
       toast.error('Please select a class')
@@ -228,14 +209,6 @@ const PromotionList = () => {
             className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 transition-colors"
           >
             {isGenerating ? 'Loading...' : 'Load Data'}
-          </button>
-          <button
-            onClick={handleViewPDF}
-            disabled={!selectedClass || isGenerating || !promotionData}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
-          >
-            <EyeIcon className="w-4 h-4" />
-            View PDF
           </button>
           <button
             onClick={handleDownloadPDF}
