@@ -329,7 +329,7 @@ const SubjectTeacherMapping = () => {
                     <td className="px-4 py-3 text-right">
                       <div className="relative" ref={menuRef}>
                         <button
-                          onClick={() => setOpenMenuId(openMenuId === item.subjectId?._id || item.subjectId ? (item.subjectId?._id || item.subjectId) : index ? null : index)}
+                          onClick={() => handleRemove(item.subjectId?._id || item.subjectId)}
                           className="p-1.5 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
                         >
                           <TrashIcon className="w-4 h-4" />
