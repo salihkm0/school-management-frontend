@@ -22,6 +22,7 @@ import { fetchStaff } from '../../store/slices/staffSlice'
 import { fetchAcademicYears } from '../../store/slices/academicYearSlice'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
+import Select from 'react-select'
 
 const ClassDetails = () => {
   const dispatch = useDispatch()
@@ -286,12 +287,28 @@ const ClassDetails = () => {
               
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Teacher</label>
-                <select value={selectedTeacher} onChange={(e) => setSelectedTeacher(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                  <option value="">Select Teacher</option>
-                  {staff.filter(s => s.role === 'teacher' || s.role === 'principal').map(teacher => (
-                    <option key={teacher._id} value={teacher._id}>{teacher.name} ({teacher.staffCode || teacher.role})</option>
-                  ))}
-                </select>
+                <Select
+                  value={staff
+                    .filter(s => s.role === 'teacher' || s.role === 'principal')
+                    .map(teacher => ({ value: teacher._id, label: `${teacher.name} (${teacher.staffCode || teacher.role})` }))
+                    .find(opt => opt.value === selectedTeacher) || null}
+                  onChange={(selected) => setSelectedTeacher(selected ? selected.value : '')}
+                  options={staff
+                    .filter(s => s.role === 'teacher' || s.role === 'principal')
+                    .map(teacher => ({ value: teacher._id, label: `${teacher.name} (${teacher.staffCode || teacher.role})` }))}
+                  placeholder="Select Teacher"
+                  isClearable
+                  isSearchable
+                  className="text-sm"
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      borderColor: '#e5e7eb',
+                      borderRadius: '0.5rem',
+                      minHeight: '42px'
+                    })
+                  }}
+                />
               </div>
 
               <div className="space-y-1">
