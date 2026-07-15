@@ -21,7 +21,7 @@ import { fetchSubjects } from '../../store/slices/subjectSlice'
 import classService from '../../services/classService'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
-
+import Select from 'react-select'
 const SubjectTeacherMapping = () => {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -221,16 +221,25 @@ const SubjectTeacherMapping = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Teacher *</label>
-              <select
-                value={newAssignment.teacherId}
-                onChange={(e) => setNewAssignment({ ...newAssignment, teacherId: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
-              >
-                <option value="">Select Teacher</option>
-                {staff.map(s => (
-                  <option key={s._id} value={s._id}>{s.name} {s.staffCode && `(${s.staffCode})`}</option>
-                ))}
-              </select>
+              <Select
+                value={staff
+                  .map(s => ({ value: s._id, label: `${s.name} ${s.staffCode ? `(${s.staffCode})` : ''}` }))
+                  .find(opt => opt.value === newAssignment.teacherId) || null}
+                onChange={(selected) => setNewAssignment({ ...newAssignment, teacherId: selected ? selected.value : '' })}
+                options={staff.map(s => ({ value: s._id, label: `${s.name} ${s.staffCode ? `(${s.staffCode})` : ''}` }))}
+                placeholder="Select Teacher"
+                isClearable
+                isSearchable
+                className="text-sm"
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    borderColor: '#e5e7eb',
+                    borderRadius: '0.5rem',
+                    minHeight: '42px'
+                  })
+                }}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Periods/Week</label>
