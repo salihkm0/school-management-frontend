@@ -4,9 +4,14 @@ import toast from 'react-hot-toast'
 
 export const fetchStaff = createAsyncThunk(
   'staff/fetch',
-  async (params, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
-      const response = await staffService.getStaff(params)
+      const apiParams = { ...params };
+      // Override limit to ensure all staff are fetched for dropdowns since there are >100 staff
+      if (apiParams.limit === 100 || !apiParams.limit) {
+        apiParams.limit = 1000;
+      }
+      const response = await staffService.getStaff(apiParams)
       return response
     } catch (error) {
       return rejectWithValue(error.response?.data)
