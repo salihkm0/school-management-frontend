@@ -85,8 +85,11 @@ const classService = {
     return response.data
   },
 
-  removeSubjectTeacher: async (id, subjectId) => {
-    const response = await api.delete(`/classes/${id}/subject-teachers/${subjectId}`)
+  removeSubjectTeacher: async (id, subjectId, teacherId) => {
+    const url = teacherId 
+      ? `/classes/${id}/subject-teachers/${subjectId}?teacherId=${teacherId}` 
+      : `/classes/${id}/subject-teachers/${subjectId}`
+    const response = await api.delete(url)
     return response.data
   },
 

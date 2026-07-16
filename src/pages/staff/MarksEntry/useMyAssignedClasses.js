@@ -14,8 +14,10 @@ export const useMyAssignedClasses = (currentAcademicYear) => {
 
   // Fetch staff data if needed
   useEffect(() => {
-    if (staff.length === 0 && user?.role !== 'admin') {
-      dispatch(fetchStaff({ limit: 1000 }));
+    if (staff.length === 0) {
+      if (user?.role !== 'admin' || window.location.pathname.includes('/staff/')) {
+        dispatch(fetchStaff({ limit: 1000 }));
+      }
     }
   }, [staff, dispatch, user]);
 
@@ -26,7 +28,8 @@ export const useMyAssignedClasses = (currentAcademicYear) => {
     }
     
     setIsLoading(true);
-    if (user?.role === 'admin') {
+    // If admin and in admin routes, fetch all classes
+    if (user?.role === 'admin' && !window.location.pathname.includes('/staff/')) {
       try {
         const allClassesResult = await dispatch(fetchClasses({ limit: 1000 })).unwrap();
         setAllMyClasses(allClassesResult.data || []);
@@ -52,26 +55,16 @@ export const useMyAssignedClasses = (currentAcademicYear) => {
     const staffId = currentStaff._id;
 
     try {
-      const ctResult = await dispatch(
-        fetchTeacherClassTeacherClasses({
+      // Use the proper backend endpoint to get classes where teacher is involved
+      const { fetchTeacherClasses } = require('../../../store/slices/classSlice');
+      const result = await dispatch(
+        fetchTeacherClasses({
           teacherId: staffId,
           academicYearId: currentAcademicYear._id,
         })
       ).unwrap();
-      const ctClasses = ctResult?.data || [];
-
-      const allClassesResult = await dispatch(fetchClasses({ limit: 1000 })).unwrap();
-      const classesList = allClassesResult.data || [];
-
-      const stClasses = classesList.filter((cls) =>
-        (cls.subjectTeachers || []).some(
-          (st) => st.teacherId?._id === staffId || st.teacherId === staffId
-        )
-      );
-
-      const allAssigned = [...ctClasses, ...stClasses];
-      const unique = Array.from(new Map(allAssigned.map((c) => [c._id, c])).values());
-      setAllMyClasses(unique);
+      
+      setAllMyClasses(result.data || []);
     } catch (e) {
       console.error("Failed to fetch teacher classes:", e);
     } finally {

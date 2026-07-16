@@ -116,7 +116,7 @@ const StaffExamForm = () => {
     setIsLoading(true)
     try {
       await Promise.all([
-        dispatch(fetchStaff({ limit: 100 })),
+        dispatch(fetchStaff({ limit: 1000 })),
         dispatch(fetchSubjects({ limit: 100 })),
         dispatch(fetchAcademicYears({ limit: 10 }))
       ])

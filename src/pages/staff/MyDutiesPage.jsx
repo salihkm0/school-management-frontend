@@ -54,7 +54,7 @@ const MyDutiesPage = () => {
 
   const loadStaffData = async () => {
     try {
-      await dispatch(fetchStaff({ limit: 100 }))
+      await dispatch(fetchStaff({ limit: 1000 }))
     } catch (error) {
       console.error('Failed to load staff:', error)
     }

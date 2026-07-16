@@ -86,12 +86,12 @@ const SubjectTeacherMapping = () => {
     }
   }
 
-  const handleRemove = async (subjectId) => {
+  const handleRemove = async (subjectId, teacherId) => {
     if (!window.confirm('Are you sure you want to remove this teacher assignment?')) return
     
     setIsSubmitting(true)
     try {
-      await classService.removeSubjectTeacher(id, subjectId)
+      await classService.removeSubjectTeacher(id, subjectId, teacherId)
       toast.success('Teacher removed successfully')
       loadSubjectTeachers()
       setOpenMenuId(null)
@@ -104,8 +104,7 @@ const SubjectTeacherMapping = () => {
   }
 
   const getAvailableSubjects = () => {
-    const assignedSubjectIds = subjectTeachers.map(st => st.subjectId?._id || st.subjectId)
-    let available = currentClass?.subjects?.filter(s => !assignedSubjectIds.includes(s._id)) || []
+    let available = currentClass?.subjects || []
     
     if (searchTerm) {
       available = available.filter(s => 
@@ -122,8 +121,9 @@ const SubjectTeacherMapping = () => {
   if (isLoading) return <LoadingSpinner />
 
   const totalSubjects = currentClass?.subjects?.length || 0
+  const uniqueAssignedSubjects = new Set(subjectTeachers.map(st => st.subjectId?._id || st.subjectId)).size
+  const remainingCount = Math.max(0, totalSubjects - uniqueAssignedSubjects)
   const assignedCount = subjectTeachers.length
-  const remainingCount = totalSubjects - assignedCount
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
@@ -329,7 +329,7 @@ const SubjectTeacherMapping = () => {
                     <td className="px-4 py-3 text-right">
                       <div className="relative" ref={menuRef}>
                         <button
-                          onClick={() => handleRemove(item.subjectId?._id || item.subjectId)}
+                          onClick={() => handleRemove(item.subjectId?._id || item.subjectId, item.teacherId?._id || item.teacherId)}
                           className="p-1.5 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
                         >
                           <TrashIcon className="w-4 h-4" />

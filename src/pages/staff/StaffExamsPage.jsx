@@ -94,7 +94,7 @@ const StaffExamsPage = () => {
   const loadData = async () => {
     try {
       await Promise.all([
-        dispatch(fetchStaff({ limit: 100 })),
+        dispatch(fetchStaff({ limit: 1000 })),
         dispatch(fetchAcademicYears({ limit: 10 }))
       ])
     } catch (error) {
