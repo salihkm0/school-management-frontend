@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchStaff } from '../../store/slices/staffSlice';
-import { fetchTeacherClasses, fetchTeacherClassTeacherClasses } from '../../store/slices/classSlice';
+import { fetchStaff } from '../store/slices/staffSlice';
+import { fetchTeacherClasses, fetchTeacherClassTeacherClasses } from '../store/slices/classSlice';
 
 export const useAdminTeacherClasses = (type = 'all') => {
   const dispatch = useDispatch();
