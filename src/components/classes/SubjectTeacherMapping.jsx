@@ -104,7 +104,21 @@ const SubjectTeacherMapping = () => {
   }
 
   const getAvailableSubjects = () => {
-    let available = currentClass?.subjects || []
+    const allSubjects = [
+      ...(currentClass?.subjects || []),
+      ...(currentClass?.languageSubjects || []),
+      ...(currentClass?.coreSubjects || [])
+    ];
+    
+    // Create a Map to ensure uniqueness by subject _id
+    const uniqueSubjectsMap = new Map();
+    allSubjects.forEach(s => {
+      if (s && s._id) {
+        uniqueSubjectsMap.set(s._id.toString(), s);
+      }
+    });
+    
+    let available = Array.from(uniqueSubjectsMap.values());
     
     if (searchTerm) {
       available = available.filter(s => 
