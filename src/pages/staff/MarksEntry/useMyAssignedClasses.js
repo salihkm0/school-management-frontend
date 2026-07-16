@@ -28,23 +28,9 @@ export const useMyAssignedClasses = (currentAcademicYear) => {
     }
     
     setIsLoading(true);
-    // If admin and in admin routes, fetch all classes
-    if (user?.role === 'admin' && !window.location.pathname.includes('/staff/')) {
-      try {
-        const allClassesResult = await dispatch(fetchClasses({ limit: 1000 })).unwrap();
-        setAllMyClasses(allClassesResult.data || []);
-      } catch (e) {
-        console.error("Failed to fetch classes for admin:", e);
-      }
-      setIsLoading(false);
-      return;
-    }
-
-    if (staff.length === 0) return; // Wait for staff
-
-    const currentStaff = staff.find((s) => {
-      const su = s.userId?._id || s.userId;
-      return su === user?.id;
+    const currentStaff = staff.find(s => {
+      const staffUserId = s.userId?._id || s.userId;
+      return staffUserId === user?.id;
     });
     
     if (!currentStaff) {

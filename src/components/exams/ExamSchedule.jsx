@@ -1,18 +1,17 @@
 import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchExams, fetchExamById } from '../../store/slices/examSlice'
-import { fetchClasses } from '../../store/slices/classSlice'
+import { useAdminTeacherClasses } from '../../hooks/useAdminTeacherClasses'
 import LoadingSpinner from '../common/LoadingSpinner'
 
 const ExamSchedule = () => {
   const dispatch = useDispatch()
   const { exams } = useSelector((state) => state.exams)
-  const { classes } = useSelector((state) => state.classes)
+  const { myClasses: classes } = useAdminTeacherClasses('all')
   const [selectedClass, setSelectedClass] = useState('')
   const [schedules, setSchedules] = useState([])
 
   useEffect(() => {
-    dispatch(fetchClasses({ limit: 100 }))
     dispatch(fetchExams({ limit: 100 }))
   }, [dispatch])
 

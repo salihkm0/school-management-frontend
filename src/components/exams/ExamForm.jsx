@@ -16,7 +16,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon
 } from '@heroicons/react/24/outline'
-import { fetchClasses } from '../../store/slices/classSlice'
+import { useAdminTeacherClasses } from '../../hooks/useAdminTeacherClasses'
 import { fetchSubjects } from '../../store/slices/subjectSlice'
 import { fetchAcademicYears } from '../../store/slices/academicYearSlice'
 import { fetchStaff } from '../../store/slices/staffSlice'
@@ -30,7 +30,7 @@ const ExamForm = () => {
   const navigate = useNavigate()
   const { id } = useParams()
   const isEditing = !!id
-  const { classes } = useSelector((state) => state.classes)
+  const { myClasses: classes } = useAdminTeacherClasses('all')
   const { subjects: availableSubjects } = useSelector((state) => state.subjects)
   const { academicYears } = useSelector((state) => state.academicYears)
   const { user } = useSelector((state) => state.auth)
@@ -121,7 +121,6 @@ const ExamForm = () => {
   }, [isEditing, currentExam, reset])
 
   const loadData = async () => {
-    dispatch(fetchClasses({ limit: 100 }))
     dispatch(fetchSubjects({ limit: 100 }))
     dispatch(fetchAcademicYears({ limit: 100 }))
     dispatch(fetchStaff({ limit: 100 }))

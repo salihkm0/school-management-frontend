@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchAttendanceByClass, fetchAttendanceSummary } from '../../store/slices/attendanceSlice'
-import { fetchClasses } from '../../store/slices/classSlice'
+import { useAdminTeacherClasses } from '../../hooks/useAdminTeacherClasses'
 import { 
   MagnifyingGlassIcon,
   ArrowDownTrayIcon,
@@ -21,7 +21,7 @@ import * as XLSX from 'xlsx'
 const AttendanceList = () => {
   const dispatch = useDispatch()
   const { classAttendance, isLoading } = useSelector((state) => state.attendance)
-  const { classes } = useSelector((state) => state.classes)
+  const { myClasses: classes } = useAdminTeacherClasses('class-teacher')
   const [summary, setSummary] = useState(null)
   const [selectedClass, setSelectedClass] = useState('')
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
@@ -33,7 +33,7 @@ const AttendanceList = () => {
   const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
-    dispatch(fetchClasses({ limit: 100 }))
+    // Classes are handled by useAdminTeacherClasses
   }, [dispatch])
 
   useEffect(() => {

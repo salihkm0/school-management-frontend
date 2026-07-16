@@ -16,7 +16,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { CheckIcon } from "@heroicons/react/24/solid";
 import { fetchExams } from "../../store/slices/examSlice";
-import { fetchClasses } from "../../store/slices/classSlice";
+import { useAdminTeacherClasses } from "../../hooks/useAdminTeacherClasses";
 import {
   getMarksheetsByClass,
   bulkUpdateMarks,
@@ -34,7 +34,7 @@ const MarksEntry = () => {
 
   const dispatch = useDispatch();
   const { exams } = useSelector((state) => state.exams);
-  const { classes } = useSelector((state) => state.classes);
+  const { myClasses: classes } = useAdminTeacherClasses('all');
 
   const [selectedExam, setSelectedExam] = useState(examIdFromUrl || "");
   const [selectedClass, setSelectedClass] = useState("");
@@ -55,7 +55,6 @@ const MarksEntry = () => {
 
   useEffect(() => {
     dispatch(fetchExams({ limit: 100 }));
-    dispatch(fetchClasses({ limit: 100 }));
   }, [dispatch]);
 
   useEffect(() => {

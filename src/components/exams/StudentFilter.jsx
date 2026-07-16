@@ -8,7 +8,7 @@ import {
   EyeIcon
 } from '@heroicons/react/24/outline';
 import { fetchExams } from '../../store/slices/examSlice';
-import { fetchClasses } from '../../store/slices/classSlice';
+import { useAdminTeacherClasses } from '../../hooks/useAdminTeacherClasses';
 import LoadingSpinner from '../common/LoadingSpinner';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -25,7 +25,7 @@ const GRADE_OPTIONS = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'F'];
 const StudentFilter = () => {
   const dispatch = useDispatch();
   const { exams } = useSelector((state) => state.exams);
-  const { classes } = useSelector((state) => state.classes);
+  const { myClasses: classes } = useAdminTeacherClasses('all');
   
   const [selectedExam, setSelectedExam] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
@@ -39,7 +39,6 @@ const StudentFilter = () => {
 
   useEffect(() => {
     dispatch(fetchExams({ limit: 100 }));
-    dispatch(fetchClasses({ limit: 100 }));
   }, [dispatch]);
 
   const handleFilter = async () => {

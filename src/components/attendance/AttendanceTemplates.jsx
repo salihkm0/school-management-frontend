@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchAcademicYears } from '../../store/slices/academicYearSlice'
-import { fetchClasses } from '../../store/slices/classSlice'
+import { useAdminTeacherClasses } from '../../hooks/useAdminTeacherClasses'
 import attendanceService from '../../services/attendanceService'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, CalendarIcon } from '@heroicons/react/24/outline'
 import LoadingSpinner from '../common/LoadingSpinner'
@@ -11,7 +11,7 @@ import toast from 'react-hot-toast'
 const AttendanceTemplates = () => {
   const dispatch = useDispatch()
   const { academicYears } = useSelector((state) => state.academicYears)
-  const { classes } = useSelector((state) => state.classes)
+  const { myClasses: classes } = useAdminTeacherClasses('class-teacher')
   const [templates, setTemplates] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -30,7 +30,6 @@ const AttendanceTemplates = () => {
 
   useEffect(() => {
     dispatch(fetchAcademicYears({ limit: 100 }))
-    dispatch(fetchClasses({ limit: 100 }))
     loadTemplates()
   }, [dispatch])
 

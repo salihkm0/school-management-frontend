@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { fetchClasses } from '../../store/slices/classSlice'
 import { fetchStudents } from '../../store/slices/studentSlice'
 import { fetchAcademicYears } from '../../store/slices/academicYearSlice'
+import { useAdminTeacherClasses } from '../../hooks/useAdminTeacherClasses'
 import { bulkCreateAttendance, fetchAttendanceByClass } from '../../store/slices/attendanceSlice'
 import { 
   ArrowDownTrayIcon,
@@ -20,9 +21,9 @@ import toast from 'react-hot-toast'
 
 const BulkAttendance = () => {
   const dispatch = useDispatch()
-  const { classes } = useSelector((state) => state.classes)
   const { students, isLoading: studentsLoading } = useSelector((state) => state.students)
   const { academicYears } = useSelector((state) => state.academicYears)
+  const { myClasses: classes } = useAdminTeacherClasses('class-teacher')
   
   const [selectedClass, setSelectedClass] = useState('')
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
@@ -40,7 +41,6 @@ const BulkAttendance = () => {
   const [itemsPerPage] = useState(15)
 
   useEffect(() => {
-    dispatch(fetchClasses({ limit: 100 }))
     dispatch(fetchAcademicYears({ limit: 100 }))
   }, [dispatch])
 

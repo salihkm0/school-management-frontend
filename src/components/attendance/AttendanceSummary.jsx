@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchAttendanceSummary } from '../../store/slices/attendanceSlice'
-import { fetchClasses } from '../../store/slices/classSlice'
+import { useAdminTeacherClasses } from '../../hooks/useAdminTeacherClasses'
 import { 
   ChartBarIcon, 
   UserGroupIcon, 
@@ -15,14 +15,10 @@ import LoadingSpinner from '../common/LoadingSpinner'
 const AttendanceSummary = () => {
   const dispatch = useDispatch()
   const { summary, isLoading } = useSelector((state) => state.attendance)
-  const { classes } = useSelector((state) => state.classes)
+  const { myClasses: classes } = useAdminTeacherClasses('class-teacher')
   const [selectedClass, setSelectedClass] = useState('')
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [selectedMonth, setSelectedMonth] = useState('')
-
-  useEffect(() => {
-    dispatch(fetchClasses({ limit: 100 }))
-  }, [dispatch])
 
   useEffect(() => {
     if (selectedClass) {
