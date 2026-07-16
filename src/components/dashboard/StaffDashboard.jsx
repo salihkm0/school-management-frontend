@@ -363,44 +363,7 @@ const StaffDashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
         {/* Main Area: Recent Activities & Info */}
         <div className="lg:col-span-2 space-y-4 sm:space-y-5 flex flex-col">
-          {/* Quick Actions */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-              <div className="flex items-center gap-2">
-                <PlusCircleIcon className="w-4 h-4 text-gray-500" />
-                <h2 className="text-sm font-semibold text-gray-900">Quick Actions</h2>
-              </div>
-              <p className="text-xs text-gray-500 mt-0.5">Common tasks at your fingertips</p>
-            </div>
-            <div className="p-3 sm:p-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                <button onClick={() => navigate('/staff/attendance')} className="flex flex-col items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all group">
-                  <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                    <CalendarIcon className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <span className="text-xs font-medium text-gray-700">Mark Attendance</span>
-                </button>
-                <button onClick={() => navigate('/staff/marks-entry')} className="flex flex-col items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all group">
-                  <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                    <ClipboardDocumentListIcon className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <span className="text-xs font-medium text-gray-700">Enter Marks</span>
-                </button>
-                <button onClick={() => navigate('/classes/timetable')} className="flex flex-col items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all group">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                    <BookOpenIcon className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <span className="text-xs font-medium text-gray-700">View Schedule</span>
-                </button>
-                <button onClick={() => navigate('/reports')} className="flex flex-col items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all group">
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                    <ChartBarIcon className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <span className="text-xs font-medium text-gray-700">Reports</span>
-                </button>
-              </div>
-            </div>
-          </div>
+
 
           {/* Staff Information Card */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">

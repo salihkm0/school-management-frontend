@@ -449,41 +449,7 @@ const ParentDashboard = () => {
         </>
       )}
 
-      {/* Quick Actions */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <h2 className="text-sm font-semibold text-gray-900">Quick Actions</h2>
-          <p className="text-xs text-gray-500 mt-0.5">Common tasks at your fingertips</p>
-        </div>
-        <div className="p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <button onClick={() => navigate('/calendar')} className="flex flex-col items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all group">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                <CalendarIcon className="w-5 h-5 text-blue-600" />
-              </div>
-              <span className="text-xs font-medium text-gray-700">Calendar</span>
-            </button>
-            <button onClick={() => navigate('/notifications')} className="flex flex-col items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all group">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                <BellIcon className="w-5 h-5 text-amber-600" />
-              </div>
-              <span className="text-xs font-medium text-gray-700">Notifications</span>
-            </button>
-            <button onClick={() => navigate('/academic-progress')} className="flex flex-col items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all group">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                <DocumentTextIcon className="w-5 h-5 text-purple-600" />
-              </div>
-              <span className="text-xs font-medium text-gray-700">Progress</span>
-            </button>
-            <button onClick={() => navigate('/reports')} className="flex flex-col items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all group">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                <ChartBarIcon className="w-5 h-5 text-emerald-600" />
-              </div>
-              <span className="text-xs font-medium text-gray-700">Reports</span>
-            </button>
-          </div>
-        </div>
-      </div>
+
 
       {/* Upcoming Events & Announcements */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
