@@ -436,23 +436,27 @@ const StaffExamsPage = () => {
                         <div className="flex flex-wrap gap-2">
                           {currentExam.overallStatus === 'draft' && (
                             <>
-                              <button
-                                onClick={() => navigate(`/staff/exams/edit/${currentExam._id}?classId=${selectedClass._id}`)}
-                                className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-xs sm:text-sm flex items-center gap-1.5"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                                <span>Edit</span>
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setExamToDelete(currentExam)
-                                  setShowDeleteModal(true)
-                                }}
-                                className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs sm:text-sm flex items-center gap-1.5"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                <span>Delete</span>
-                              </button>
+                              {(currentExam.createdBy === user?._id || currentExam.createdBy?._id === user?._id) && (
+                                <>
+                                  <button
+                                    onClick={() => navigate(`/staff/exams/edit/${currentExam._id}?classId=${selectedClass._id}`)}
+                                    className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-xs sm:text-sm flex items-center gap-1.5"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                    <span>Edit</span>
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setExamToDelete(currentExam)
+                                      setShowDeleteModal(true)
+                                    }}
+                                    className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs sm:text-sm flex items-center gap-1.5"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span>Delete</span>
+                                  </button>
+                                </>
+                              )}
                             </>
                           )}
                           {currentExam.overallStatus === 'published' && (
