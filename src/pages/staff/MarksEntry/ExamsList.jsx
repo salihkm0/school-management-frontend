@@ -46,16 +46,8 @@ const ExamsList = () => {
   useEffect(() => {
     if (examsLoading || classesLoading) return;
 
-    if (user?.role === 'admin') {
+    if (user?.role === 'admin' || user?.role === 'staff') {
       const relevant = [...exams].sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
-      setAvailableExams(relevant);
-    } else {
-      const classIds = allMyClasses.map((c) => c._id);
-      const relevant = exams.filter((exam) => {
-        const ecIds = (exam.classIds || []).map((cid) => cid._id || cid);
-        return ecIds.some((cid) => classIds.includes(cid));
-      });
-      relevant.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
       setAvailableExams(relevant);
     }
     setIsInitializing(false);

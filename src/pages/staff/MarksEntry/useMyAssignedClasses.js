@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchClasses } from '../../../store/slices/classSlice';
-import { fetchTeacherClassTeacherClasses } from '../../../store/slices/classSlice';
+import { fetchClasses, fetchTeacherClasses } from '../../../store/slices/classSlice';
 import { fetchStaff } from '../../../store/slices/staffSlice';
 
 export const useMyAssignedClasses = (currentAcademicYear) => {
@@ -28,6 +27,24 @@ export const useMyAssignedClasses = (currentAcademicYear) => {
     }
     
     setIsLoading(true);
+
+    if (user?.role === 'admin') {
+      try {
+        const result = await dispatch(
+          fetchClasses({
+            academicYearId: currentAcademicYear._id,
+            limit: 1000 // Get all classes
+          })
+        ).unwrap();
+        setAllMyClasses(result.data || []);
+      } catch (e) {
+        console.error("Failed to fetch all classes for admin:", e);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
     const currentStaff = staff.find(s => {
       const staffUserId = s.userId?._id || s.userId;
       return staffUserId === user?.id;
@@ -42,7 +59,6 @@ export const useMyAssignedClasses = (currentAcademicYear) => {
 
     try {
       // Use the proper backend endpoint to get classes where teacher is involved
-      const { fetchTeacherClasses } = require('../../../store/slices/classSlice');
       const result = await dispatch(
         fetchTeacherClasses({
           teacherId: staffId,

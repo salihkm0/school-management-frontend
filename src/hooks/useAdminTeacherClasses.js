@@ -17,6 +17,19 @@ export const useAdminTeacherClasses = (type = 'all') => {
 
   useEffect(() => {
     const loadClasses = async () => {
+      if (user?.role === 'admin') {
+        try {
+          const { fetchClasses } = await import('../store/slices/classSlice');
+          const res = await dispatch(fetchClasses({ limit: 1000 })).unwrap();
+          setMyClasses(res.data || []);
+        } catch (e) {
+          console.error("Failed to fetch all classes for admin:", e);
+          setMyClasses([]);
+        }
+        setLoading(false);
+        return;
+      }
+
       if (staff.length === 0) return;
       
       const currentStaff = staff.find(s => {
@@ -37,8 +50,6 @@ export const useAdminTeacherClasses = (type = 'all') => {
           } catch(e) {}
         }
       } else {
-        // Fallback: if not a staff, they might be an admin just viewing.
-        // We set to empty array as per user request to only show assigned classes.
         setMyClasses([]);
       }
       setLoading(false);

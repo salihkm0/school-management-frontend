@@ -23,6 +23,7 @@ import { fetchStaff } from '../../store/slices/staffSlice'
 import { fetchAcademicYears } from '../../store/slices/academicYearSlice'
 import { fetchStudentsByClass, updateStudent } from '../../store/slices/studentSlice'
 import LoadingSpinner from '../../components/common/LoadingSpinner.jsx'
+import BulkRollNumberUpdateModal from '../../components/classes/BulkRollNumberUpdateModal.jsx'
 import toast from 'react-hot-toast'
 
 const MyClassesPage = () => {
@@ -43,6 +44,7 @@ const MyClassesPage = () => {
   const [editingStudent, setEditingStudent] = useState(null)
   const [editFormData, setEditFormData] = useState({})
   const [isSaving, setIsSaving] = useState(false)
+  const [isBulkUpdateModalOpen, setIsBulkUpdateModalOpen] = useState(false)
   const itemsPerPage = 20
 
   useEffect(() => {
@@ -331,6 +333,13 @@ const MyClassesPage = () => {
                   <ChartBarIcon className="w-4 h-4" />
                   <span>Enter Marks</span>
                 </Link>
+                <button
+                  onClick={() => setIsBulkUpdateModalOpen(true)}
+                  className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors text-sm flex items-center gap-2"
+                >
+                  <UserGroupIcon className="w-4 h-4" />
+                  <span>Update Roll Numbers</span>
+                </button>
               </div>
             </div>
           </div>
@@ -586,6 +595,15 @@ const MyClassesPage = () => {
           </div>
         </div>
       )}
+
+      {/* Bulk Update Modal */}
+      <BulkRollNumberUpdateModal
+        isOpen={isBulkUpdateModalOpen}
+        onClose={() => setIsBulkUpdateModalOpen(false)}
+        students={classStudents}
+        classObj={selectedClass}
+        onUpdated={loadClassStudents}
+      />
     </div>
   )
 }

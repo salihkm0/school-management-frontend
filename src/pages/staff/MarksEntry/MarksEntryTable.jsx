@@ -266,11 +266,6 @@ const MarksEntryTable = () => {
 
     let parsed = value === "" ? "" : parseInt(value, 10);
     if (typeof parsed === "number" && !isNaN(parsed)) {
-      let max = 0;
-      if (field === "theoryScore") max = subject.theoryMaxMarks || subject.termMaxMarks || subject.maxMarks || 100;
-      else if (field === "practicalScore") max = subject.practicalMaxMarks || 0;
-      else if (field === "ceMarks") max = subject.ceMaxMarks || 0;
-      if (parsed > max) parsed = max;
       if (parsed < 0) parsed = 0;
     }
 
@@ -324,6 +319,37 @@ const MarksEntryTable = () => {
 
     if (targetStudents.length === 0) {
       toast("No changes to save.", { icon: "ℹ️" });
+      return;
+    }
+
+    // Validation: check if any entered marks exceed maximum
+    let hasValidationError = false;
+    for (const student of targetStudents) {
+      for (const subject of student.subjects) {
+        const key = subject.examSubjectId?.toString() || subject.subjectId?.toString();
+        const tm = tempMarks[student.studentId]?.[key] || {};
+        const examSubj = examSubjects.find(s => s.examSubjectId?.toString() === key || s.subjectId?.toString() === key);
+        
+        if (examSubj && !tm.isAbsent) {
+          const theoryMax = examSubj.theoryMaxMarks || examSubj.termMaxMarks || examSubj.maxMarks || 100;
+          const thScore = tm.theoryScore !== undefined ? tm.theoryScore : (subject.theoryScore ?? 0);
+          if (thScore !== "" && thScore > theoryMax) hasValidationError = true;
+
+          if (examSubj.hasPractical && examSubj.practicalMaxMarks > 0) {
+            const prScore = tm.practicalScore !== undefined ? tm.practicalScore : (subject.practicalScore ?? 0);
+            if (prScore !== "" && prScore > examSubj.practicalMaxMarks) hasValidationError = true;
+          }
+
+          if (examSubj.ceEnabled && examSubj.ceMaxMarks > 0) {
+            const ceScore = tm.ceMarks !== undefined ? tm.ceMarks : (subject.ceMarks ?? subject.ceScore ?? 0);
+            if (ceScore !== "" && ceScore > examSubj.ceMaxMarks) hasValidationError = true;
+          }
+        }
+      }
+    }
+
+    if (hasValidationError) {
+      toast.error("Please fix marks that exceed the maximum allowed before saving.");
       return;
     }
 
@@ -698,10 +724,16 @@ const MarksEntryTable = () => {
                             const hasPrac = subj.hasPractical && subj.practicalMaxMarks > 0;
                             const hasCE = subj.ceEnabled && subj.ceMaxMarks > 0;
 
-                            const inputClass = `w-14 text-center px-1 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-emerald-400 transition-colors font-mono ${
+                            const isTheoryError = theory !== "" && theory > theoryMax;
+                            const isPracticalError = hasPrac && practical !== "" && practical > subj.practicalMaxMarks;
+                            const isCeError = hasCE && ce !== "" && ce > subj.ceMaxMarks;
+
+                            const getBaseInputClass = (isError) => `w-14 text-center px-1 py-1 text-xs border rounded focus:outline-none focus:ring-1 transition-colors font-mono ${
                               !canEdit || absent
                                 ? "bg-gray-50 text-gray-400 border-gray-100 cursor-not-allowed"
-                                : "bg-white border-gray-300 hover:border-emerald-300 text-gray-900 font-semibold"
+                                : isError 
+                                  ? "bg-red-50 border-red-500 text-red-900 focus:ring-red-400"
+                                  : "bg-white border-gray-300 hover:border-emerald-300 text-gray-900 focus:ring-emerald-400 font-semibold"
                             }`;
 
                             return (
@@ -717,7 +749,7 @@ const MarksEntryTable = () => {
                                       min={0}
                                       max={subj.ceMaxMarks}
                                       placeholder="0"
-                                      className={inputClass}
+                                      className={getBaseInputClass(isCeError)}
                                     />
                                   </td>
                                 )}
@@ -732,7 +764,7 @@ const MarksEntryTable = () => {
                                     min={0}
                                     max={theoryMax}
                                     placeholder="0"
-                                    className={inputClass}
+                                    className={getBaseInputClass(isTheoryError)}
                                   />
                                 </td>
                                 
@@ -747,7 +779,7 @@ const MarksEntryTable = () => {
                                       min={0}
                                       max={subj.practicalMaxMarks}
                                       placeholder="0"
-                                      className={inputClass}
+                                      className={getBaseInputClass(isPracticalError)}
                                     />
                                   </td>
                                 )}

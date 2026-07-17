@@ -26,7 +26,7 @@ const ClassForm = () => {
 
   useEffect(() => {
     if (isEditing && currentClass) {
-      reset({ name: currentClass.name, section: currentClass.section, capacity: currentClass.capacity, academicYearId: currentClass.academicYearId?._id || currentClass.academicYearId })
+      reset({ name: currentClass.name, section: currentClass.section, capacity: currentClass.capacity, academicYearId: currentClass.academicYearId?._id || currentClass.academicYearId, studentSortPreference: currentClass.studentSortPreference || 'alphabetic' })
     }
   }, [isEditing, currentClass, reset])
 
@@ -83,6 +83,13 @@ const ClassForm = () => {
                 {academicYears.map(y => (<option key={y._id} value={y._id}>{y.name}</option>))}
               </select>
               {errors.academicYearId && <p className="mt-1 text-xs text-rose-500">{errors.academicYearId.message}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Student Sort Order</label>
+              <select {...register('studentSortPreference')} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                <option value="alphabetic">Alphabetical (Girls first, then Boys)</option>
+                <option value="roll_number">Roll Number (Numeric)</option>
+              </select>
             </div>
           </div>
         </div>
