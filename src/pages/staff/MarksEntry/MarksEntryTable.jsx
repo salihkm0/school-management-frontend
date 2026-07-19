@@ -435,6 +435,44 @@ const MarksEntryTable = () => {
   // ─────────────────────────────────────────
   // Filtering / Helpers
   // ─────────────────────────────────────────
+  const handleKeyDown = (e, studentIdx, subjIdx, fieldType) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      
+      const currentSubject = examSubjects[subjIdx];
+      const hasPrac = currentSubject.hasPractical && currentSubject.practicalMaxMarks > 0;
+      
+      let nextStudentIdx = studentIdx;
+      let nextSubjIdx = subjIdx;
+      let nextFieldType = "";
+
+      if (fieldType === "ceMarks") {
+        nextFieldType = "theoryScore";
+      } else if (fieldType === "theoryScore") {
+        if (hasPrac) {
+          nextFieldType = "practicalScore";
+        } else {
+          nextStudentIdx = studentIdx + 1;
+          const nextSubj = examSubjects[nextSubjIdx];
+          nextFieldType = nextSubj?.ceEnabled && nextSubj?.ceMaxMarks > 0 ? "ceMarks" : "theoryScore";
+        }
+      } else if (fieldType === "practicalScore") {
+        nextStudentIdx = studentIdx + 1;
+        const nextSubj = examSubjects[nextSubjIdx];
+        nextFieldType = nextSubj?.ceEnabled && nextSubj?.ceMaxMarks > 0 ? "ceMarks" : "theoryScore";
+      }
+
+      if (nextStudentIdx < filteredStudents.length) {
+        const nextInputId = `mark-input-${nextStudentIdx}-${nextSubjIdx}-${nextFieldType}`;
+        const nextInput = document.getElementById(nextInputId);
+        if (nextInput) {
+          nextInput.focus();
+          nextInput.select();
+        }
+      }
+    }
+  };
+
   const filteredStudents = students.filter(
     (s) =>
       s.studentName?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
@@ -709,7 +747,7 @@ const MarksEntryTable = () => {
                           </td>
 
                           {/* Subjects Mapping */}
-                          {examSubjects.map((subj) => {
+                          {examSubjects.map((subj, subjIdx) => {
                             const key = subj.examSubjectId?.toString();
                             const canEdit = canEditSubject(key);
                             const tm = tempMarks[student.studentId]?.[key] || {};
@@ -745,10 +783,12 @@ const MarksEntryTable = () => {
                                       type="number" onWheel={(e) => e.target.blur()}
                                       value={absent ? "" : ce}
                                       onChange={(e) => handleMarkChange(student.studentId, key, "ceMarks", e.target.value)}
+                                      onKeyDown={(e) => handleKeyDown(e, idx, subjIdx, "ceMarks")}
                                       disabled={!canEdit || absent}
                                       min={0}
                                       max={subj.ceMaxMarks}
                                       placeholder="0"
+                                      id={`mark-input-${idx}-${subjIdx}-ceMarks`}
                                       className={getBaseInputClass(isCeError)}
                                     />
                                   </td>
@@ -760,10 +800,12 @@ const MarksEntryTable = () => {
                                     type="number" onWheel={(e) => e.target.blur()}
                                     value={absent ? "" : theory}
                                     onChange={(e) => handleMarkChange(student.studentId, key, "theoryScore", e.target.value)}
+                                    onKeyDown={(e) => handleKeyDown(e, idx, subjIdx, "theoryScore")}
                                     disabled={!canEdit || absent}
                                     min={0}
                                     max={theoryMax}
                                     placeholder="0"
+                                    id={`mark-input-${idx}-${subjIdx}-theoryScore`}
                                     className={getBaseInputClass(isTheoryError)}
                                   />
                                 </td>
@@ -775,10 +817,12 @@ const MarksEntryTable = () => {
                                       type="number" onWheel={(e) => e.target.blur()}
                                       value={absent ? "" : practical}
                                       onChange={(e) => handleMarkChange(student.studentId, key, "practicalScore", e.target.value)}
+                                      onKeyDown={(e) => handleKeyDown(e, idx, subjIdx, "practicalScore")}
                                       disabled={!canEdit || absent}
                                       min={0}
                                       max={subj.practicalMaxMarks}
                                       placeholder="0"
+                                      id={`mark-input-${idx}-${subjIdx}-practicalScore`}
                                       className={getBaseInputClass(isPracticalError)}
                                     />
                                   </td>
