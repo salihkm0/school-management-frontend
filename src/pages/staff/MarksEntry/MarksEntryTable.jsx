@@ -498,6 +498,27 @@ const MarksEntryTable = () => {
     return <LoadingSpinner />;
   }
 
+  const hasValidationErrors = useMemo(() => {
+    let errorCount = 0;
+    const targetStudents = dirtyStudents.current.size > 0
+      ? filteredStudents.filter((s) => dirtyStudents.current.has(s.studentId))
+      : filteredStudents;
+
+    targetStudents.forEach(student => {
+      student.subjects.forEach(subj => {
+        const key = subj.examSubjectId || subj.subjectId;
+        const curr = marks[student.studentId]?.[key];
+        if (!curr || curr.isAbsent) return;
+        
+        const theoryMax = subj.theoryMaxMarks || subj.termMaxMarks || subj.maxMarks || 100;
+        if (curr.theoryScore !== "" && curr.theoryScore > theoryMax) errorCount++;
+        if (subj.hasPractical && curr.practicalScore !== "" && curr.practicalScore > subj.practicalMaxMarks) errorCount++;
+        if (subj.ceEnabled && curr.ceMarks !== "" && curr.ceMarks > subj.ceMaxMarks) errorCount++;
+      });
+    });
+    return errorCount > 0;
+  }, [marks, filteredStudents]);
+
   // ─────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────
@@ -644,7 +665,7 @@ const MarksEntryTable = () => {
                   {hasEditPermission && (
                     <button
                       onClick={handleSave}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || hasValidationErrors}
                       className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors whitespace-nowrap shadow-sm"
                     >
                       <CheckIcon className="w-3.5 h-3.5" />
@@ -875,7 +896,7 @@ const MarksEntryTable = () => {
               <div className="sticky bottom-3 mt-4 flex gap-2 z-30">
                 <button
                   onClick={handleSave}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || hasValidationErrors}
                   className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 shadow-lg transition-all active:scale-95"
                 >
                   <CheckIcon className="w-4 h-4" />
