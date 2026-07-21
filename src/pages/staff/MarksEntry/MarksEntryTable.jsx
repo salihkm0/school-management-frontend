@@ -492,13 +492,6 @@ const MarksEntryTable = () => {
     return classItem.displayName || classItem.name || classItem._id;
   };
 
-  // ─────────────────────────────────────────
-  // Early returns
-  // ─────────────────────────────────────────
-  if (isLoading || staffLoading || examsLoading || classesLoading) {
-    return <LoadingSpinner />;
-  }
-
   const hasValidationErrors = useMemo(() => {
     let errorCount = 0;
     const targetStudents = dirtyStudents.current.size > 0
@@ -508,7 +501,7 @@ const MarksEntryTable = () => {
     targetStudents.forEach(student => {
       student.subjects.forEach(subj => {
         const key = subj.examSubjectId || subj.subjectId;
-        const curr = marks[student.studentId]?.[key];
+        const curr = tempMarks[student.studentId]?.[key];
         if (!curr || curr.isAbsent) return;
         
         const theoryMax = subj.theoryMaxMarks || subj.termMaxMarks || subj.maxMarks || 100;
@@ -518,7 +511,15 @@ const MarksEntryTable = () => {
       });
     });
     return errorCount > 0;
-  }, [marks, filteredStudents]);
+  }, [tempMarks, filteredStudents]);
+
+  // ─────────────────────────────────────────
+  // Early returns
+  // ─────────────────────────────────────────
+  if (isLoading || staffLoading || examsLoading || classesLoading) {
+    return <LoadingSpinner />;
+  }
+
 
   // ─────────────────────────────────────────
   // RENDER
