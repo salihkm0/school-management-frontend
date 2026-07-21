@@ -45,13 +45,14 @@ import useDebounce from "../../../hooks/useDebounce";
 const getGradeInfo = (obtained, max) => {
   const pct = max > 0 ? (obtained / max) * 100 : 0;
   if (pct >= 90) return { grade: "A+", color: "text-emerald-600 bg-emerald-50" };
-  if (pct >= 80) return { grade: "A", color: "text-green-600 bg-green-50" };
+  if (pct >= 80) return { grade: "A",  color: "text-green-600 bg-green-50" };
   if (pct >= 70) return { grade: "B+", color: "text-blue-600 bg-blue-50" };
-  if (pct >= 60) return { grade: "B", color: "text-cyan-600 bg-cyan-50" };
+  if (pct >= 60) return { grade: "B",  color: "text-cyan-600 bg-cyan-50" };
   if (pct >= 50) return { grade: "C+", color: "text-yellow-600 bg-yellow-50" };
-  if (pct >= 40) return { grade: "C", color: "text-orange-600 bg-orange-50" };
-  if (pct >= 33) return { grade: "D", color: "text-red-500 bg-red-50" };
-  return { grade: "F", color: "text-gray-500 bg-gray-100" };
+  if (pct >= 40) return { grade: "C",  color: "text-orange-600 bg-orange-50" };
+  if (pct >= 30) return { grade: "D+", color: "text-amber-600 bg-amber-50" };
+  if (pct >= 20) return { grade: "D",  color: "text-red-500 bg-red-50" };
+  return { grade: "E",  color: "text-gray-500 bg-gray-100" };
 };
 
 // ─────────────────────────────────────────────
@@ -689,7 +690,7 @@ const MarksEntryTable = () => {
                         let colSpan = 1; // TE
                         if (hasPrac) colSpan++;
                         if (hasCE) colSpan++;
-                        colSpan += 2; // Total, Grade
+                        colSpan += 3; // Total, Grade, Absent
                         return (
                           <th
                             key={subj.examSubjectId}
@@ -724,8 +725,11 @@ const MarksEntryTable = () => {
                             <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-700 whitespace-nowrap border-l border-gray-200 bg-gray-100/50">
                               Total with % <span className="text-gray-400">/{subj.maxMarks || 100}</span>
                             </th>
-                            <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-700 whitespace-nowrap border-l border-r border-gray-200 bg-gray-100/50">
+                            <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-700 whitespace-nowrap border-l border-gray-200 bg-gray-100/50">
                               Grade
+                            </th>
+                            <th className="px-2 py-2 text-center text-[10px] font-semibold text-red-500 whitespace-nowrap border-l border-r border-gray-200 bg-red-50/30">
+                              Absent
                             </th>
                           </React.Fragment>
                         );
@@ -866,11 +870,31 @@ const MarksEntryTable = () => {
                                 </td>
 
                                 {/* Grade */}
-                                <td className="px-2 py-1 text-center border-l border-r border-gray-200 bg-gray-50/50">
+                                <td className="px-2 py-1 text-center border-l border-gray-200 bg-gray-50/50">
                                   {!absent && (
                                     <span className={`text-xs font-bold font-mono px-1.5 py-0.5 rounded-md ${gradeInfo.color}`}>
                                       {gradeInfo.grade}
                                     </span>
+                                  )}
+                                </td>
+
+                                {/* Absent Toggle */}
+                                <td className="px-1 py-1 text-center border-l border-r border-gray-200 bg-red-50/20">
+                                  {canEdit && (
+                                    <button
+                                      onClick={() => handleAbsentToggle(student.studentId, key)}
+                                      title={absent ? "Mark Present" : "Mark Absent"}
+                                      className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all ${
+                                        absent
+                                          ? "bg-red-500 text-white shadow-sm"
+                                          : "bg-gray-100 text-gray-400 hover:bg-red-100 hover:text-red-500"
+                                      }`}
+                                    >
+                                      {absent ? "AB" : "AB"}
+                                    </button>
+                                  )}
+                                  {!canEdit && absent && (
+                                    <span className="text-red-500 font-bold text-xs">AB</span>
                                   )}
                                 </td>
                               </React.Fragment>

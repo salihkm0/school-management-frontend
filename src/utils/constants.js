@@ -195,24 +195,26 @@ export const NOTIFICATION_TYPES = {
 
 export const GRADE_VALUES = {
   'A+': 10,
-  'A': 9,
+  'A':  9,
   'B+': 8,
-  'B': 7,
+  'B':  7,
   'C+': 6,
-  'C': 5,
-  'D': 4,
-  'F': 3,
+  'C':  5,
+  'D+': 4,
+  'D':  3,
+  'E':  2,
 }
 
 export const GRADE_COLORS = {
   'A+': 'text-green-600 bg-green-100',
-  'A': 'text-emerald-600 bg-emerald-100',
+  'A':  'text-emerald-600 bg-emerald-100',
   'B+': 'text-blue-600 bg-blue-100',
-  'B': 'text-cyan-600 bg-cyan-100',
+  'B':  'text-cyan-600 bg-cyan-100',
   'C+': 'text-yellow-600 bg-yellow-100',
-  'C': 'text-orange-600 bg-orange-100',
-  'D': 'text-red-600 bg-red-100',
-  'F': 'text-gray-600 bg-gray-100',
+  'C':  'text-orange-600 bg-orange-100',
+  'D+': 'text-amber-600 bg-amber-100',
+  'D':  'text-red-600 bg-red-100',
+  'E':  'text-gray-600 bg-gray-100',
 }
 
 export const PAGINATION = {
