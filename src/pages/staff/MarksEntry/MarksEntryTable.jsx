@@ -178,8 +178,15 @@ const MarksEntryTable = () => {
       if (markRes.success && markRes.data) {
         const { subjects, students: studentsData, languageMapping: lm, subjectProgress: sp } = markRes.data;
 
-        // Teachers only see their own subjects — already filtered by backend
-        setExamSubjects(subjects || []);
+        // Ensure teachers only see their own subjects in the entry table
+        let editableSubjects = subjects || [];
+        if (!permRes.data.isAdmin) {
+          const allowed = permRes.data.allowedSubjects || [];
+          editableSubjects = editableSubjects.filter(subj => 
+            allowed.some(s => s.subjectId === subj.examSubjectId || s.subjectId?.toString() === subj.examSubjectId?.toString())
+          );
+        }
+        setExamSubjects(editableSubjects);
         setSubjectProgress(sp || []);
         setStudents(studentsData || []);
         setLanguageMapping(lm || {});

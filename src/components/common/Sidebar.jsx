@@ -19,6 +19,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ArchiveBoxIcon,
+  TableCellsIcon,
 } from '@heroicons/react/24/outline'
 import { logout } from '../../store/slices/authSlice'
 import { disconnectSocket } from '../../services/socketService'
@@ -43,11 +44,13 @@ const menuItems = [
   { path: '/pdf-reports', name: 'PDF Reports', icon: DocumentTextIcon, roles: ['admin'] },
   { path: '/historical-records', name: 'Historical Records', icon: ArchiveBoxIcon, roles: ['admin'] },
   { path: '/admin/marks-entry', name: 'Mark Entry', icon: ClipboardDocumentListIcon, roles: ['admin'] },
+  { path: '/admin/class-marks', name: 'Class Marks', icon: TableCellsIcon, roles: ['admin'] },
 
   // Staff-specific routes
   { path: '/staff/exams', name: 'Exams', icon: ClipboardDocumentListIcon, roles: ['staff'] },
   { path: '/staff/attendance', name: 'Attendance', icon: CalendarIcon, roles: ['staff'] },
   { path: '/staff/marks-entry', name: 'Mark Entry', icon: ClipboardDocumentListIcon, roles: ['staff'] },
+  { path: '/staff/class-marks', name: 'Class Marks', icon: TableCellsIcon, roles: ['staff'] },
 
   // Parent-specific routes
   { path: '/my-children', name: 'My Children', icon: UserGroupIcon, roles: ['parent'] },

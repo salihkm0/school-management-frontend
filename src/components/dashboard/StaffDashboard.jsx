@@ -27,6 +27,7 @@ import {
 import useSocket from '../../hooks/useSocket'
 import { fetchStaffDashboard, updateStats, addActivity } from '../../store/slices/dashboardSlice'
 import LoadingSpinner from '../common/LoadingSpinner'
+import QuickActions from './QuickActions'
 
 // Stat Card Component
 const StatCard = ({ config, value, trend }) => {
@@ -364,6 +365,7 @@ const StaffDashboard = () => {
         {/* Main Area: Recent Activities & Info */}
         <div className="lg:col-span-2 space-y-4 sm:space-y-5 flex flex-col">
 
+          <QuickActions userRole="staff" />
 
           {/* Staff Information Card */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">

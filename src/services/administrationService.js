@@ -59,6 +59,21 @@ const administrationService = {
   testFcmNotification: async (data) => {
     const response = await api.post('/administration/fcm/test', data);
     return response.data;
+  },
+
+  getAppVersionConfig: async (platform) => {
+    const response = await api.get('/app-config/version', { params: { platform } });
+    return response.data.data;
+  },
+
+  updateAppVersionConfig: async (data) => {
+    const response = await api.put('/app-config/version', data);
+    return response.data;
+  },
+
+  getAppUpdateHistory: async () => {
+    const response = await api.get('/app-config/history');
+    return response.data.data;
   }
 };
 

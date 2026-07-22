@@ -14,7 +14,7 @@ const ProfileSettings = () => {
   const [isEditing, setIsEditing] = useState(false)
   
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
-    defaultValues: {
+    values: {
       name: user?.name || '',
       email: user?.email || '',
       phone: user?.phone || ''

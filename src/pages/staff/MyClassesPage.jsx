@@ -333,6 +333,13 @@ const MyClassesPage = () => {
                   <ChartBarIcon className="w-4 h-4" />
                   <span>Enter Marks</span>
                 </Link>
+                <Link
+                  to={`/staff/class-marks/${selectedClass._id}`}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm flex items-center gap-2"
+                >
+                  <CheckCircleIcon className="w-4 h-4" />
+                  <span>View Marks</span>
+                </Link>
                 <button
                   onClick={() => setIsBulkUpdateModalOpen(true)}
                   className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors text-sm flex items-center gap-2"

@@ -30,6 +30,7 @@ import MyDutiesPage from './pages/staff/MyDutiesPage'
 import StaffAttendancePage from './pages/staff/StaffAttendancePage'
 import StaffExamsPage from './pages/staff/StaffExamsPage'
 import MarksEntryRouter from './pages/staff/MarksEntry/MarksEntryRouter'
+import ClassMarksOverview from './pages/staff/ClassMarksOverview/ClassMarksOverview'
 import ExamForm from './components/exams/ExamForm'
 import ExamReview from './components/exams/ExamReview'
 import HistoricalRecordsFlow from './pages/admin/HistoricalRecords/HistoricalRecordsFlow'
@@ -204,6 +205,10 @@ function App() {
           <Route path="staff/exams/edit/:id" element={<ExamForm />} />
           <Route path="staff/exams/results/:examId" element={<ExamReview />} />
           <Route path="staff/marks-entry/*" element={<MarksEntryRouter />} />
+          <Route path="staff/class-marks/:classId" element={<ClassMarksOverview />} />
+          <Route path="staff/class-marks" element={<ClassMarksOverview />} />
+          <Route path="admin/class-marks/:classId" element={<ClassMarksOverview />} />
+          <Route path="admin/class-marks" element={<ClassMarksOverview />} />
 
 
 

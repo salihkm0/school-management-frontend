@@ -12,6 +12,7 @@ import {
   AcademicCapIcon,
   EyeIcon,
   BellIcon,
+  TableCellsIcon,
 } from '@heroicons/react/24/outline'
 
 const actionsByRole = {
@@ -24,10 +25,10 @@ const actionsByRole = {
     { label: 'Send Notification', icon: MegaphoneIcon, path: '/notifications/send', color: 'bg-indigo-500' },
   ],
   staff: [
-    { label: 'Mark Attendance', icon: CalendarDaysIcon, path: '/attendance', color: 'bg-amber-500' },
-    { label: 'Enter Marks', icon: ClipboardDocumentListIcon, path: '/exams/marks', color: 'bg-purple-500' },
-    { label: 'View Schedule', icon: CalendarDaysIcon, path: '/classes/timetable', color: 'bg-blue-500' },
-    { label: 'Generate Report', icon: ChartBarIcon, path: '/reports', color: 'bg-rose-500' },
+    { label: 'Mark Attendance', icon: CalendarDaysIcon, path: '/staff/attendance', color: 'bg-amber-500' },
+    { label: 'Mark Entry', icon: ClipboardDocumentListIcon, path: '/staff/marks-entry', color: 'bg-purple-500' },
+    { label: 'Class Marks Overview', icon: TableCellsIcon, path: '/staff/class-marks', color: 'bg-emerald-500' },
+    { label: 'Exams', icon: DocumentPlusIcon, path: '/staff/exams', color: 'bg-blue-500' },
   ],
   parent: [
     { label: 'View Progress', icon: ChartBarIcon, path: '/reports/child', color: 'bg-emerald-500' },
