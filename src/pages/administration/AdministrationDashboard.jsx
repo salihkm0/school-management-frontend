@@ -239,31 +239,52 @@ const AdministrationDashboard = () => {
       </div>
 
       {/* Advanced Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* CPU & Memory Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* CPU Load Chart */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
           <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
-            <Activity className="w-5 h-5 text-emerald-400" />
-            System Resources (48h)
+            <Cpu className="w-5 h-5 text-emerald-400" />
+            CPU Load (48h)
           </h3>
-          <div className="h-[300px] w-full">
+          <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={systemMetrics.map(m => ({
                 time: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                cpu: parseFloat(m.cpuLoad?.toFixed(2) || 0),
-                memory: parseFloat((m.memoryUsed / (1024 * 1024)).toFixed(0))
-              }))} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                cpu: parseFloat(m.cpuLoad?.toFixed(2) || 0)
+              }))} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-                <XAxis dataKey="time" stroke="#9CA3AF" fontSize={12} tickMargin={10} minTickGap={30} />
-                <YAxis yAxisId="left" stroke="#34D399" fontSize={12} tickFormatter={(val) => `${val}%`} />
-                <YAxis yAxisId="right" orientation="right" stroke="#60A5FA" fontSize={12} tickFormatter={(val) => `${val}MB`} />
+                <XAxis dataKey="time" stroke="#9CA3AF" fontSize={11} tickMargin={10} minTickGap={30} />
+                <YAxis stroke="#34D399" fontSize={11} tickFormatter={(val) => `${val}%`} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '0.5rem', color: '#F3F4F6' }}
-                  itemStyle={{ fontSize: '14px' }}
+                  itemStyle={{ fontSize: '13px' }}
                 />
-                <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                <Line yAxisId="left" type="monotone" dataKey="cpu" name="CPU Load (%)" stroke="#34D399" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
-                <Line yAxisId="right" type="monotone" dataKey="memory" name="Memory Used (MB)" stroke="#60A5FA" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                <Line type="monotone" dataKey="cpu" name="CPU Load (%)" stroke="#34D399" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Memory Chart */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+            <HardDrive className="w-5 h-5 text-blue-400" />
+            Memory Usage (48h)
+          </h3>
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={systemMetrics.map(m => ({
+                time: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                memory: parseFloat((m.memoryUsed / (1024 * 1024)).toFixed(0))
+              }))} margin={{ top: 5, right: 10, bottom: 5, left: -10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                <XAxis dataKey="time" stroke="#9CA3AF" fontSize={11} tickMargin={10} minTickGap={30} />
+                <YAxis stroke="#60A5FA" fontSize={11} tickFormatter={(val) => `${val}MB`} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '0.5rem', color: '#F3F4F6' }}
+                  itemStyle={{ fontSize: '13px' }}
+                />
+                <Line type="monotone" dataKey="memory" name="Memory (MB)" stroke="#60A5FA" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -275,7 +296,7 @@ const AdministrationDashboard = () => {
             <Users className="w-5 h-5 text-blue-400" />
             Daily Active Users (7 Days)
           </h3>
-          <div className="h-[300px] w-full">
+          <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dailyUsers} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
