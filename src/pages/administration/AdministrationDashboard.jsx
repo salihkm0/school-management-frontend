@@ -32,6 +32,8 @@ const AdministrationDashboard = () => {
   const [activeUsers, setActiveUsers] = useState(0);
   const [systemMetrics, setSystemMetrics] = useState([]);
   const [dailyUsers, setDailyUsers] = useState([]);
+  const [metricsRange, setMetricsRange] = useState('24h');
+  const [dauRange, setDauRange] = useState(7);
   const [loading, setLoading] = useState(true);
   const [clearingCache, setClearingCache] = useState(false);
   const [maintenanceMode, setMaintenanceMode] = useState(false); // We don't fetch initially for simplicity, assume false until toggled or could fetch.
@@ -92,8 +94,8 @@ const AdministrationDashboard = () => {
         administrationService.getSystemHealth(),
         administrationService.getDbStats(),
         administrationService.getActiveUsers(),
-        administrationService.getSystemMetrics({ range: '48h' }),
-        administrationService.getDailyActiveUsers({ days: 7 })
+        administrationService.getSystemMetrics({ range: metricsRange }),
+        administrationService.getDailyActiveUsers({ days: dauRange })
       ]);
       setHealth(healthData);
       setDbStats(dbData.data);
@@ -111,7 +113,7 @@ const AdministrationDashboard = () => {
     fetchDashboardData();
     const interval = setInterval(fetchDashboardData, 15000); // refresh every 15s
     return () => clearInterval(interval);
-  }, []);
+  }, [metricsRange, dauRange]);
 
   const handleClearCache = async () => {
     if (window.confirm("Are you sure you want to clear all system caches? This will temporarily increase database load.")) {
@@ -239,17 +241,28 @@ const AdministrationDashboard = () => {
       </div>
 
       {/* Advanced Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* CPU Load Chart */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-          <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
-            <Cpu className="w-5 h-5 text-emerald-400" />
-            CPU Load (48h)
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-white flex items-center gap-2">
+              <Cpu className="w-5 h-5 text-emerald-400" />
+              CPU Load
+            </h3>
+            <select 
+              value={metricsRange}
+              onChange={(e) => setMetricsRange(e.target.value)}
+              className="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2"
+            >
+              <option value="24h">Today</option>
+              <option value="7d">Weekly</option>
+              <option value="30d">Monthly</option>
+            </select>
+          </div>
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={systemMetrics.map(m => ({
-                time: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                time: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
                 cpu: parseFloat(m.cpuLoad?.toFixed(2) || 0)
               }))} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
@@ -267,14 +280,25 @@ const AdministrationDashboard = () => {
 
         {/* Memory Chart */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-          <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
-            <HardDrive className="w-5 h-5 text-blue-400" />
-            Memory Usage (48h)
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-white flex items-center gap-2">
+              <HardDrive className="w-5 h-5 text-blue-400" />
+              Memory Usage
+            </h3>
+            <select 
+              value={metricsRange}
+              onChange={(e) => setMetricsRange(e.target.value)}
+              className="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2"
+            >
+              <option value="24h">Today</option>
+              <option value="7d">Weekly</option>
+              <option value="30d">Monthly</option>
+            </select>
+          </div>
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={systemMetrics.map(m => ({
-                time: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                time: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
                 memory: parseFloat((m.memoryUsed / (1024 * 1024)).toFixed(0))
               }))} margin={{ top: 5, right: 10, bottom: 5, left: -10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
@@ -292,10 +316,21 @@ const AdministrationDashboard = () => {
 
         {/* Daily Active Users Chart */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-          <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
-            <Users className="w-5 h-5 text-blue-400" />
-            Daily Active Users (7 Days)
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-white flex items-center gap-2">
+              <Users className="w-5 h-5 text-blue-400" />
+              Active Users
+            </h3>
+            <select 
+              value={dauRange}
+              onChange={(e) => setDauRange(parseInt(e.target.value))}
+              className="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2"
+            >
+              <option value="1">Today</option>
+              <option value="7">Weekly</option>
+              <option value="30">Monthly</option>
+            </select>
+          </div>
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dailyUsers} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
