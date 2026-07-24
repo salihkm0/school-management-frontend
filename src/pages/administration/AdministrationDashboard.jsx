@@ -30,9 +30,11 @@ const AdministrationDashboard = () => {
   const [health, setHealth] = useState(null);
   const [dbStats, setDbStats] = useState(null);
   const [activeUsers, setActiveUsers] = useState(0);
-  const [systemMetrics, setSystemMetrics] = useState([]);
+  const [cpuMetrics, setCpuMetrics] = useState([]);
+  const [memoryMetrics, setMemoryMetrics] = useState([]);
   const [dailyUsers, setDailyUsers] = useState([]);
-  const [metricsRange, setMetricsRange] = useState('24h');
+  const [cpuRange, setCpuRange] = useState('24h');
+  const [memoryRange, setMemoryRange] = useState('24h');
   const [dauRange, setDauRange] = useState(7);
   const [loading, setLoading] = useState(true);
   const [clearingCache, setClearingCache] = useState(false);
@@ -90,17 +92,19 @@ const AdministrationDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const [healthData, dbData, usersData, metricsData, dauData] = await Promise.all([
+      const [healthData, dbData, usersData, cpuData, memoryData, dauData] = await Promise.all([
         administrationService.getSystemHealth(),
         administrationService.getDbStats(),
         administrationService.getActiveUsers(),
-        administrationService.getSystemMetrics({ range: metricsRange }),
+        administrationService.getSystemMetrics({ range: cpuRange }),
+        administrationService.getSystemMetrics({ range: memoryRange }),
         administrationService.getDailyActiveUsers({ days: dauRange })
       ]);
       setHealth(healthData);
       setDbStats(dbData.data);
       setActiveUsers(usersData.count);
-      setSystemMetrics(metricsData.data || []);
+      setCpuMetrics(cpuData.data || []);
+      setMemoryMetrics(memoryData.data || []);
       setDailyUsers(dauData.data || []);
     } catch (error) {
       toast.error('Failed to fetch dashboard metrics');
@@ -113,7 +117,7 @@ const AdministrationDashboard = () => {
     fetchDashboardData();
     const interval = setInterval(fetchDashboardData, 15000); // refresh every 15s
     return () => clearInterval(interval);
-  }, [metricsRange, dauRange]);
+  }, [cpuRange, memoryRange, dauRange]);
 
   const handleClearCache = async () => {
     if (window.confirm("Are you sure you want to clear all system caches? This will temporarily increase database load.")) {
@@ -250,8 +254,8 @@ const AdministrationDashboard = () => {
               CPU Load
             </h3>
             <select 
-              value={metricsRange}
-              onChange={(e) => setMetricsRange(e.target.value)}
+              value={cpuRange}
+              onChange={(e) => setCpuRange(e.target.value)}
               className="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2"
             >
               <option value="24h">Today</option>
@@ -261,7 +265,7 @@ const AdministrationDashboard = () => {
           </div>
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={systemMetrics.map(m => ({
+              <LineChart data={cpuMetrics.map(m => ({
                 time: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
                 cpu: parseFloat(m.cpuLoad?.toFixed(2) || 0)
               }))} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
@@ -286,8 +290,8 @@ const AdministrationDashboard = () => {
               Memory Usage
             </h3>
             <select 
-              value={metricsRange}
-              onChange={(e) => setMetricsRange(e.target.value)}
+              value={memoryRange}
+              onChange={(e) => setMemoryRange(e.target.value)}
               className="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2"
             >
               <option value="24h">Today</option>
@@ -297,7 +301,7 @@ const AdministrationDashboard = () => {
           </div>
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={systemMetrics.map(m => ({
+              <LineChart data={memoryMetrics.map(m => ({
                 time: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
                 memory: parseFloat((m.memoryUsed / (1024 * 1024)).toFixed(0))
               }))} margin={{ top: 5, right: 10, bottom: 5, left: -10 }}>
