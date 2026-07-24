@@ -6,6 +6,16 @@ const administrationService = {
     return response.data;
   },
 
+  getSystemMetrics: async (params) => {
+    const response = await api.get('/administration/system/metrics', { params });
+    return response.data;
+  },
+
+  getDailyActiveUsers: async (params) => {
+    const response = await api.get('/administration/system/daily-users', { params });
+    return response.data;
+  },
+
   getSystemLogs: async (params) => {
     const response = await api.get('/administration/system/logs', { params });
     return response.data;

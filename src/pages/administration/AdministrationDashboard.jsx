@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import {
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+} from 'recharts';
 import administrationService from '../../services/administrationService';
 import { ServerIcon, Cpu, HardDrive, Clock, Database, Activity, Users, Shield, Trash2, Power, Smartphone } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -27,6 +30,8 @@ const AdministrationDashboard = () => {
   const [health, setHealth] = useState(null);
   const [dbStats, setDbStats] = useState(null);
   const [activeUsers, setActiveUsers] = useState(0);
+  const [systemMetrics, setSystemMetrics] = useState([]);
+  const [dailyUsers, setDailyUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [clearingCache, setClearingCache] = useState(false);
   const [maintenanceMode, setMaintenanceMode] = useState(false); // We don't fetch initially for simplicity, assume false until toggled or could fetch.
@@ -83,14 +88,18 @@ const AdministrationDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const [healthData, dbData, usersData] = await Promise.all([
+      const [healthData, dbData, usersData, metricsData, dauData] = await Promise.all([
         administrationService.getSystemHealth(),
         administrationService.getDbStats(),
-        administrationService.getActiveUsers()
+        administrationService.getActiveUsers(),
+        administrationService.getSystemMetrics({ range: '48h' }),
+        administrationService.getDailyActiveUsers({ days: 7 })
       ]);
       setHealth(healthData);
       setDbStats(dbData.data);
       setActiveUsers(usersData.count);
+      setSystemMetrics(metricsData.data || []);
+      setDailyUsers(dauData.data || []);
     } catch (error) {
       toast.error('Failed to fetch dashboard metrics');
     } finally {
@@ -227,6 +236,69 @@ const AdministrationDashboard = () => {
           colorClass={health?.dbStatus === 'connected' ? 'text-emerald-400' : 'text-red-400'}
           glowing={health?.dbStatus === 'connected'}
         />
+      </div>
+
+      {/* Advanced Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* CPU & Memory Chart */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+            <Activity className="w-5 h-5 text-emerald-400" />
+            System Resources (48h)
+          </h3>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={systemMetrics.map(m => ({
+                time: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                cpu: parseFloat(m.cpuLoad?.toFixed(2) || 0),
+                memory: parseFloat((m.memoryUsed / (1024 * 1024)).toFixed(0))
+              }))} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                <XAxis dataKey="time" stroke="#9CA3AF" fontSize={12} tickMargin={10} minTickGap={30} />
+                <YAxis yAxisId="left" stroke="#34D399" fontSize={12} tickFormatter={(val) => `${val}%`} />
+                <YAxis yAxisId="right" orientation="right" stroke="#60A5FA" fontSize={12} tickFormatter={(val) => `${val}MB`} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '0.5rem', color: '#F3F4F6' }}
+                  itemStyle={{ fontSize: '14px' }}
+                />
+                <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                <Line yAxisId="left" type="monotone" dataKey="cpu" name="CPU Load (%)" stroke="#34D399" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                <Line yAxisId="right" type="monotone" dataKey="memory" name="Memory Used (MB)" stroke="#60A5FA" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Daily Active Users Chart */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5 text-blue-400" />
+            Daily Active Users (7 Days)
+          </h3>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dailyUsers} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                <XAxis 
+                  dataKey="date" 
+                  stroke="#9CA3AF" 
+                  fontSize={12} 
+                  tickMargin={10} 
+                  tickFormatter={(val) => {
+                    const date = new Date(val);
+                    return `${date.getDate()}/${date.getMonth() + 1}`;
+                  }} 
+                />
+                <YAxis stroke="#9CA3AF" fontSize={12} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '0.5rem', color: '#F3F4F6' }}
+                  cursor={{ fill: '#374151', opacity: 0.4 }}
+                />
+                <Bar dataKey="activeUsers" name="Active Users" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
