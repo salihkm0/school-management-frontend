@@ -15,7 +15,7 @@ import {
   X,
   BookOpen
 } from 'lucide-react'
-import { fetchTeacherClasses, clearTeacherClasses } from '../../store/slices/classSlice'
+import { fetchTeacherClassTeacherClasses, clearTeacherClasses } from '../../store/slices/classSlice'
 import { fetchStaff } from '../../store/slices/staffSlice'
 import { fetchAcademicYears } from '../../store/slices/academicYearSlice'
 import { fetchStudentsByClass, updateStudent } from '../../store/slices/studentSlice'
@@ -27,7 +27,7 @@ const MyClassesPage = () => {
   const dispatch = useDispatch()
   const { user } = useSelector((state) => state.auth)
   const { staff, isLoading: staffLoading } = useSelector((state) => state.staff)
-  const { teacherClasses, isLoading: classesLoading } = useSelector((state) => state.classes)
+  const { teacherClassTeacherClasses: teacherClasses, isLoading: classesLoading } = useSelector((state) => state.classes)
   const { students, isLoading: studentsLoading } = useSelector((state) => state.students)
   const { academicYears } = useSelector((state) => state.academicYears)
   
@@ -95,18 +95,16 @@ const MyClassesPage = () => {
     const staffId = currentStaff._id
     
     try {
-      const result = await dispatch(fetchTeacherClasses({ 
+      const result = await dispatch(fetchTeacherClassTeacherClasses({ 
         teacherId: staffId, 
         academicYearId: currentAcademicYear?._id 
       })).unwrap()
       
-      if (result && result.data && result.data.length > 0) {
-        if (result.data.length > 0 && !selectedClass) {
-          setSelectedClass(result.data[0])
-        }
+      if (result?.data?.length > 0) {
+        setSelectedClass(result.data[0])
       }
     } catch (error) {
-      console.error('Failed to fetch teacher class teacher classes:', error)
+      console.error('Failed to fetch teacher classes:', error)
     }
   }
 
@@ -205,9 +203,9 @@ const MyClassesPage = () => {
             <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Users className="w-8 h-8 text-emerald-500" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Classes Found</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Classes Assigned</h3>
             <p className="text-gray-500 max-w-sm mx-auto text-sm">
-              You are not assigned to any classes in the academic year {currentAcademicYear?.year}.
+              You are not assigned as a class teacher for any class.
             </p>
           </div>
         </div>
