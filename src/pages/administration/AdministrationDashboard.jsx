@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import administrationService from '../../services/administrationService';
-import { ServerIcon, Cpu, HardDrive, Clock, Database, Activity, Users, Shield, Trash2, Power } from 'lucide-react';
+import { ServerIcon, Cpu, HardDrive, Clock, Database, Activity, Users, Shield, Trash2, Power, Smartphone } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const StatCard = ({ title, value, subtitle, icon: Icon, colorClass, glowing = false }) => (
