@@ -47,6 +47,8 @@ const menuItems = [
   { path: '/admin/class-marks', name: 'Class Marks', icon: TableCellsIcon, roles: ['admin'] },
 
   // Staff-specific routes
+  { path: '/staff/my-classes', name: 'My Classes', icon: AcademicCapIcon, roles: ['staff'] },
+  { path: '/staff/my-duties', name: 'My Duties', icon: ClipboardDocumentListIcon, roles: ['staff'] },
   { path: '/staff/exams', name: 'Exams', icon: ClipboardDocumentListIcon, roles: ['staff'] },
   { path: '/staff/attendance', name: 'Attendance', icon: CalendarIcon, roles: ['staff'] },
   { path: '/staff/marks-entry', name: 'Mark Entry', icon: ClipboardDocumentListIcon, roles: ['staff'] },

@@ -129,30 +129,9 @@ const StaffExamsPage = () => {
     try {
       const response = await examService.getStaffExams(currentAcademicYear._id)
       if (response && response.data) {
-        const isClassTeacher = (selectedClass.classTeacherId?._id || selectedClass.classTeacherId) === user._id;
-        const theirSubjects = selectedClass.subjectTeachers
-          ?.filter(st => (st.teacherId?._id || st.teacherId) === user._id)
-          .map(st => st.subjectId?._id || st.subjectId) || [];
-
         const classExams = response.data.filter(exam => {
           // Check if exam is assigned to the selected class
-          const hasClass = exam.classIds?.some(c => (c._id || c) === selectedClass._id);
-          if (!hasClass) return false;
-
-          // If they are class teacher, allow
-          if (isClassTeacher) return true;
-
-          // If they are a subject teacher, check if their subject is in the exam
-          if (theirSubjects.length > 0) {
-            const examSubjectIds = exam.subjects?.map(s => s.subjectId?._id || s.subjectId) || [];
-            const hasMatchingSubject = theirSubjects.some(tsId => examSubjectIds.includes(tsId));
-            if (hasMatchingSubject) return true;
-          }
-
-          // If they created the exam, allow
-          if (exam.createdBy === user._id) return true;
-
-          return false;
+          return exam.classIds?.some(c => (c._id || c) === selectedClass._id);
         });
 
         setExams(classExams)
