@@ -34,7 +34,7 @@ import {
   getTeacherPermissions,
   submitMarksForReview,
 } from "../../../services/markService";
-import { generateClassReportCardsPDF } from "../../../services/analyticsService";
+
 import LoadingSpinner from "../../../components/common/LoadingSpinner.jsx";
 import toast from "react-hot-toast";
 import useDebounce from "../../../hooks/useDebounce";
@@ -124,7 +124,6 @@ const MarksEntryTable = () => {
   // ── UI state ──
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   // ── Dirty tracking: only send modified students on save ──
@@ -199,9 +198,9 @@ const MarksEntryTable = () => {
             const key = subject.examSubjectId || subject.subjectId;
             const isActuallyEntered = subject.isEntered || subject.theoryScore > 0 || subject.practicalScore > 0 || (subject.ceScore || subject.ceMarks) > 0 || subject.isAbsent;
             initial[student.studentId][key] = {
-              theoryScore: isActuallyEntered ? (subject.theoryScore ?? 0) : "",
-              practicalScore: isActuallyEntered ? (subject.practicalScore ?? 0) : "",
-              ceMarks: isActuallyEntered ? (subject.ceScore ?? subject.ceMarks ?? 0) : "",
+              theoryScore: (isActuallyEntered && subject.theoryScore !== 0) ? (subject.theoryScore ?? "") : "",
+              practicalScore: (isActuallyEntered && subject.practicalScore !== 0) ? (subject.practicalScore ?? "") : "",
+              ceMarks: (isActuallyEntered && (subject.ceScore ?? subject.ceMarks) !== 0) ? (subject.ceScore ?? subject.ceMarks ?? "") : "",
               isAbsent: subject.isAbsent || false,
               isEntered: isActuallyEntered,
             };
@@ -253,10 +252,8 @@ const MarksEntryTable = () => {
     permissions?.isAdmin === true ||
     (permissions?.allowedSubjects && permissions.allowedSubjects.length > 0);
 
-  // PDF download allowed only if class teacher or admin AND all subjects 100% done
   const allMarksEntered =
     subjectProgress.length > 0 && subjectProgress.every((sp) => sp.percentage === 100);
-  const canDownloadPDF = (isClassTeacher || isAdmin) && allMarksEntered;
 
   // ─────────────────────────────────────────
   // Mark Change Handler
@@ -283,7 +280,13 @@ const MarksEntryTable = () => {
     setTempMarks((prev) => {
       const sm = { ...(prev[studentId] || {}) };
       const curr = sm[examSubjectId] || { theoryScore: "", practicalScore: "", ceMarks: "", isAbsent: false, isEntered: false };
-      sm[examSubjectId] = { ...curr, [field]: parsed, isEntered: true };
+      const nextCurr = { ...curr, [field]: parsed };
+      const isNowEntered = 
+        nextCurr.theoryScore !== "" || 
+        nextCurr.practicalScore !== "" || 
+        nextCurr.ceMarks !== "" || 
+        nextCurr.isAbsent;
+      sm[examSubjectId] = { ...nextCurr, isEntered: isNowEntered };
       return { ...prev, [studentId]: sm };
     });
   };
@@ -305,6 +308,7 @@ const MarksEntryTable = () => {
         theoryScore: nowAbsent ? 0 : curr.theoryScore,
         practicalScore: nowAbsent ? 0 : curr.practicalScore,
         ceMarks: nowAbsent ? 0 : curr.ceMarks,
+        isEntered: nowAbsent || (curr.theoryScore !== "" && curr.theoryScore !== 0),
       };
       return { ...prev, [studentId]: sm };
     });
@@ -363,20 +367,35 @@ const MarksEntryTable = () => {
 
     const studentsData = targetStudents.map((student) => ({
       studentId: student.studentId,
-      subjects: student.subjects.map((subject) => {
-        const key = subject.examSubjectId || subject.subjectId;
-        const tm = tempMarks[student.studentId]?.[key] || {};
-        return {
-          examSubjectId: subject.examSubjectId || subject.subjectId,
-          subjectId: subject.actualSubjectId || subject.subjectId,
-          theoryScore: (tm.theoryScore === "" ? 0 : tm.theoryScore) ?? subject.theoryScore ?? 0,
-          practicalScore: (tm.practicalScore === "" ? 0 : tm.practicalScore) ?? subject.practicalScore ?? 0,
-          ceMarks: (tm.ceMarks === "" ? 0 : tm.ceMarks) ?? (subject.ceMarks || subject.ceScore) ?? 0,
-          isAbsent: tm.isAbsent ?? subject.isAbsent ?? false,
-          isEntered: tm.isEntered ?? subject.isEntered ?? false,
-          remarks: subject.remarks || "",
-        };
-      }),
+      subjects: student.subjects
+        .filter((subject) => {
+          const key = subject.examSubjectId || subject.subjectId;
+          const tm = tempMarks[student.studentId]?.[key] || {};
+          // Only send this subject to the backend if it was previously entered, 
+          // or if the user has entered some data for it.
+          return (
+            subject.isEntered ||
+            tm.isEntered ||
+            (tm.theoryScore !== "" && tm.theoryScore !== undefined) ||
+            (tm.practicalScore !== "" && tm.practicalScore !== undefined) ||
+            (tm.ceMarks !== "" && tm.ceMarks !== undefined) ||
+            tm.isAbsent
+          );
+        })
+        .map((subject) => {
+          const key = subject.examSubjectId || subject.subjectId;
+          const tm = tempMarks[student.studentId]?.[key] || {};
+          return {
+            examSubjectId: subject.examSubjectId || subject.subjectId,
+            subjectId: subject.actualSubjectId || subject.subjectId,
+            theoryScore: (tm.theoryScore === "" ? 0 : tm.theoryScore) ?? subject.theoryScore ?? 0,
+            practicalScore: (tm.practicalScore === "" ? 0 : tm.practicalScore) ?? subject.practicalScore ?? 0,
+            ceMarks: (tm.ceMarks === "" ? 0 : tm.ceMarks) ?? (subject.ceMarks || subject.ceScore) ?? 0,
+            isAbsent: tm.isAbsent ?? subject.isAbsent ?? false,
+            isEntered: tm.isEntered ?? subject.isEntered ?? false,
+            remarks: subject.remarks || "",
+          };
+        }),
       remarks: student.remarks || "",
     }));
 
@@ -415,30 +434,6 @@ const MarksEntryTable = () => {
     }
   };
 
-  // ─────────────────────────────────────────
-  // PDF Download
-  // ─────────────────────────────────────────
-  const handleDownloadClassPDF = async () => {
-    if (!examId || !classId) return;
-    setIsDownloadingPDF(true);
-    try {
-      const pdfBlob = await generateClassReportCardsPDF(examId, classId);
-      const url = URL.createObjectURL(pdfBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Class_ReportCards_${classId}_${examId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success("Class report cards downloaded!");
-    } catch (e) {
-      console.error("PDF download failed:", e);
-      toast.error("Failed to download class report cards");
-    } finally {
-      setIsDownloadingPDF(false);
-    }
-  };
 
   // ─────────────────────────────────────────
   // Filtering / Helpers
@@ -581,48 +576,6 @@ const MarksEntryTable = () => {
               </div>
             )}
 
-            {/* ── Class Teacher PDF Download Banner ── */}
-            {(isClassTeacher || isAdmin) && subjectProgress.length > 0 && (
-              <div
-                className={`mb-4 rounded-xl border p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
-                  allMarksEntered
-                    ? "bg-emerald-50 border-emerald-200"
-                    : "bg-amber-50 border-amber-200"
-                }`}
-              >
-                <div className="flex items-start gap-2">
-                  {allMarksEntered ? (
-                    <CheckBadgeIcon className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                  ) : (
-                    <ExclamationTriangleIcon className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                  )}
-                  <div>
-                    <p className={`text-sm font-medium ${allMarksEntered ? "text-emerald-800" : "text-amber-800"}`}>
-                      {allMarksEntered
-                        ? "All marks entered! Class report cards are ready."
-                        : "Class report cards will be available after all marks are entered."}
-                    </p>
-                    {!allMarksEntered && (
-                      <p className="text-xs text-amber-600 mt-0.5">
-                        {subjectProgress.filter((sp) => sp.percentage < 100).length} subject(s) still pending.
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={handleDownloadClassPDF}
-                  disabled={!allMarksEntered || isDownloadingPDF}
-                  className={`flex-shrink-0 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                    allMarksEntered && !isDownloadingPDF
-                      ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
-                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  }`}
-                >
-                  <DocumentArrowDownIcon className="w-4 h-4" />
-                  {isDownloadingPDF ? "Downloading…" : "Download Class Report PDF"}
-                </button>
-              </div>
-            )}
 
             {/* ── No Subjects ── */}
             {examSubjects.length === 0 && !isLoading && (
@@ -689,7 +642,10 @@ const MarksEntryTable = () => {
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100">
-                      <th rowSpan={2} className="sticky left-0 bg-gray-50 z-20 px-4 py-3 text-left text-xs font-semibold text-gray-600 whitespace-nowrap min-w-[160px] border-r border-gray-200">
+                      <th rowSpan={2} className="sticky left-0 bg-gray-50 z-20 px-4 py-3 text-center text-xs font-semibold text-gray-600 whitespace-nowrap border-r border-gray-200">
+                        Roll No
+                      </th>
+                      <th rowSpan={2} className="bg-gray-50 px-4 py-3 text-left text-xs font-semibold text-gray-600 whitespace-nowrap min-w-[200px] border-r border-gray-200">
                         Student
                       </th>
                       {examSubjects.map((subj) => {
@@ -748,7 +704,7 @@ const MarksEntryTable = () => {
                     {filteredStudents.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={1 + examSubjects.length * 5}
+                          colSpan={2 + examSubjects.length * 5}
                           className="text-center py-6 sm:py-10 text-gray-400 text-sm"
                         >
                           No students found.
@@ -762,18 +718,23 @@ const MarksEntryTable = () => {
                             idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"
                           } hover:bg-emerald-50/40 transition-colors`}
                         >
-                          {/* Student Name (sticky) */}
-                          <td className={`sticky left-0 z-10 px-4 py-2 ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-emerald-50 border-r border-gray-200`}>
+                          {/* Roll No (sticky) */}
+                          <td className={`sticky left-0 z-10 px-4 py-2 text-center text-xs font-bold text-gray-900 border-r border-gray-200 ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+                            {student.rollNumber || "-"}
+                          </td>
+                          
+                          {/* Student Name */}
+                          <td className={`px-4 py-2 ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-emerald-50 border-r border-gray-200`}>
                             <div className="flex items-center gap-2">
                               <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-[10px] flex-shrink-0">
-                                {student.rollNumber || (idx + 1)}
+                                {idx + 1}
                               </div>
                               <div className="min-w-0">
-                                <p className="text-xs font-semibold text-gray-900 truncate max-w-[120px]">
+                                <p className="text-xs font-semibold text-gray-900 whitespace-normal min-w-[150px]">
                                   {student.studentName}
                                 </p>
                                 <p className="text-[10px] text-gray-400">
-                                  {student.admissionNo || student.studentCode || "-"}
+                                  Adm No: {student.admissionNo || student.studentCode || "-"}
                                 </p>
                               </div>
                             </div>

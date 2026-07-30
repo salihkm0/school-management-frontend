@@ -1,12 +1,14 @@
 // src/services/authService.js
 import api from './api'
+import { getDeviceInfo } from '../utils/deviceInfoHelper'
 
 const authService = {
   login: async (email, phone, password, rememberMe) => {
     // Build the request body based on what's provided
     const requestBody = {
       password,
-      rememberMe
+      rememberMe,
+      deviceInfo: getDeviceInfo()
     }
     
     if (email) {
@@ -50,6 +52,7 @@ const authService = {
   },
 
   updateProfile: async (profileData) => {
+    profileData.deviceInfo = getDeviceInfo();
     const response = await api.put('/auth/profile', profileData)
     if (response.data.user && !response.data.user.id && response.data.user._id) {
       response.data.user.id = response.data.user._id
@@ -62,8 +65,8 @@ const authService = {
     return response.data
   },
 
-  resetPassword: async (token, password) => {
-    const response = await api.post(`/auth/reset-password/${token}`, { password })
+  resetPassword: async (email, otp, password) => {
+    const response = await api.post(`/auth/reset-password`, { email, otp, password })
     return response.data
   },
 }

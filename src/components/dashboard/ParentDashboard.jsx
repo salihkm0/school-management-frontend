@@ -543,10 +543,10 @@ const ParentDashboard = () => {
             <div className="p-5 space-y-4">
               <div className="bg-blue-50 rounded-xl p-3">
                 <p className="text-sm font-medium text-blue-800">📌 Need help?</p>
-                <p className="text-xs text-blue-700 mt-1">Enter your child's student code and date of birth as provided by the school.</p>
+                <p className="text-xs text-blue-700 mt-1">Enter your child's register no and date of birth as provided by the school.</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Student Code *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Register No *</label>
                 <input
                   type="text"
                   name="studentCode"

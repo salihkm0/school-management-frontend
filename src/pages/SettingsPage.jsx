@@ -1,6 +1,6 @@
 // src/pages/SettingsPage.jsx
 import React from 'react'
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { Routes, Route, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import AcademicYearSettings from '../components/settings/AcademicYearSettings'
 import ProfileSettings from '../components/settings/ProfileSettings'
@@ -139,6 +139,15 @@ const SettingsPage = () => {
           <Route path="academic-years" element={userRole === 'admin' ? <AcademicYearSettings /> : <ProfileSettings />} />
           <Route path="system" element={userRole === 'admin' ? <SystemSettings /> : <ProfileSettings />} />
         </Routes>
+      </div>
+
+      {/* Legal Links Footer */}
+      <div className="pt-6 mt-6 border-t border-gray-200">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm">
+          <Link to="/privacy-policy" className="text-gray-500 hover:text-emerald-600 font-medium transition-colors">Privacy Policy</Link>
+          <span className="text-gray-300 hidden sm:inline">&bull;</span>
+          <Link to="/terms-and-conditions" className="text-gray-500 hover:text-emerald-600 font-medium transition-colors">Terms & Conditions</Link>
+        </div>
       </div>
     </div>
   )

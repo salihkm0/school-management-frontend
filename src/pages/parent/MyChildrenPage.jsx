@@ -11,9 +11,10 @@ import {
   EyeIcon,
   UserPlusIcon,
   XMarkIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline'
-import { fetchMyChildren, fetchMyParentProfile, connectStudent } from '../../store/slices/parentSlice'
+import { fetchMyChildren, fetchMyParentProfile, connectStudent, removeStudentConnection } from '../../store/slices/parentSlice'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import toast from 'react-hot-toast'
 
@@ -32,6 +33,8 @@ const MyChildrenPage = () => {
     relation: 'father'
   })
   const [formErrors, setFormErrors] = useState({})
+  const [studentToRemove, setStudentToRemove] = useState(null)
+  const [isRemoving, setIsRemoving] = useState(false)
 
   useEffect(() => {
     loadParentProfile()
@@ -121,6 +124,29 @@ const MyChildrenPage = () => {
     }
   }
 
+  const handleRemoveStudent = async () => {
+    if (!studentToRemove || !parentId) return
+
+    setIsRemoving(true)
+    try {
+      const result = await dispatch(removeStudentConnection({
+        parentId: parentId,
+        studentCode: studentToRemove.studentCode
+      })).unwrap()
+
+      if (result.success) {
+        toast.success(result.message || 'Student removed successfully')
+        setStudentToRemove(null)
+        await loadChildren()
+      }
+    } catch (error) {
+      console.error('Failed to remove student:', error)
+      toast.error(error.message || 'Failed to remove student')
+    } finally {
+      setIsRemoving(false)
+    }
+  }
+
   const getAttendanceColor = (percentage) => {
     if (percentage >= 75) return 'text-emerald-600'
     if (percentage >= 60) return 'text-amber-600'
@@ -196,6 +222,13 @@ const MyChildrenPage = () => {
                       </div>
                     </div>
                     <div className="flex gap-1">
+                      <button
+                        onClick={() => setStudentToRemove(child)}
+                        className="p-1.5 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
+                        title="Remove Student"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                      </button>
                       <button
                         onClick={() => navigate(`/my-child-attendance?studentId=${childId}&name=${encodeURIComponent(child.fullName || child.studentName)}`)}
                         className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
@@ -291,11 +324,11 @@ const MyChildrenPage = () => {
             <div className="p-5 space-y-4">
               <div className="bg-blue-50 rounded-lg p-3">
                 <p className="text-sm font-medium text-blue-800">Need help?</p>
-                <p className="text-xs text-blue-700 mt-1">Enter your child's student code and date of birth.</p>
+                <p className="text-xs text-blue-700 mt-1">Enter your child's register no and date of birth.</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Student Code *</label>
-                <input type="text" name="studentCode" value={connectForm.studentCode} onChange={handleConnectChange} className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 ${formErrors.studentCode ? 'border-rose-500' : 'border-gray-200'}`} placeholder="Enter student code" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Register No *</label>
+                <input type="text" name="studentCode" value={connectForm.studentCode} onChange={handleConnectChange} className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 ${formErrors.studentCode ? 'border-rose-500' : 'border-gray-200'}`} placeholder="Enter register no" />
                 {formErrors.studentCode && <p className="mt-1 text-xs text-rose-500">{formErrors.studentCode}</p>}
               </div>
               <div>
@@ -318,6 +351,40 @@ const MyChildrenPage = () => {
               <button onClick={handleConnectStudent} disabled={isConnecting} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50">
                 {isConnecting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <UserPlusIcon className="w-4 h-4" />}
                 <span>Connect</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Remove Confirmation Modal */}
+      {studentToRemove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !isRemoving && setStudentToRemove(null)} />
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-auto overflow-hidden">
+            <div className="flex justify-between items-center px-5 py-4 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center">
+                  <TrashIcon className="w-4 h-4 text-rose-600" />
+                </div>
+                <h2 className="text-base font-semibold text-gray-900">Remove Student</h2>
+              </div>
+              <button onClick={() => !isRemoving && setStudentToRemove(null)} className="text-gray-400 hover:text-gray-600">
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5">
+              <p className="text-sm text-gray-600">
+                Are you sure you want to remove <span className="font-semibold text-gray-900">{studentToRemove.fullName || studentToRemove.studentName}</span> from your connected children? You won't be able to track their academic progress anymore.
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 px-5 py-4 border-t border-gray-200 bg-gray-50">
+              <button onClick={() => !isRemoving && setStudentToRemove(null)} disabled={isRemoving} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+                Cancel
+              </button>
+              <button onClick={handleRemoveStudent} disabled={isRemoving} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 disabled:opacity-50">
+                {isRemoving ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <TrashIcon className="w-4 h-4" />}
+                <span>Remove</span>
               </button>
             </div>
           </div>

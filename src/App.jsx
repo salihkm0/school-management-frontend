@@ -6,6 +6,7 @@ import Layout from './components/common/Layout'
 import ProtectedRoute from './components/common/ProtectedRoute'
 import PublicRoute from './components/common/PublicRoute'
 import LoginPage from './pages/LoginPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import DashboardPage from './pages/DashboardPage'
 import StudentsPage from './pages/StudentsPage'
 import StaffPage from './pages/StaffPage'
@@ -23,6 +24,10 @@ import { checkAuth } from './store/slices/authSlice'
 import useSocketInit from './hooks/useSocketInit'
 import useFCMToken from './hooks/useFCMToken.jsx'
 import { Toaster } from 'react-hot-toast'
+
+// Legal Pages
+import PrivacyPolicy from './pages/legal/PrivacyPolicy'
+import TermsAndConditions from './pages/legal/TermsAndConditions'
 
 //staff pages
 import MyClassesPage from './pages/staff/MyClassesPage'
@@ -175,6 +180,16 @@ function App() {
             <LoginPage />
           </PublicRoute>
         } />
+        
+        <Route path="/forgot-password" element={
+          <PublicRoute>
+            <ForgotPasswordPage />
+          </PublicRoute>
+        } />
+
+        {/* Public Legal Pages */}
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
         
         <Route path="/" element={
           <ProtectedRoute allowedRoles={['admin', 'staff', 'parent']}>

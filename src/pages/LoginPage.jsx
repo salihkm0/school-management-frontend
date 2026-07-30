@@ -129,6 +129,7 @@ const LoginPage = () => {
         alternatePhone: data.alternatePhone,
         email: data.email,
         password: data.password,
+        confirmPassword: data.confirmPassword,
         occupation: data.occupation,
         address: data.address
       })).unwrap()
@@ -459,13 +460,17 @@ const LoginPage = () => {
             <p className="text-gray-500">
               Having trouble logging in? <a href="#" className="font-bold text-[#1a2b4b]">Contact Support</a>
             </p>
-            <p className="text-gray-400 mt-6 mb-4">© 2024 PPMHSS Kottukkara</p>
+            <div className="flex justify-center gap-4 mt-4 text-[12px]">
+              <Link to="/privacy-policy" className="font-semibold text-[#1a2b4b] hover:text-gray-700">Privacy Policy</Link>
+              <Link to="/terms-and-conditions" className="font-semibold text-[#1a2b4b] hover:text-gray-700">Terms & Conditions</Link>
+            </div>
+            <p className="text-gray-400 mt-6 mb-4">© {new Date().getFullYear()} PPMHSS Kottukkara</p>
           </div>
 
           {/* Desktop Footer text */}
           <div className="hidden lg:block text-center mt-6">
             <p className="text-[11px] text-gray-400 font-medium">
-              Protected by institutional security. <a href="#" className="font-semibold text-[#1a2b4b] hover:text-gray-700">Privacy Policy</a>.
+              Protected by institutional security. <Link to="/privacy-policy" className="font-semibold text-[#1a2b4b] hover:text-gray-700">Privacy Policy</Link> &middot; <Link to="/terms-and-conditions" className="font-semibold text-[#1a2b4b] hover:text-gray-700">Terms & Conditions</Link>
             </p>
           </div>
           
