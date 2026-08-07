@@ -223,10 +223,19 @@ const ClassMarksOverview = () => {
       const link = document.createElement('a')
       link.href = url
       
-      const selectedClass = classes.find((c) => c._id === selectedClassId)
-      const classNameStr = selectedClass ? (selectedClass.displayName || `${selectedClass.name} ${selectedClass.section || ''}`.trim()) : (data?.className || 'Class')
-      const examNameStr = exams.find((e) => e._id === selectedExamId)?.name || 'Exam'
-      const filename = `Class_Marks_${classNameStr}_${examNameStr}.pdf`.replace(/\s+/g, '_')
+      let filename = 'Class_Marks.pdf'
+      const disposition = resp.headers['content-disposition'] || resp.headers['Content-Disposition']
+      if (disposition && disposition.indexOf('filename=') !== -1) {
+        const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition)
+        if (matches != null && matches[1]) {
+          filename = matches[1].replace(/['"]/g, '')
+        }
+      } else {
+        const classNameStr = data?.className || 'Class'
+        const examNameStr = exams.find((e) => e._id === selectedExamId)?.name || 'Exam'
+        filename = `Class_Marks_${classNameStr}_${examNameStr}.pdf`.replace(/\s+/g, '_')
+      }
+      
       link.setAttribute('download', filename)
       
       document.body.appendChild(link)
