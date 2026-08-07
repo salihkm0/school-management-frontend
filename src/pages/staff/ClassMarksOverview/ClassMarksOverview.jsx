@@ -207,6 +207,37 @@ const ClassMarksOverview = () => {
     if (selectedExamId && selectedClassId) loadMarks()
   }, [selectedExamId, selectedClassId])
 
+  const handleDownloadPDF = async () => {
+    if (!selectedExamId || !selectedClassId) {
+      toast.error('Please select both exam and class')
+      return
+    }
+    
+    try {
+      toast.loading('Generating PDF...', { id: 'pdf-gen' })
+      const resp = await api.get(`/pdf/report-card/class-marks/download/${selectedClassId}/${selectedExamId}`, {
+        responseType: 'blob'
+      })
+      
+      const url = window.URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }))
+      const link = document.createElement('a')
+      link.href = url
+      
+      const classNameStr = data?.className || data?.class?.name || 'Class'
+      const examNameStr = exams.find((e) => e._id === selectedExamId)?.name || 'Exam'
+      link.setAttribute('download', `Class_Marks_${classNameStr}_${examNameStr}.pdf`)
+      
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      toast.success('PDF downloaded successfully', { id: 'pdf-gen' })
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to download PDF', { id: 'pdf-gen' })
+    }
+  }
+
   // Derive subjects list
   const subjects = useMemo(() => data?.subjects || data?.examSubjects || [], [data])
 
