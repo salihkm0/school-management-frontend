@@ -223,9 +223,11 @@ const ClassMarksOverview = () => {
       const link = document.createElement('a')
       link.href = url
       
-      const classNameStr = data?.className || data?.class?.name || 'Class'
+      const selectedClass = classes.find((c) => c._id === selectedClassId)
+      const classNameStr = selectedClass ? (selectedClass.displayName || `${selectedClass.name} ${selectedClass.section || ''}`.trim()) : (data?.className || 'Class')
       const examNameStr = exams.find((e) => e._id === selectedExamId)?.name || 'Exam'
-      link.setAttribute('download', `Class_Marks_${classNameStr}_${examNameStr}.pdf`)
+      const filename = `Class_Marks_${classNameStr}_${examNameStr}.pdf`.replace(/\s+/g, '_')
+      link.setAttribute('download', filename)
       
       document.body.appendChild(link)
       link.click()
@@ -340,7 +342,8 @@ const ClassMarksOverview = () => {
     )
   }
 
-  const className = data?.className || data?.class?.name || 'Class'
+  const selectedClassObj = classes.find((c) => c._id === selectedClassId)
+  const className = selectedClassObj ? (selectedClassObj.displayName || `${selectedClassObj.name} ${selectedClassObj.section || ''}`.trim()) : (data?.className || 'Class')
   const examName = exams.find((e) => e._id === selectedExamId)?.name || ''
 
   return (
