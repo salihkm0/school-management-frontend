@@ -45,9 +45,15 @@ export const useMyAssignedClasses = (currentAcademicYear) => {
       return;
     }
 
+    if (staff.length === 0) {
+      // Don't set isLoading to false yet, we're still waiting for staff data
+      return;
+    }
+
     const currentStaff = staff.find(s => {
-      const staffUserId = s.userId?._id || s.userId;
-      return staffUserId === user?.id;
+      const staffUserId = (s.userId?._id || s.userId)?.toString();
+      const currentUserId = (user?._id || user?.id)?.toString();
+      return staffUserId && currentUserId && staffUserId === currentUserId;
     });
     
     if (!currentStaff) {

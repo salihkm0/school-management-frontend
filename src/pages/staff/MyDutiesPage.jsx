@@ -64,7 +64,11 @@ const MyDutiesPage = () => {
 
   const loadMyDuties = async () => {
     // Find current staff member
-    const currentStaff = staff.find(s => s.userId?._id === user?.id || s.userId === user?.id)
+    const currentStaff = staff.find(s => {
+      const staffUserId = (s.userId?._id || s.userId)?.toString()
+      const currentUserId = (user?._id || user?.id)?.toString()
+      return staffUserId && currentUserId && staffUserId === currentUserId
+    })
     
     if (!currentStaff) {
       console.log('No staff record found for user:', user?.id)

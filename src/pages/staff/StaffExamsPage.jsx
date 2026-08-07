@@ -42,6 +42,7 @@ const StaffExamsPage = () => {
   const [exams, setExams] = useState([])
   const [loadingExams, setLoadingExams] = useState(false)
   const [selectedExam, setSelectedExam] = useState(null)
+  const [isInitializing, setIsInitializing] = useState(true)
   const [selectedClass, setSelectedClass] = useState(null)
   const [currentAcademicYear, setCurrentAcademicYear] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -104,11 +105,15 @@ const StaffExamsPage = () => {
 
   const getMyClassTeacherClasses = async () => {
     const currentStaff = staff.find(s => {
-      const staffUserId = s.userId?._id || s.userId
-      return staffUserId === user?.id
+      const staffUserId = (s.userId?._id || s.userId)?.toString()
+      const currentUserId = (user?._id || user?.id)?.toString()
+      return staffUserId && currentUserId && staffUserId === currentUserId
     })
     
-    if (!currentStaff) return
+    if (!currentStaff) {
+      setIsInitializing(false)
+      return
+    }
     
     const staffId = currentStaff._id
     
@@ -119,6 +124,8 @@ const StaffExamsPage = () => {
       })).unwrap()
     } catch (error) {
       console.error('Failed to fetch teacher classes:', error)
+    } finally {
+      setIsInitializing(false)
     }
   }
 
@@ -189,7 +196,7 @@ const StaffExamsPage = () => {
     return labels[session] || session
   }
 
-  if (staffLoading || classesLoading) {
+  if (staffLoading || classesLoading || isInitializing) {
     return <LoadingSpinner />
   }
 

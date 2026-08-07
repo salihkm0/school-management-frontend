@@ -39,6 +39,7 @@ const StaffAttendancePage = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [loadingSummary, setLoadingSummary] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(true)
   const [currentAcademicYear, setCurrentAcademicYear] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
   const [attendanceData, setAttendanceData] = useState({})
@@ -104,15 +105,22 @@ const StaffAttendancePage = () => {
 
   const getMyClassTeacherClasses = async () => {
     const currentStaff = staff.find(s => {
-      const staffUserId = s.userId?._id || s.userId
-      return staffUserId === user?.id
+      const staffUserId = (s.userId?._id || s.userId)?.toString()
+      const currentUserId = (user?._id || user?.id)?.toString()
+      return staffUserId && currentUserId && staffUserId === currentUserId
     })
     
-    if (!currentStaff) return
+    if (!currentStaff) {
+      setIsInitializing(false)
+      return
+    }
     
     const staffId = currentStaff._id
     
-    if (!currentAcademicYear) return
+    if (!currentAcademicYear) {
+      setIsInitializing(false)
+      return
+    }
     
     try {
       await dispatch(fetchTeacherClassTeacherClasses({ 
@@ -121,6 +129,8 @@ const StaffAttendancePage = () => {
       })).unwrap()
     } catch (error) {
       console.error('Failed to fetch teacher classes:', error)
+    } finally {
+      setIsInitializing(false)
     }
   }
 
@@ -297,7 +307,7 @@ const StaffAttendancePage = () => {
   
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i)
 
-  if (isLoading || staffLoading || classesLoading) {
+  if (isLoading || staffLoading || classesLoading || isInitializing) {
     return <LoadingSpinner />
   }
 

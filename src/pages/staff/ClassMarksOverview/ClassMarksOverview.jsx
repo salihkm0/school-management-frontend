@@ -156,8 +156,9 @@ const ClassMarksOverview = () => {
           ? staffResp.data.data 
           : (staffResp.data?.staff || [])
         const currentStaff = staffs.find(s => {
-          const uid = s.userId?._id || s.userId
-          return uid === user?.id
+          const uid = (s.userId?._id || s.userId)?.toString()
+          const currentUserId = (user?._id || user?.id)?.toString()
+          return uid && currentUserId && uid === currentUserId
         })
         
         if (!currentStaff) {

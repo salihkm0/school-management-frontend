@@ -236,7 +236,7 @@ const StaffDashboard = () => {
     return 'Good Evening'
   }
 
-  if (isLoading && !dashboardData) return <LoadingSpinner />
+  if (!dashboardData) return <LoadingSpinner />
 
   if (error) {
     return (

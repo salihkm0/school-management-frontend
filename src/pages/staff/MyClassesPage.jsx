@@ -34,6 +34,7 @@ const MyClassesPage = () => {
   const [selectedClass, setSelectedClass] = useState(null)
   const [classStudents, setClassStudents] = useState([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(true)
   const [currentAcademicYear, setCurrentAcademicYear] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -86,11 +87,15 @@ const MyClassesPage = () => {
 
   const getMyClassTeacherClasses = async () => {
     const currentStaff = staff.find(s => {
-      const staffUserId = s.userId?._id || s.userId
-      return staffUserId === user?.id
+      const staffUserId = (s.userId?._id || s.userId)?.toString()
+      const currentUserId = (user?._id || user?.id)?.toString()
+      return staffUserId && currentUserId && staffUserId === currentUserId
     })
     
-    if (!currentStaff) return
+    if (!currentStaff) {
+      setIsInitializing(false)
+      return
+    }
     
     const staffId = currentStaff._id
     
@@ -105,6 +110,8 @@ const MyClassesPage = () => {
       }
     } catch (error) {
       console.error('Failed to fetch teacher classes:', error)
+    } finally {
+      setIsInitializing(false)
     }
   }
 
@@ -191,7 +198,7 @@ const MyClassesPage = () => {
     }
   }
 
-  if (isLoading || staffLoading || classesLoading) {
+  if (isLoading || staffLoading || classesLoading || isInitializing) {
     return <LoadingSpinner />
   }
 

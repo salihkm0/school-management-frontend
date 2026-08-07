@@ -129,8 +129,9 @@ const StaffExamForm = () => {
 
   const getMyClassTeacherClass = async () => {
     const currentStaff = staff.find(s => {
-      const staffUserId = s.userId?._id || s.userId
-      return staffUserId === user?.id
+      const staffUserId = (s.userId?._id || s.userId)?.toString()
+      const currentUserId = (user?._id || user?.id)?.toString()
+      return staffUserId && currentUserId && staffUserId === currentUserId
     })
     
     if (!currentStaff) return
