@@ -17,6 +17,7 @@ import {
   CheckCircleIcon,
   ClockIcon,
   ExclamationCircleIcon,
+  DocumentArrowDownIcon,
 } from '@heroicons/react/24/outline'
 import { TrophyIcon } from '@heroicons/react/24/solid'
 import api from '../../../services/api'
@@ -383,6 +384,14 @@ const ClassMarksOverview = () => {
             {/* Reload */}
             {selectedExamId && selectedClassId && (
               <div className="flex items-end">
+                <button
+                  onClick={handleDownloadPDF}
+                  disabled={isLoading || !data}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 border border-gray-200 disabled:opacity-50 transition-all"
+                >
+                  <DocumentArrowDownIcon className="w-4 h-4" />
+                  <span className="hidden sm:inline">PDF</span>
+                </button>
                 <button
                   onClick={loadMarks}
                   disabled={isLoading}
