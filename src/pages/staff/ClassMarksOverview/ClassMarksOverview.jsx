@@ -23,6 +23,7 @@ import { TrophyIcon } from '@heroicons/react/24/solid'
 import api from '../../../services/api'
 import examService from '../../../services/examService'
 import classService from '../../../services/classService'
+import pdfService, { downloadPDF } from '../../../services/pdfService'
 import LoadingSpinner from '../../../components/common/LoadingSpinner'
 import toast from 'react-hot-toast'
 
@@ -64,8 +65,23 @@ const ClassMarksOverview = () => {
   const [isExamsLoading, setIsExamsLoading] = useState(true)
   const [view, setView] = useState('table') // 'table' | 'card'
   const [search, setSearch] = useState('')
-  const [sortBy, setSortBy] = useState('rank') // 'rank' | 'name' | 'percentage'
+  const [sortBy, setSortBy] = useState('rollNo') // 'rollNo' | 'rank' | 'name' | 'percentage'
   const [isInitializing, setIsInitializing] = useState(!isAdmin && !classId)
+  const [downloadingStudentId, setDownloadingStudentId] = useState(null)
+
+  const handleDownloadStudentPdf = async (student) => {
+    setDownloadingStudentId(student.studentId)
+    try {
+      const blob = await pdfService.downloadMarklistPDF(student.studentId, selectedExamId)
+      downloadPDF(blob, `Marklist_${student.name?.replace(/\s+/g, '_') || 'student'}.pdf`)
+      toast.success(`${student.name}'s marklist downloaded`)
+    } catch (error) {
+      console.error('Failed to download student marklist PDF:', error)
+      toast.error('Failed to download student marklist')
+    } finally {
+      setDownloadingStudentId(null)
+    }
+  }
 
   // Derive available classes based on selected exam
   const availableClasses = useMemo(() => {
@@ -265,9 +281,8 @@ const ClassMarksOverview = () => {
           (s) => (s.examSubjectId?.toString() || s.subjectId?.toString()) === key
         )
         const theory = sm?.theoryScore ?? 0
-        const practical = sm?.practicalScore ?? 0
         const ce = sm?.ceMarks ?? sm?.ceScore ?? 0
-        const total = sm?.isAbsent ? 0 : theory + practical + ce
+        const total = sm?.isAbsent ? 0 : (sm?.totalScore !== undefined ? sm.totalScore : theory + ce)
         const max = subj.maxMarks || 100
         if (!sm?.isAbsent) {
           totalObtained += total
@@ -281,7 +296,6 @@ const ClassMarksOverview = () => {
           isAbsent: sm?.isAbsent || false,
           isEntered: sm?.isEntered || false,
           theory,
-          practical,
           ce,
         }
       })
@@ -300,14 +314,36 @@ const ClassMarksOverview = () => {
     })
   }, [data, subjects])
 
-  // Sort + rank + filter
+  // Calculate ranks by % desc first, then sort display order by selected sortBy
   const sorted = useMemo(() => {
-    const copy = [...studentRows].sort((a, b) => {
+    // 1. Calculate ranks based on percentage
+    const ranked = [...studentRows]
+      .sort((a, b) => b.percentage - a.percentage)
+      .map((s, idx) => ({ ...s, rank: idx + 1 }))
+
+    // Helper for numerical roll number parsing
+    const getRollNum = (s) => {
+      const raw = s.rollNumber ?? s.rollNo ?? s.slNo ?? s.admissionNo
+      if (raw === null || raw === undefined || raw === '') return Infinity
+      const parsed = parseInt(String(raw).trim(), 10)
+      return isNaN(parsed) ? String(raw).trim() : parsed
+    }
+
+    // 2. Sort for display order
+    return ranked.sort((a, b) => {
       if (sortBy === 'name') return a.name.localeCompare(b.name)
       if (sortBy === 'percentage') return b.percentage - a.percentage
-      return b.percentage - a.percentage // rank = % desc
+      if (sortBy === 'rank') return a.rank - b.rank
+
+      // Default ('rollNo'): sort by numerical roll number ascending, fallback to name
+      const rA = getRollNum(a)
+      const rB = getRollNum(b)
+      if (rA !== rB) {
+        if (typeof rA === 'number' && typeof rB === 'number') return rA - rB
+        return String(rA).localeCompare(String(rB), undefined, { numeric: true, sensitivity: 'base' })
+      }
+      return a.name.localeCompare(b.name)
     })
-    return copy.map((s, i) => ({ ...s, rank: i + 1 }))
   }, [studentRows, sortBy])
 
   const filtered = useMemo(() =>
@@ -527,6 +563,7 @@ const ClassMarksOverview = () => {
                     onChange={(e) => setSortBy(e.target.value)}
                     className="text-xs text-gray-700 focus:outline-none bg-transparent"
                   >
+                    <option value="rollNo">Sort by Roll No</option>
                     <option value="rank">Sort by Rank</option>
                     <option value="name">Sort by Name</option>
                     <option value="percentage">Sort by %</option>
@@ -558,10 +595,10 @@ const ClassMarksOverview = () => {
                   <table className="min-w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="sticky left-0 bg-gray-50 z-10 px-4 py-3 text-left text-xs font-semibold text-gray-600 whitespace-nowrap min-w-[50px] border-r border-gray-200">
-                          Rank
+                        <th className="sticky left-0 bg-gray-50 z-10 px-4 py-3 text-center text-xs font-semibold text-gray-600 whitespace-nowrap min-w-[60px] border-r border-gray-200">
+                          Roll No
                         </th>
-                        <th className="sticky left-[50px] bg-gray-50 z-10 px-4 py-3 text-left text-xs font-semibold text-gray-600 whitespace-nowrap min-w-[160px] border-r border-gray-200">
+                        <th className="sticky left-[60px] bg-gray-50 z-10 px-4 py-3 text-left text-xs font-semibold text-gray-600 whitespace-nowrap min-w-[160px] border-r border-gray-200">
                           Student
                         </th>
                         {subjects.map((subj) => (
@@ -579,27 +616,27 @@ const ClassMarksOverview = () => {
                         <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap bg-gray-100/60">
                           Grade
                         </th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap bg-gray-100/60">
+                          Rank
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap bg-gray-100/80 border-l border-gray-200">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {filtered.length === 0 ? (
                         <tr>
-                          <td colSpan={3 + subjects.length} className="py-10 text-center text-gray-400 text-sm">
+                          <td colSpan={5 + subjects.length} className="py-10 text-center text-gray-400 text-sm">
                             No students found
                           </td>
                         </tr>
                       ) : filtered.map((student, idx) => (
                         <tr key={student.studentId} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'} hover:bg-emerald-50/30 transition-colors`}>
-                          <td className="sticky left-0 px-4 py-2 text-center border-r border-gray-100 bg-inherit z-10">
-                            {student.rank <= 3 ? (
-                              <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${student.rank === 1 ? 'bg-yellow-100 text-yellow-700' : student.rank === 2 ? 'bg-gray-100 text-gray-600' : 'bg-amber-50 text-amber-700'}`}>
-                                {student.rank}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-gray-500">{student.rank}</span>
-                            )}
+                          <td className="sticky left-0 px-4 py-2 text-center font-bold text-xs text-gray-900 border-r border-gray-100 bg-inherit z-10">
+                            {student.rollNumber || student.slNo || (idx + 1)}
                           </td>
-                          <td className="sticky left-[50px] px-4 py-2 border-r border-gray-100 bg-inherit z-10">
+                          <td className="sticky left-[60px] px-4 py-2 border-r border-gray-100 bg-inherit z-10">
                             <p className="text-xs font-semibold text-gray-900">{student.name}</p>
                             <p className="text-[10px] text-gray-400">{student.admissionNo}</p>
                           </td>
@@ -630,6 +667,38 @@ const ClassMarksOverview = () => {
                             <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${student.gradeInfo.color}`}>
                               {student.gradeInfo.grade}
                             </span>
+                          </td>
+                          <td className="px-3 py-2 text-center bg-gray-50/60">
+                            {student.rank <= 3 ? (
+                              <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${student.rank === 1 ? 'bg-yellow-100 text-yellow-700' : student.rank === 2 ? 'bg-gray-100 text-gray-600' : 'bg-amber-50 text-amber-700'}`}>
+                                {student.rank}
+                              </span>
+                            ) : (
+                              <span className="text-xs font-medium text-gray-600">#{student.rank}</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-center whitespace-nowrap bg-gray-50/60 border-l border-gray-100">
+                            <button
+                              onClick={() => handleDownloadStudentPdf(student)}
+                              disabled={downloadingStudentId === student.studentId}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-800 disabled:opacity-50 transition-colors"
+                              title="Download Marklist PDF"
+                            >
+                              {downloadingStudentId === student.studentId ? (
+                                <>
+                                  <svg className="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-emerald-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  <span>Loading...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <DocumentArrowDownIcon className="w-4 h-4 text-emerald-600" />
+                                  <span>Marklist</span>
+                                </>
+                              )}
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -706,10 +775,27 @@ const ClassMarksOverview = () => {
 
                     {/* Card footer total */}
                     <div className="px-3 py-2 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
-                      <span className="text-xs text-gray-500">Total</span>
-                      <span className="text-xs font-bold font-mono text-gray-900">
-                        {student.totalObtained}/{student.totalMax}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Total</span>
+                        <span className="text-xs font-bold font-mono text-gray-900">
+                          {student.totalObtained}/{student.totalMax}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleDownloadStudentPdf(student)}
+                        disabled={downloadingStudentId === student.studentId}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-800 disabled:opacity-50 transition-colors"
+                        title="Download Marklist PDF"
+                      >
+                        {downloadingStudentId === student.studentId ? (
+                          <span className="text-[10px]">Loading...</span>
+                        ) : (
+                          <>
+                            <DocumentArrowDownIcon className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Marklist</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
                 ))}

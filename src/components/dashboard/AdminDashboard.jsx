@@ -471,9 +471,10 @@ const GenderDistribution = ({ gender, standardGender = [] }) => {
   )
 }
 
-// Category Distribution Component (shows total + standard-wise details)
+// Category Distribution Component (shows total + standard-wise details with gender breakdown)
 const CategoryDistribution = ({ categories, standardCategory = [] }) => {
   const [showStandardDetails, setShowStandardDetails] = useState(false)
+  const [tableMode, setTableMode] = useState('grid') // 'grid', 'totals'
 
   if (!categories || categories.length === 0) {
     return (
@@ -488,69 +489,263 @@ const CategoryDistribution = ({ categories, standardCategory = [] }) => {
 
   const total = categories.reduce((sum, c) => sum + c.count, 0)
 
+  const standardCategoryOrder = ['General', 'OBC', 'SC', 'ST']
   const categoryKeys = Array.from(
     new Set(
       standardCategory.flatMap(std => Object.keys(std.categories || {}))
     )
   ).filter(k => k && k !== 'null' && k !== 'undefined')
+   .sort((a, b) => {
+     const aIdx = standardCategoryOrder.indexOf(a)
+     const bIdx = standardCategoryOrder.indexOf(b)
+     if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx
+     if (aIdx !== -1) return -1
+     if (bIdx !== -1) return 1
+     return a.localeCompare(b)
+   })
+
+  // Calculate Column Totals across all standards
+  const categoryColumnTotals = categoryKeys.reduce((acc, key) => {
+    let catTotal = 0
+    let catMale = 0
+    let catFemale = 0
+    standardCategory.forEach(std => {
+      const details = std.categoryDetails?.[key]
+      if (details) {
+        catTotal += (details.total || 0)
+        catMale += (details.male || 0)
+        catFemale += (details.female || 0)
+      } else {
+        catTotal += (std.categories?.[key] || 0)
+      }
+    })
+    acc[key] = { total: catTotal, male: catMale, female: catFemale }
+    return acc
+  }, {})
+
+  const grandTotal = standardCategory.reduce((sum, std) => sum + (std.total || 0), 0)
+  const grandMale = standardCategory.reduce((sum, std) => sum + (std.male || 0), 0)
+  const grandFemale = standardCategory.reduce((sum, std) => sum + (std.female || 0), 0)
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col h-full transition-all">
-      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center gap-2">
         <div>
           <h2 className="text-sm font-semibold text-gray-900">Category Distribution</h2>
           <p className="text-xs text-gray-500 mt-0.5">Demographics summary</p>
         </div>
-        <button
-          onClick={() => setShowStandardDetails(!showStandardDetails)}
-          className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 font-semibold transition-all active:scale-95 cursor-pointer"
-        >
-          {showStandardDetails ? 'Show Total' : 'Show Standard-wise'}
-        </button>
+        <div className="flex items-center gap-1.5">
+          {showStandardDetails && (
+            <div className="flex items-center bg-gray-200/80 p-0.5 rounded-lg text-[11px] font-medium">
+              <button
+                onClick={() => setTableMode('grid')}
+                className={`px-2.5 py-0.5 rounded-md transition-all ${
+                  tableMode === 'grid'
+                    ? 'bg-white text-gray-900 shadow-xs font-semibold'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+                title="Expanded gender columns (Boys, Girls, Total)"
+              >
+                Grid
+              </button>
+              <button
+                onClick={() => setTableMode('totals')}
+                className={`px-2.5 py-0.5 rounded-md transition-all ${
+                  tableMode === 'totals'
+                    ? 'bg-white text-gray-900 shadow-xs font-semibold'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+                title="Totals only"
+              >
+                Total
+              </button>
+            </div>
+          )}
+          <button
+            onClick={() => setShowStandardDetails(!showStandardDetails)}
+            className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 font-semibold transition-all active:scale-95 cursor-pointer"
+          >
+            {showStandardDetails ? 'Show Total' : 'Show Standard-wise'}
+          </button>
+        </div>
       </div>
 
       <div className="p-4 flex-1 flex flex-col justify-center">
         {!showStandardDetails ? (
           <div className="space-y-3">
-            {categories.map((cat, idx) => (
-              <div key={cat._id}>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-gray-600 font-medium">{cat._id}</span>
-                  <span className="text-gray-700">{cat.count} students ({((cat.count / total) * 100).toFixed(1)}%)</span>
+            {categories.map((cat, idx) => {
+              const catTotal = cat.count || 0
+              const male = cat.male || 0
+              const female = cat.female || 0
+              const malePct = catTotal > 0 ? ((male / catTotal) * 100).toFixed(0) : 0
+              const femalePct = catTotal > 0 ? ((female / catTotal) * 100).toFixed(0) : 0
+
+              return (
+                <div key={cat._id} className="space-y-1">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-800 font-semibold">{cat._id}</span>
+                    <span className="text-gray-700 font-medium">
+                      {catTotal.toLocaleString()} students ({((catTotal / total) * 100).toFixed(1)}%)
+                    </span>
+                  </div>
+
+                  {/* Gender breakdown badges */}
+                  {(male > 0 || female > 0) && (
+                    <div className="flex items-center gap-2 text-[11px] text-gray-500 font-medium">
+                      <span className="inline-flex items-center gap-0.5 text-blue-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                        Boys: {male.toLocaleString()} ({malePct}%)
+                      </span>
+                      <span>•</span>
+                      <span className="inline-flex items-center gap-0.5 text-pink-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+                        Girls: {female.toLocaleString()} ({femalePct}%)
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Stacked 2-tone progress bar */}
+                  <div className="relative w-full bg-gray-100 rounded-full h-2 overflow-hidden flex">
+                    {male > 0 && (
+                      <div
+                        className="h-full bg-blue-500 transition-all duration-500"
+                        style={{ width: `${(male / total) * 100}%` }}
+                        title={`Boys: ${male}`}
+                      />
+                    )}
+                    {female > 0 && (
+                      <div
+                        className="h-full bg-pink-500 transition-all duration-500"
+                        style={{ width: `${(female / total) * 100}%` }}
+                        title={`Girls: ${female}`}
+                      />
+                    )}
+                    {male === 0 && female === 0 && (
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${(catTotal / total) * 100}%`,
+                          backgroundColor: CHART_COLORS[idx % CHART_COLORS.length]
+                        }}
+                      />
+                    )}
+                  </div>
                 </div>
-                <div className="relative w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                  <div 
-                    className="absolute left-0 top-0 h-full rounded-full transition-all duration-700"
-                    style={{ width: `${(cat.count / total) * 100}%`, backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
-                  />
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         ) : (
-          <div className="overflow-y-auto max-h-[180px] border border-gray-100 rounded-lg">
-            <table className="min-w-full text-left divide-y divide-gray-100 text-xs">
-              <thead className="bg-gray-50 sticky top-0">
-                <tr>
-                  <th className="p-2 font-semibold text-gray-600">Standard</th>
-                  {categoryKeys.map((key, i) => (
-                    <th key={i} className="p-2 font-semibold text-gray-600 text-center">{key}</th>
-                  ))}
-                  <th className="p-2 font-semibold text-gray-600 text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50 bg-white">
-                {standardCategory.map((std, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50/50">
-                    <td className="p-2 font-semibold text-gray-900">{std.className} Standard</td>
-                    {categoryKeys.map((key, i) => (
-                      <td key={i} className="p-2 text-center text-gray-700">{std.categories[key] || 0}</td>
+          <div className="overflow-y-auto overflow-x-auto max-h-[220px] border border-gray-100 rounded-lg shadow-2xs">
+
+            {tableMode === 'grid' && (
+              <table className="min-w-full text-left divide-y divide-gray-100 text-xs">
+                <thead className="bg-gray-50 sticky top-0 z-10">
+                  <tr className="border-b border-gray-200">
+                    <th rowSpan="2" className="p-2 font-semibold text-gray-700 align-middle">Standard</th>
+                    {categoryKeys.map((key) => (
+                      <th key={key} colSpan="3" className="p-1 font-semibold text-gray-700 text-center border-l border-gray-200 bg-gray-100/50">
+                        {key}
+                      </th>
                     ))}
-                    <td className="p-2 text-right font-medium text-gray-900">{std.total}</td>
+                    <th colSpan="3" className="p-1 font-semibold text-gray-700 text-center border-l border-gray-200 bg-gray-100/50">
+                      Total
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                  <tr className="border-b border-gray-100">
+                    {categoryKeys.map((key) => (
+                      <React.Fragment key={`sub-${key}`}>
+                        <th className="p-1 text-[10px] font-semibold text-blue-600 text-center border-l border-gray-100 bg-blue-50/40">B</th>
+                        <th className="p-1 text-[10px] font-semibold text-pink-600 text-center bg-pink-50/40">G</th>
+                        <th className="p-1 text-[10px] font-semibold text-gray-600 text-center bg-gray-50">Tot</th>
+                      </React.Fragment>
+                    ))}
+                    <th className="p-1 text-[10px] font-semibold text-blue-600 text-center border-l border-gray-100 bg-blue-50/40">B</th>
+                    <th className="p-1 text-[10px] font-semibold text-pink-600 text-center bg-pink-50/40">G</th>
+                    <th className="p-1 text-[10px] font-semibold text-gray-800 text-center bg-gray-50">Tot</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 bg-white">
+                  {standardCategory.map((std, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50/50">
+                      <td className="p-2 font-semibold text-gray-900 whitespace-nowrap">{std.className} Standard</td>
+                      {categoryKeys.map((key) => {
+                        const details = std.categoryDetails?.[key]
+                        const catTotal = details?.total ?? std.categories?.[key] ?? 0
+                        const catMale = details?.male ?? 0
+                        const catFemale = details?.female ?? 0
+
+                        return (
+                          <React.Fragment key={key}>
+                            <td className="p-1.5 text-center text-blue-600 font-medium border-l border-gray-100">{catMale}</td>
+                            <td className="p-1.5 text-center text-pink-600 font-medium">{catFemale}</td>
+                            <td className="p-1.5 text-center text-gray-900 font-semibold bg-gray-50/30">{catTotal}</td>
+                          </React.Fragment>
+                        )
+                      })}
+                      <td className="p-1.5 text-center text-blue-600 font-bold border-l border-gray-100">{std.male || 0}</td>
+                      <td className="p-1.5 text-center text-pink-600 font-bold">{std.female || 0}</td>
+                      <td className="p-1.5 text-center text-gray-950 font-bold bg-gray-50/50">{std.total}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-gray-50/90 font-semibold border-t-2 border-gray-200 sticky bottom-0 z-10">
+                  <tr>
+                    <td className="p-2 text-gray-900 font-bold">Total</td>
+                    {categoryKeys.map((key) => {
+                      const col = categoryColumnTotals[key] || { total: 0, male: 0, female: 0 }
+                      return (
+                        <React.Fragment key={`tot-${key}`}>
+                          <td className="p-1.5 text-center text-blue-600 font-bold border-l border-gray-100">{col.male}</td>
+                          <td className="p-1.5 text-center text-pink-600 font-bold">{col.female}</td>
+                          <td className="p-1.5 text-center text-gray-900 font-bold bg-gray-50/30">{col.total}</td>
+                        </React.Fragment>
+                      )
+                    })}
+                    <td className="p-1.5 text-center text-blue-600 font-bold border-l border-gray-100">{grandMale}</td>
+                    <td className="p-1.5 text-center text-pink-600 font-bold">{grandFemale}</td>
+                    <td className="p-1.5 text-center text-gray-950 font-bold bg-gray-50/50">{grandTotal}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            )}
+
+            {tableMode === 'totals' && (
+              <table className="min-w-full text-left divide-y divide-gray-100 text-xs">
+                <thead className="bg-gray-50 sticky top-0 z-10">
+                  <tr>
+                    <th className="p-2 font-semibold text-gray-600">Standard</th>
+                    {categoryKeys.map((key) => (
+                      <th key={key} className="p-2 font-semibold text-gray-600 text-center">{key}</th>
+                    ))}
+                    <th className="p-2 font-semibold text-gray-600 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 bg-white">
+                  {standardCategory.map((std, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50/50">
+                      <td className="p-2 font-semibold text-gray-900">{std.className} Standard</td>
+                      {categoryKeys.map((key) => (
+                        <td key={key} className="p-2 text-center text-gray-700">
+                          {std.categoryDetails?.[key]?.total ?? std.categories[key] ?? 0}
+                        </td>
+                      ))}
+                      <td className="p-2 text-right font-medium text-gray-900">{std.total}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-gray-50/90 font-semibold border-t-2 border-gray-200 sticky bottom-0 z-10">
+                  <tr>
+                    <td className="p-2 text-gray-900 font-bold">Total</td>
+                    {categoryKeys.map((key) => (
+                      <td key={key} className="p-2 text-center font-bold text-gray-900">
+                        {categoryColumnTotals[key]?.total ?? 0}
+                      </td>
+                    ))}
+                    <td className="p-2 text-right font-bold text-gray-900">{grandTotal}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            )}
           </div>
         )}
       </div>
@@ -920,14 +1115,15 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Demographics & Tasks Row */}
-      <div className="grid gap-5 lg:grid-cols-3">
-        <GenderDistribution gender={demographics.gender} standardGender={standardGender} />
-        <CategoryDistribution categories={demographics.category} standardCategory={standardCategory} />
-        <PendingTasks tasks={pendingTasks} />
+      {/* Demographics Row */}
+      <div className="grid gap-5 grid-cols-1 lg:grid-cols-3">
+        <div className="lg:col-span-1 flex flex-col">
+          <GenderDistribution gender={demographics.gender} standardGender={standardGender} />
+        </div>
+        <div className="lg:col-span-2 flex flex-col">
+          <CategoryDistribution categories={demographics.category} standardCategory={standardCategory} />
+        </div>
       </div>
-
-
 
       {/* Recent Activities */}
       <RecentActivities activities={recentActivities} isLoading={isLoading} />

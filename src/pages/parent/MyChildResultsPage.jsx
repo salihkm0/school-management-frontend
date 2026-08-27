@@ -294,7 +294,6 @@ const MyChildResultsPage = () => {
                               <tr className="border-b border-gray-200">
                                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Subject</th>
                                 <th className="px-3 py-2 text-center text-xs font-medium text-gray-500">Theory</th>
-                                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500">Practical</th>
                                 <th className="px-3 py-2 text-center text-xs font-medium text-gray-500">Total</th>
                                 <th className="px-3 py-2 text-center text-xs font-medium text-gray-500">Max</th>
                                 <th className="px-3 py-2 text-center text-xs font-medium text-gray-500">%</th>
@@ -306,7 +305,6 @@ const MyChildResultsPage = () => {
                                 <tr key={idx} className="hover:bg-gray-50">
                                   <td className="px-3 py-2 text-sm font-medium text-gray-900">{subject.subjectName}</td>
                                   <td className="px-3 py-2 text-center text-sm text-gray-600">{subject.theoryScore || 0}</td>
-                                  <td className="px-3 py-2 text-center text-sm text-gray-600">{subject.practicalScore || 0}</td>
                                   <td className="px-3 py-2 text-center text-sm font-semibold text-gray-800">{subject.obtainedMarks}</td>
                                   <td className="px-3 py-2 text-center text-sm text-gray-600">{subject.maxMarks}</td>
                                   <td className="px-3 py-2 text-center"><span className={`text-sm font-medium ${getPercentageColor(subject.percentage)}`}>{subject.percentage?.toFixed(1)}%</span></td>
