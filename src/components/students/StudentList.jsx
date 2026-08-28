@@ -390,8 +390,8 @@ const StudentList = () => {
       {/* Results Summary */}
       <div className="flex items-center justify-between">
         <p className="text-xs sm:text-sm text-gray-500">
-          {pagination.total > 0 ? (
-            <>Showing <span className="font-medium text-gray-900">{((pagination.page - 1) * pagination.limit) + 1}</span> to <span className="font-medium text-gray-900">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> of <span className="font-medium text-gray-900">{pagination.total}</span> students</>
+          {(pagination?.total || 0) > 0 ? (
+            <>Showing <span className="font-medium text-gray-900">{(((pagination?.page || 1) - 1) * (pagination?.limit || 20)) + 1}</span> to <span className="font-medium text-gray-900">{Math.min((pagination?.page || 1) * (pagination?.limit || 20), pagination?.total || 0)}</span> of <span className="font-medium text-gray-900">{pagination?.total || 0}</span> students</>
           ) : (
             'No students found'
           )}
