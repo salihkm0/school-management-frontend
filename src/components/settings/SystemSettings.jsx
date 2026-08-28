@@ -86,13 +86,14 @@ const SystemSettings = () => {
 
   const gradingScales = [
     { grade: 'A+', min: 90, max: 100, color: 'bg-emerald-100 text-emerald-700' },
-    { grade: 'A', min: 80, max: 89, color: 'bg-green-100 text-green-700' },
-    { grade: 'B+', min: 70, max: 79, color: 'bg-blue-100 text-blue-700' },
-    { grade: 'B', min: 60, max: 69, color: 'bg-cyan-100 text-cyan-700' },
-    { grade: 'C+', min: 50, max: 59, color: 'bg-amber-100 text-amber-700' },
-    { grade: 'C', min: 40, max: 49, color: 'bg-orange-100 text-orange-700' },
-    { grade: 'D', min: 33, max: 39, color: 'bg-rose-100 text-rose-700' },
-    { grade: 'F', min: 0, max: 32, color: 'bg-gray-100 text-gray-600' },
+    { grade: 'A',  min: 80, max: 89,  color: 'bg-green-100 text-green-700' },
+    { grade: 'B+', min: 70, max: 79,  color: 'bg-blue-100 text-blue-700' },
+    { grade: 'B',  min: 60, max: 69,  color: 'bg-cyan-100 text-cyan-700' },
+    { grade: 'C+', min: 50, max: 59,  color: 'bg-amber-100 text-amber-700' },
+    { grade: 'C',  min: 40, max: 49,  color: 'bg-orange-100 text-orange-700' },
+    { grade: 'D+', min: 30, max: 39,  color: 'bg-amber-100 text-amber-700' },
+    { grade: 'D',  min: 20, max: 29,  color: 'bg-rose-100 text-rose-700' },
+    { grade: 'E',  min: 0,  max: 19,  color: 'bg-gray-100 text-gray-600' },
   ]
 
   return (
