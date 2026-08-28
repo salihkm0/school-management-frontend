@@ -131,8 +131,10 @@ const AnalyticsDashboard = () => {
   const totalStudents = gradeAnalysis?.totalStudents || 0
 
   // Extract data from analysis
-  const fullAPlusList = analysis?.fullAPlus || fullAPlus
-  const nearFullAPlusList = analysis?.nineAPlus || nearFullAPlus
+  const fullAPlusList = analysis?.fullAPlus || fullAPlus || []
+  const nineAPlusList = analysis?.nineAPlus || nearFullAPlus || []
+  const eightAPlusList = analysis?.eightAPlus || []
+  const sevenAPlusList = analysis?.sevenAPlus || []
   
   // Subject-wise near A+ lists
   const withoutMathsList = analysis?.fullAPlusWithoutMaths || []
@@ -398,15 +400,16 @@ const AnalyticsDashboard = () => {
                 <div className="space-y-4">
                   {Object.entries(gradeDistribution).map(([grade, count]) => {
                     const percentage = totalStudents > 0 ? (count / totalStudents) * 100 : 0
-                    let barColor = 'bg-primary-500'
+                    let barColor = 'bg-emerald-500'
                     if (grade === 'A+') barColor = 'bg-emerald-500'
                     else if (grade === 'A') barColor = 'bg-green-500'
                     else if (grade === 'B+') barColor = 'bg-blue-500'
                     else if (grade === 'B') barColor = 'bg-cyan-500'
-                    else if (grade === 'C+') barColor = 'bg-yellow-500'
+                    else if (grade === 'C+') barColor = 'bg-amber-500'
                     else if (grade === 'C') barColor = 'bg-orange-500'
-                    else if (grade === 'D') barColor = 'bg-red-500'
-                    else barColor = 'bg-gray-500'
+                    else if (grade === 'D+') barColor = 'bg-amber-600'
+                    else if (grade === 'D') barColor = 'bg-rose-500'
+                    else if (grade === 'E') barColor = 'bg-gray-400'
                     
                     return (
                       <div key={grade}>
@@ -441,7 +444,18 @@ const AnalyticsDashboard = () => {
                     <h2 className="text-lg font-semibold text-gray-900">Top Performing Classes</h2>
                     <p className="text-sm text-gray-500 mt-0.5">Classes with highest average scores</p>
                   </div>
-                  <AcademicCapIcon className="w-6 h-6 text-blue-500" />
+                  <div className="flex items-center gap-3">
+                    {topClasses.length > 0 && (
+                      <button
+                        onClick={() => exportToCSV(topClasses, 'Top_Performing_Classes')}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 bg-white px-2.5 py-1.5 rounded-lg border border-blue-200"
+                      >
+                        <DocumentArrowDownIcon className="w-3.5 h-3.5" />
+                        Export
+                      </button>
+                    )}
+                    <AcademicCapIcon className="w-6 h-6 text-blue-500" />
+                  </div>
                 </div>
               </div>
               <div className="p-6">
@@ -488,21 +502,21 @@ const AnalyticsDashboard = () => {
               </div>
               <div className="p-6">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-3 bg-emerald-50 rounded-lg">
-                    <p className="text-2xl font-bold text-emerald-600">{summary.fullAPlus || 0}</p>
-                    <p className="text-xs text-gray-500">Full A+</p>
+                  <div className="text-center p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                    <p className="text-2xl font-bold text-emerald-600">{summary.fullAPlus || fullAPlusList.length || 0}</p>
+                    <p className="text-xs text-gray-600 font-medium">Full A+</p>
                   </div>
-                  <div className="text-center p-3 bg-amber-50 rounded-lg">
-                    <p className="text-2xl font-bold text-amber-600">{summary.nineAPlus || 0}</p>
-                    <p className="text-xs text-gray-500">Near A+ (9 subjects)</p>
+                  <div className="text-center p-3 bg-amber-50 rounded-lg border border-amber-100">
+                    <p className="text-2xl font-bold text-amber-600">{summary.nineAPlus || nineAPlusList.length || 0}</p>
+                    <p className="text-xs text-gray-600 font-medium">Near A+ (9 subjects)</p>
                   </div>
-                  <div className="text-center p-3 bg-blue-50 rounded-lg">
-                    <p className="text-2xl font-bold text-blue-600">{summary.eightAPlus || 0}</p>
-                    <p className="text-xs text-gray-500">8 A+ Subjects</p>
+                  <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <p className="text-2xl font-bold text-blue-600">{summary.eightAPlus || eightAPlusList.length || 0}</p>
+                    <p className="text-xs text-gray-600 font-medium">8 A+ Subjects</p>
                   </div>
-                  <div className="text-center p-3 bg-purple-50 rounded-lg">
-                    <p className="text-2xl font-bold text-purple-600">{summary.sevenAPlus || 0}</p>
-                    <p className="text-xs text-gray-500">7 A+ Subjects</p>
+                  <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-100">
+                    <p className="text-2xl font-bold text-purple-600">{summary.sevenAPlus || sevenAPlusList.length || 0}</p>
+                    <p className="text-xs text-gray-600 font-medium">7 A+ Subjects</p>
                   </div>
                 </div>
               </div>
@@ -512,27 +526,41 @@ const AnalyticsDashboard = () => {
           {/* Full A+ Students Section */}
           {fullAPlusList && fullAPlusList.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <button
-                onClick={() => toggleSection('fullAPlus')}
-                className="w-full px-6 py-4 bg-gradient-to-r from-emerald-50 to-white border-b border-gray-100 hover:bg-gray-50 transition-colors flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3">
+              <div className="px-6 py-4 bg-gradient-to-r from-emerald-50 to-white border-b border-gray-100 flex items-center justify-between">
+                <button
+                  onClick={() => toggleSection('fullAPlus')}
+                  className="flex items-center gap-3 text-left focus:outline-none"
+                >
                   <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
                     <TrophyIcon className="w-5 h-5 text-emerald-600" />
                   </div>
-                  <div className="text-left">
+                  <div>
                     <h2 className="text-lg font-semibold text-gray-900">Full A+ Students</h2>
                     <p className="text-sm text-gray-500 mt-0.5">
                       Students who scored A+ in all subjects • {fullAPlusList.length} students
                     </p>
                   </div>
+                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => exportToCSV(fullAPlusList, 'Full_APlus_Students')}
+                    className="text-xs text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-colors"
+                  >
+                    <DocumentArrowDownIcon className="w-4 h-4" />
+                    Export CSV
+                  </button>
+                  <button
+                    onClick={() => toggleSection('fullAPlus')}
+                    className="p-1 text-gray-400 hover:text-gray-600"
+                  >
+                    {expandedSections.fullAPlus ? (
+                      <ChevronUpIcon className="w-5 h-5" />
+                    ) : (
+                      <ChevronDownIcon className="w-5 h-5" />
+                    )}
+                  </button>
                 </div>
-                {expandedSections.fullAPlus ? (
-                  <ChevronUpIcon className="w-5 h-5 text-gray-400" />
-                ) : (
-                  <ChevronDownIcon className="w-5 h-5 text-gray-400" />
-                )}
-              </button>
+              </div>
               
               {expandedSections.fullAPlus && (
                 <div className="overflow-x-auto">
@@ -561,6 +589,222 @@ const AnalyticsDashboard = () => {
                             <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium">
                               {student.grade || 'A+'}
                             </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 9 A+ (Near Full A+) Students Section */}
+          {nineAPlusList && nineAPlusList.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-6 py-4 bg-gradient-to-r from-amber-50 to-white border-b border-gray-100 flex items-center justify-between">
+                <button
+                  onClick={() => toggleSection('nineAPlus')}
+                  className="flex items-center gap-3 text-left focus:outline-none"
+                >
+                  <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                    <UserGroupIcon className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Near A+ Students (9 A+)</h2>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      Students who scored 9 A+ (missed A+ in 1 subject) • {nineAPlusList.length} students
+                    </p>
+                  </div>
+                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => exportToCSV(nineAPlusList, 'Near_APlus_9_Subjects')}
+                    className="text-xs text-amber-700 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-colors"
+                  >
+                    <DocumentArrowDownIcon className="w-4 h-4" />
+                    Export CSV
+                  </button>
+                  <button
+                    onClick={() => toggleSection('nineAPlus')}
+                    className="p-1 text-gray-400 hover:text-gray-600"
+                  >
+                    {expandedSections.nineAPlus ? (
+                      <ChevronUpIcon className="w-5 h-5" />
+                    ) : (
+                      <ChevronDownIcon className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              
+              {expandedSections.nineAPlus && (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">#</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Student Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Roll No</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Admission No</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Missing Subject</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">Percentage</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {nineAPlusList.map((student, i) => (
+                        <tr key={student.studentId || i} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 text-sm text-gray-500">{i + 1}</td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">{student.studentName}</td>
+                          <td className="px-6 py-4 text-sm text-gray-500">{student.rollNumber || '-'}</td>
+                          <td className="px-6 py-4 text-sm text-gray-500">{student.admissionNumber || student.studentCode || '-'}</td>
+                          <td className="px-6 py-4 text-sm">
+                            <span className="px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-medium">
+                              {student.missingSubject || student.missingSubjectGrade || '1 Subject'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span className="text-amber-600 font-semibold">{student.percentage?.toFixed(1)}%</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 8 A+ Students Section */}
+          {eightAPlusList && eightAPlusList.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-white border-b border-gray-100 flex items-center justify-between">
+                <button
+                  onClick={() => toggleSection('eightAPlus')}
+                  className="flex items-center gap-3 text-left focus:outline-none"
+                >
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <AcademicCapIcon className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">8 A+ Students</h2>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      Students who scored 8 A+ subjects • {eightAPlusList.length} students
+                    </p>
+                  </div>
+                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => exportToCSV(eightAPlusList, '8_APlus_Students')}
+                    className="text-xs text-blue-700 bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-colors"
+                  >
+                    <DocumentArrowDownIcon className="w-4 h-4" />
+                    Export CSV
+                  </button>
+                  <button
+                    onClick={() => toggleSection('eightAPlus')}
+                    className="p-1 text-gray-400 hover:text-gray-600"
+                  >
+                    {expandedSections.eightAPlus ? (
+                      <ChevronUpIcon className="w-5 h-5" />
+                    ) : (
+                      <ChevronDownIcon className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              
+              {expandedSections.eightAPlus && (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">#</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Student Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Roll No</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Admission No</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">Percentage</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {eightAPlusList.map((student, i) => (
+                        <tr key={student.studentId || i} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 text-sm text-gray-500">{i + 1}</td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">{student.studentName}</td>
+                          <td className="px-6 py-4 text-sm text-gray-500">{student.rollNumber || '-'}</td>
+                          <td className="px-6 py-4 text-sm text-gray-500">{student.admissionNumber || student.studentCode || '-'}</td>
+                          <td className="px-6 py-4 text-center">
+                            <span className="text-blue-600 font-semibold">{student.percentage?.toFixed(1)}%</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 7 A+ Students Section */}
+          {sevenAPlusList && sevenAPlusList.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-6 py-4 bg-gradient-to-r from-purple-50 to-white border-b border-gray-100 flex items-center justify-between">
+                <button
+                  onClick={() => toggleSection('sevenAPlus')}
+                  className="flex items-center gap-3 text-left focus:outline-none"
+                >
+                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                    <UserGroupIcon className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">7 A+ Students</h2>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      Students who scored 7 A+ subjects • {sevenAPlusList.length} students
+                    </p>
+                  </div>
+                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => exportToCSV(sevenAPlusList, '7_APlus_Students')}
+                    className="text-xs text-purple-700 bg-purple-100 hover:bg-purple-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-colors"
+                  >
+                    <DocumentArrowDownIcon className="w-4 h-4" />
+                    Export CSV
+                  </button>
+                  <button
+                    onClick={() => toggleSection('sevenAPlus')}
+                    className="p-1 text-gray-400 hover:text-gray-600"
+                  >
+                    {expandedSections.sevenAPlus ? (
+                      <ChevronUpIcon className="w-5 h-5" />
+                    ) : (
+                      <ChevronDownIcon className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              
+              {expandedSections.sevenAPlus && (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">#</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Student Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Roll No</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Admission No</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">Percentage</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {sevenAPlusList.map((student, i) => (
+                        <tr key={student.studentId || i} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 text-sm text-gray-500">{i + 1}</td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">{student.studentName}</td>
+                          <td className="px-6 py-4 text-sm text-gray-500">{student.rollNumber || '-'}</td>
+                          <td className="px-6 py-4 text-sm text-gray-500">{student.admissionNumber || student.studentCode || '-'}</td>
+                          <td className="px-6 py-4 text-center">
+                            <span className="text-purple-600 font-semibold">{student.percentage?.toFixed(1)}%</span>
                           </td>
                         </tr>
                       ))}
