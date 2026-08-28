@@ -276,8 +276,9 @@ const MarksEntry = () => {
     if (pct >= 60) return { grade: "B", color: "text-cyan-600 bg-cyan-50" };
     if (pct >= 50) return { grade: "C+", color: "text-yellow-600 bg-yellow-50" };
     if (pct >= 40) return { grade: "C", color: "text-orange-600 bg-orange-50" };
-    if (pct >= 33) return { grade: "D", color: "text-red-500 bg-red-50" };
-    return { grade: "F", color: "text-gray-500 bg-gray-100" };
+    if (pct >= 30) return { grade: "D+", color: "text-amber-600 bg-amber-50" };
+    if (pct >= 20) return { grade: "D", color: "text-red-500 bg-red-50" };
+    return { grade: "E", color: "text-gray-500 bg-gray-100" };
   };
   const getGradeBadge = (marks, maxMarks) => {
     const percentage = maxMarks > 0 ? (marks / maxMarks) * 100 : 0;
@@ -287,8 +288,9 @@ const MarksEntry = () => {
     if (percentage >= 60) return { grade: "B", color: "bg-cyan-100 text-cyan-700" };
     if (percentage >= 50) return { grade: "C+", color: "bg-yellow-100 text-yellow-700" };
     if (percentage >= 40) return { grade: "C", color: "bg-orange-100 text-orange-700" };
-    if (percentage >= 33) return { grade: "D", color: "bg-red-100 text-red-700" };
-    return { grade: "F", color: "bg-gray-100 text-gray-600" };
+    if (percentage >= 30) return { grade: "D+", color: "bg-amber-100 text-amber-700" };
+    if (percentage >= 20) return { grade: "D", color: "bg-red-100 text-red-700" };
+    return { grade: "E", color: "bg-gray-100 text-gray-600" };
   };
 
   const getStudentTotalPercentage = (student) => {

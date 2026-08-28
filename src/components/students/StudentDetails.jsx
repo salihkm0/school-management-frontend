@@ -46,8 +46,9 @@ const getGradeColor = (grade) => {
     "B": "bg-cyan-100 text-cyan-700 ring-1 ring-cyan-600/20",
     "C+": "bg-amber-100 text-amber-700 ring-1 ring-amber-600/20",
     "C": "bg-orange-100 text-orange-700 ring-1 ring-orange-600/20",
+    "D+": "bg-amber-100 text-amber-700 ring-1 ring-amber-600/20",
     "D": "bg-rose-100 text-rose-700 ring-1 ring-rose-600/20",
-    "F": "bg-gray-100 text-gray-600 ring-1 ring-gray-500/20",
+    "E": "bg-gray-100 text-gray-600 ring-1 ring-gray-500/20",
   };
   return colors[grade] || "bg-gray-100 text-gray-600";
 };
@@ -162,8 +163,9 @@ const StudentDetails = () => {
     if (percentage >= 60) return { grade: "B", color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-200" };
     if (percentage >= 50) return { grade: "C+", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200" };
     if (percentage >= 40) return { grade: "C", color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-200" };
-    if (percentage >= 33) return { grade: "D", color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-200" };
-    return { grade: "F", color: "text-gray-600", bg: "bg-gray-50", border: "border-gray-200" };
+    if (percentage >= 30) return { grade: "D+", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200" };
+    if (percentage >= 20) return { grade: "D", color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-200" };
+    return { grade: "E", color: "text-gray-600", bg: "bg-gray-50", border: "border-gray-200" };
   };
 
   if (isLoading || !currentStudent) {
