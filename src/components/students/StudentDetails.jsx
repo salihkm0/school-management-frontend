@@ -340,6 +340,16 @@ const StudentDetails = () => {
       {/* Academic Tab */}
       {activeTab === "academic" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <SectionCard title="Academic Profile" icon={AcademicCapIcon}>
+            <InfoRow label="Class & Division" value={academicInfo?.className || currentStudent?.className || currentStudent?.classId?.displayName || "-"} />
+            <InfoRow label="Roll Number" value={academicInfo?.rollNumber || currentStudent?.rollNumber || "-"} />
+            <InfoRow label="Admission No" value={academicInfo?.admissionNo || currentStudent?.admissionNo || "-"} />
+            <InfoRow label="Admission Date" value={academicInfo?.admissionDate ? formatDate(academicInfo.admissionDate) : (currentStudent?.admissionDate ? formatDate(currentStudent.admissionDate) : "-")} />
+            <InfoRow label="Medium of Instruction" value={academicInfo?.instructionMedium || currentStudent?.instructionMedium || "Malayalam"} />
+            <InfoRow label="Academic Year" value={academicInfo?.academicYear || currentStudent?.academicYearId?.name || currentStudent?.academicYearId?.year || "-"} />
+            <InfoRow label="Status" value={academicInfo?.status || currentStudent?.status || "Active"} />
+          </SectionCard>
+
           <SectionCard title="Language Subjects" icon={BookOpenIcon}>
             {loadingAcademic ? (
               <div className="flex justify-center py-4">
@@ -347,10 +357,10 @@ const StudentDetails = () => {
               </div>
             ) : (
               <>
-                <InfoRow label="First Language 1" value={academicInfo?.firstLanguagePaper1?.name || "-"} />
-                <InfoRow label="First Language 2" value={academicInfo?.firstLanguagePaper2?.name || "-"} />
-                <InfoRow label="Third Language" value={academicInfo?.thirdLanguage?.name || "-"} />
-                <InfoRow label="Additional" value={academicInfo?.additionalLanguage?.name || "-"} />
+                <InfoRow label="First Language 1" value={academicInfo?.firstLanguagePaper1?.name || (typeof academicInfo?.firstLanguagePaper1 === 'string' ? academicInfo.firstLanguagePaper1 : null) || currentStudent?.firstLanguagePaper1?.name || (typeof currentStudent?.firstLanguagePaper1 === 'string' ? currentStudent.firstLanguagePaper1 : null) || "-"} />
+                <InfoRow label="First Language 2" value={academicInfo?.firstLanguagePaper2?.name || (typeof academicInfo?.firstLanguagePaper2 === 'string' ? academicInfo.firstLanguagePaper2 : null) || currentStudent?.firstLanguagePaper2?.name || (typeof currentStudent?.firstLanguagePaper2 === 'string' ? currentStudent.firstLanguagePaper2 : null) || "-"} />
+                <InfoRow label="Third Language" value={academicInfo?.thirdLanguage?.name || (typeof academicInfo?.thirdLanguage === 'string' ? academicInfo.thirdLanguage : null) || currentStudent?.thirdLanguage?.name || (typeof currentStudent?.thirdLanguage === 'string' ? currentStudent.thirdLanguage : null) || "-"} />
+                <InfoRow label="Additional Language" value={academicInfo?.additionalLanguage?.name || (typeof academicInfo?.additionalLanguage === 'string' ? academicInfo.additionalLanguage : null) || currentStudent?.additionalLanguage?.name || (typeof currentStudent?.additionalLanguage === 'string' ? currentStudent.additionalLanguage : null) || "-"} />
               </>
             )}
           </SectionCard>
@@ -364,7 +374,7 @@ const StudentDetails = () => {
             <div className="flex justify-center py-12">
               <LoadingSpinner />
             </div>
-          ) : marksData ? (
+          ) : (marksData && totalExams > 0) ? (
             <>
               {/* Hero Section - Overall Performance */}
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
