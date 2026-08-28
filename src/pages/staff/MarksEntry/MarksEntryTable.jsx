@@ -443,7 +443,7 @@ const MarksEntryTable = () => {
       e.preventDefault();
       
       const currentSubject = examSubjects[subjIdx];
-      const hasPrac = currentSubject.hasPractical && currentSubject.practicalMaxMarks > 0;
+      const hasPrac = false;
       
       let nextStudentIdx = studentIdx;
       let nextSubjIdx = subjIdx;
@@ -649,7 +649,7 @@ const MarksEntryTable = () => {
                         Student
                       </th>
                       {examSubjects.map((subj) => {
-                        const hasPrac = subj.hasPractical && subj.practicalMaxMarks > 0;
+                        const hasPrac = false;
                         const hasCE = subj.ceEnabled && subj.ceMaxMarks > 0;
                         let colSpan = 1; // TE
                         if (hasPrac) colSpan++;
@@ -668,7 +668,7 @@ const MarksEntryTable = () => {
                     </tr>
                     <tr className="bg-gray-50 border-b border-gray-200">
                       {examSubjects.map((subj) => {
-                        const hasPrac = subj.hasPractical && subj.practicalMaxMarks > 0;
+                        const hasPrac = false;
                         const hasCE = subj.ceEnabled && subj.ceMaxMarks > 0;
                         const theoryMax = subj.theoryMaxMarks || subj.termMaxMarks || subj.maxMarks || 100;
                         return (
@@ -753,7 +753,7 @@ const MarksEntryTable = () => {
                             const maxM = subj.maxMarks || 100;
                             const gradeInfo = getGradeInfo(total, maxM);
                             const theoryMax = subj.theoryMaxMarks || subj.termMaxMarks || subj.maxMarks || 100;
-                            const hasPrac = subj.hasPractical && subj.practicalMaxMarks > 0;
+                            const hasPrac = false;
                             const hasCE = subj.ceEnabled && subj.ceMaxMarks > 0;
 
                             const isTheoryError = theory !== "" && theory > theoryMax;

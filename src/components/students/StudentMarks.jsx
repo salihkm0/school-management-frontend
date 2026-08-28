@@ -216,7 +216,6 @@ const StudentMarks = () => {
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
                           <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Theory</th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Practical</th>
                           <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Total</th>
                           <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Max</th>
                           <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">%</th>
@@ -230,12 +229,7 @@ const StudentMarks = () => {
                               {subject.subjectName}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-600">
-                              {subject.theoryScore !== undefined && subject.theoryScore !== null ? subject.theoryScore : (subject.score ? Math.round(subject.score * 0.8) : '-')}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-600">
-                              {subject.practicalScore !== undefined && subject.practicalScore !== null 
-                                ? subject.practicalScore 
-                                : (subject.score ? Math.round(subject.score * 0.2) : '-')}
+                              {subject.theoryScore !== undefined && subject.theoryScore !== null ? subject.theoryScore : (subject.score || '-')}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-semibold text-gray-900">
                               {subject.totalScore || subject.score || 0}

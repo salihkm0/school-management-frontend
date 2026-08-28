@@ -280,8 +280,8 @@ const ExamForm = () => {
           
           const maxMarks = parseInt(item.maxMarks) || 100
           const passingMarks = parseInt(item.passingMarks) || Math.floor(maxMarks * 0.4)
-          const practicalMarks = parseInt(item.practicalMarks) || 0
-          const theoryMarks = maxMarks - practicalMarks
+          const practicalMarks = 0
+          const theoryMarks = maxMarks
           
           let examDate = new Date(item.examDate)
           if (isNaN(examDate.getTime())) {
@@ -766,15 +766,6 @@ const ExamForm = () => {
                                   type="number" 
                                   {...register(`schedule.${index}.passingMarks`, { required: 'Passing marks required', min: 0 })}
                                   placeholder="e.g., 40" 
-                                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white" 
-                                 onWheel={(e) => e.target.blur()} />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">Practical Marks</label>
-                                <input 
-                                  type="number" 
-                                  {...register(`schedule.${index}.practicalMarks`)} 
-                                  placeholder="0" 
                                   className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white" 
                                  onWheel={(e) => e.target.blur()} />
                               </div>

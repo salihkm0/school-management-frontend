@@ -422,9 +422,6 @@ const MarksEntry = () => {
                 {subject.ceEnabled && subject.ceMaxMarks > 0 && (
                   <span className="ml-1 text-emerald-600">(CE: {subject.ceMaxMarks})</span>
                 )}
-                {subject.hasPractical && subject.practicalMaxMarks > 0 && (
-                  <span className="ml-1 text-blue-600">(P: {subject.practicalMaxMarks})</span>
-                )}
                 {subject.isLanguageSubject && (
                   <span className="ml-1 text-purple-500 text-[10px]">📖</span>
                 )}
@@ -502,7 +499,7 @@ const MarksEntry = () => {
                         Student
                       </th>
                       {examSubjects.map((subj) => {
-                        const hasPrac = subj.hasPractical && subj.practicalMaxMarks > 0;
+                        const hasPrac = false;
                         const hasCE = subj.ceEnabled && subj.ceMaxMarks > 0;
                         let colSpan = 1; // Theory
                         if (hasPrac) colSpan++;
@@ -521,7 +518,7 @@ const MarksEntry = () => {
                     </tr>
                     <tr className="bg-gray-50 border-b border-gray-200">
                       {examSubjects.map((subj) => {
-                        const hasPrac = subj.hasPractical && subj.practicalMaxMarks > 0;
+                        const hasPrac = false;
                         const hasCE = subj.ceEnabled && subj.ceMaxMarks > 0;
                         const theoryMax = subj.theoryMaxMarks || subj.termMaxMarks || subj.maxMarks || 100;
                         return (
@@ -601,7 +598,7 @@ const MarksEntry = () => {
                             const maxM = subj.maxMarks || 100;
                             const gradeInfo = getGradeInfo(total, maxM);
                             const theoryMax = subj.theoryMaxMarks || subj.termMaxMarks || subj.maxMarks || 100;
-                            const hasPrac = subj.hasPractical && subj.practicalMaxMarks > 0;
+                            const hasPrac = false;
                             const hasCE = subj.ceEnabled && subj.ceMaxMarks > 0;
 
                             const inputClass = `w-14 text-center px-1 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-emerald-400 transition-colors font-mono ${

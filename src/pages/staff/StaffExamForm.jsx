@@ -272,7 +272,7 @@ const StaffExamForm = () => {
           session: item.session,
           maxMarks: item.maxMarks,
           passingMarks: item.passingMarks,
-          practicalMarks: item.practicalMarks,
+          practicalMarks: 0,
           roomNumber: item.roomNumber,
           building: item.building,
           ceEnabled: parseInt(item.ceMaxMarks) > 0,
@@ -511,15 +511,6 @@ const StaffExamForm = () => {
                             type="number" onWheel={(e) => e.target.blur()}
                             value={item.passingMarks}
                             onChange={(e) => updateScheduleItem(item.id, 'passingMarks', parseInt(e.target.value) || 0)}
-                            className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Practical Marks</label>
-                          <input
-                            type="number" onWheel={(e) => e.target.blur()}
-                            value={item.practicalMarks}
-                            onChange={(e) => updateScheduleItem(item.id, 'practicalMarks', parseInt(e.target.value) || 0)}
                             className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
                           />
                         </div>

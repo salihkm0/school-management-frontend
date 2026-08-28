@@ -517,8 +517,7 @@ const StaffExamsPage = () => {
                               <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Subject</th>
                               <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Date</th>
                               <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Session</th>
-                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Theory</th>
-                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Practical</th>
+                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Max Marks</th>
                               <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Total</th>
                               <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Passing</th>
                             </tr>
@@ -536,13 +535,7 @@ const StaffExamsPage = () => {
                                   {getSessionLabel(item.session)}
                                 </td>
                                 <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600">
-                                  {item.theoryMarks || item.maxMarks || '-'}
-                                </td>
-                                <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600">
-                                  {item.practicalMarks > 0 ? item.practicalMarks : '-'}
-                                </td>
-                                <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-900">
-                                  {(item.maxMarks || item.termMaxMarks) + (item.practicalMarks || 0)}
+                                  {item.maxMarks || item.termMaxMarks || '-'}
                                 </td>
                                 <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600">
                                   {item.passingMarks || item.termPassingMarks}
@@ -567,8 +560,7 @@ const StaffExamsPage = () => {
                             <tr className="border-b border-gray-100 bg-gray-50/30">
                               <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Subject</th>
                               <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Code</th>
-                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Theory</th>
-                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Practical</th>
+                              <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Term Marks</th>
                               <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">CE</th>
                               <th className="px-3 sm:px-4 py-2 sm:py-2.5 text-left text-xs font-medium text-gray-500">Total</th>
                             </tr>
@@ -585,9 +577,6 @@ const StaffExamsPage = () => {
                                 <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600">
                                   {subject.termMaxMarks || subject.maxMarks || '-'}
                                 </td>
-                                <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600">
-                                  {subject.practicalMaxMarks || '-'}
-                                </td>
                                 <td className="px-3 sm:px-4 py-2 sm:py-3">
                                   {subject.ceEnabled ? (
                                     <span className="text-xs text-purple-600">{subject.ceMaxMarks} marks</span>
@@ -596,7 +585,7 @@ const StaffExamsPage = () => {
                                   )}
                                 </td>
                                 <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-900">
-                                  {(subject.termMaxMarks || subject.maxMarks || 0) + (subject.practicalMaxMarks || 0) + (subject.ceMaxMarks || 0)}
+                                  {(subject.termMaxMarks || subject.maxMarks || 0) + (subject.ceMaxMarks || 0)}
                                 </td>
                               </tr>
                             ))}

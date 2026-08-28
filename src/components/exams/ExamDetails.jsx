@@ -298,10 +298,6 @@ const ExamDetails = () => {
                 <span className="text-xs text-gray-500">CE Enabled</span>
                 <span className="text-xs font-medium text-gray-900">{currentExam.schedule?.some(s => s.ceEnabled) ? 'Yes' : 'No'}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-t border-gray-100">
-                <span className="text-xs text-gray-500">Practical Exams</span>
-                <span className="text-xs font-medium text-gray-900">{currentExam.schedule?.some(s => s.practicalMarks > 0) ? 'Yes' : 'No'}</span>
-              </div>
             </div>
           </div>
 
@@ -413,8 +409,7 @@ const ExamDetails = () => {
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Subject</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Date</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Session</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Theory</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Practical</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Max Marks</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Total</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Passing</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">CE</th>
@@ -434,9 +429,7 @@ const ExamDetails = () => {
                           {getSessionLabel(s.session)}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{s.theoryMarks || s.maxMarks || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{s.practicalMarks > 0 ? s.practicalMarks : '-'}</td>
-                      <td className="px-4 py-3 text-sm font-semibold text-gray-900">{(s.maxMarks || s.termMaxMarks) + (s.practicalMarks || 0)}</td>
+                      <td className="px-4 py-3 text-sm font-semibold text-gray-900">{s.maxMarks || s.termMaxMarks}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{s.passingMarks}</td>
                       <td className="px-4 py-3">
                         {s.ceEnabled ? (
@@ -472,8 +465,7 @@ const ExamDetails = () => {
                   <tr className="border-b border-gray-200 bg-gray-50/50">
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Subject</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Code</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Theory</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Practical</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Term Marks</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">CE</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Total</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Passing</th>
@@ -481,7 +473,7 @@ const ExamDetails = () => {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {currentExam.subjects.map((s, i) => {
-                    const totalMax = (s.termMaxMarks || 0) + (s.practicalMaxMarks || 0) + (s.ceMaxMarks || 0)
+                    const totalMax = (s.termMaxMarks || 0) + (s.ceMaxMarks || 0)
                     const hasCE = s.ceEnabled
                     
                     return (
@@ -489,7 +481,6 @@ const ExamDetails = () => {
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">{s.subjectName}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{s.subjectCode || '-'}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{s.termMaxMarks || s.maxMarks || '-'}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{s.practicalMaxMarks || '-'}</td>
                         <td className="px-4 py-3">
                           {hasCE ? (
                             <span className="text-xs text-purple-600">{s.ceMaxMarks} marks</span>

@@ -524,7 +524,6 @@ const StudentDetails = () => {
                           <tr className="border-b border-gray-100 bg-gray-50/30">
                             <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
                             <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Theory</th>
-                            <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Practical</th>
                             <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">CE</th>
                             <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                             <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Max</th>
@@ -534,7 +533,7 @@ const StudentDetails = () => {
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                           {selectedExam.subjects?.map((subject, idx) => {
-                            const totalMarks = (subject.theoryScore || 0) + (subject.practicalScore || 0) + (subject.ceScore || 0);
+                            const totalMarks = (subject.theoryScore || 0) + (subject.ceScore || 0);
                             const percentage = subject.maxMarks > 0 ? (totalMarks / subject.maxMarks) * 100 : 0;
                             const gradeColor = percentage >= 90 ? 'text-emerald-600' : percentage >= 80 ? 'text-green-600' : percentage >= 70 ? 'text-blue-600' : percentage >= 60 ? 'text-cyan-600' : percentage >= 50 ? 'text-amber-600' : percentage >= 40 ? 'text-orange-600' : 'text-rose-600';
                             
@@ -542,7 +541,6 @@ const StudentDetails = () => {
                               <tr key={idx} className="hover:bg-gray-50/30 transition-colors">
                                 <td className="px-5 py-3 text-sm font-medium text-gray-900">{subject.subjectName}</td>
                                 <td className="px-5 py-3 text-sm text-center text-gray-600">{subject.theoryScore ?? '-'}</td>
-                                <td className="px-5 py-3 text-sm text-center text-gray-600">{subject.practicalScore ?? '-'}</td>
                                 <td className="px-5 py-3 text-sm text-center text-purple-600 font-medium">{subject.ceScore ?? '-'}</td>
                                 <td className="px-5 py-3 text-sm text-center font-semibold text-gray-900">{totalMarks}</td>
                                 <td className="px-5 py-3 text-sm text-center text-gray-500">{subject.maxMarks}</td>
