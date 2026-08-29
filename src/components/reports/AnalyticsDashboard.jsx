@@ -521,7 +521,7 @@ const AnalyticsDashboard = () => {
                   </div>
                   <div className="text-center p-3 bg-amber-50 rounded-lg border border-amber-100">
                     <p className="text-2xl font-bold text-amber-600">{summary.nineAPlus || nineAPlusList.length || 0}</p>
-                    <p className="text-xs text-gray-600 font-medium">Near A+ (9 subjects)</p>
+                    <p className="text-xs text-gray-600 font-medium">Near A+ (Missed 1 A+)</p>
                   </div>
                   <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
                     <p className="text-2xl font-bold text-blue-600">{summary.eightAPlus || eightAPlusList.length || 0}</p>
@@ -624,9 +624,9 @@ const AnalyticsDashboard = () => {
                     <UserGroupIcon className="w-5 h-5 text-amber-600" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Near A+ Students (9 A+)</h2>
+                    <h2 className="text-lg font-semibold text-gray-900">Near A+ Students (Missed 1 A+)</h2>
                     <p className="text-sm text-gray-500 mt-0.5">
-                      Students who scored 9 A+ (missed A+ in 1 subject) • {nineAPlusList.length} students
+                      Students who scored A+ in all subjects except 1 • {nineAPlusList.length} students
                     </p>
                   </div>
                 </button>
