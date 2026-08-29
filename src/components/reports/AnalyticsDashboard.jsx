@@ -133,6 +133,7 @@ const AnalyticsDashboard = () => {
   // Extract data from analysis
   const fullAPlusList = analysis?.fullAPlus || fullAPlus || []
   const nineAPlusList = analysis?.nineAPlus || nearFullAPlus || []
+  const nearFullAPlusList = nineAPlusList
   const eightAPlusList = analysis?.eightAPlus || []
   const sevenAPlusList = analysis?.sevenAPlus || []
   
