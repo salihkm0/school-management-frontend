@@ -410,8 +410,7 @@ const ExamDetails = () => {
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Date</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Session</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Max Marks</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Total</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Passing</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Passing Marks</th>
                     <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">CE</th>
                   </tr>
                 </thead>
@@ -430,7 +429,7 @@ const ExamDetails = () => {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm font-semibold text-gray-900">{s.maxMarks || s.termMaxMarks}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{s.passingMarks}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{s.passingMarks || s.termPassingMarks || '-'}</td>
                       <td className="px-4 py-3">
                         {s.ceEnabled ? (
                           <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-purple-50 text-purple-700">Enabled</span>
