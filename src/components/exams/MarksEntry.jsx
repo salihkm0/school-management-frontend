@@ -89,14 +89,22 @@ const MarksEntry = () => {
           initialTempMarks[student.studentId] = {};
           (student.subjects || []).forEach(subject => {
             const subjectKey = subject.examSubjectId || subject.subjectId;
-            const isActuallyEntered = subject.isEntered || subject.theoryScore > 0 || subject.practicalScore > 0 || (subject.ceScore || subject.ceMarks) > 0 || subject.isAbsent;
+            const isActuallyEntered = Boolean(
+              subject.isAbsent ||
+              subject.isEnteredExplicitly ||
+              (subject.isEntered && (
+                (subject.theoryScore !== null && subject.theoryScore !== undefined && subject.theoryScore !== "" && (subject.theoryScore > 0 || subject.isEnteredExplicitly)) ||
+                ((subject.ceScore ?? subject.ceMarks) !== null && (subject.ceScore ?? subject.ceMarks) !== undefined && (subject.ceScore ?? subject.ceMarks) > 0)
+              ))
+            );
             initialTempMarks[student.studentId][subjectKey] = {
               isAbsent: subject.isAbsent || false,
-              theoryScore: isActuallyEntered ? (subject.theoryScore ?? 0) : "",
-              practicalScore: isActuallyEntered ? (subject.practicalScore ?? 0) : "",
-              ceMarks: isActuallyEntered ? (subject.ceScore ?? subject.ceMarks ?? 0) : "",
+              theoryScore: (isActuallyEntered && !subject.isAbsent && subject.theoryScore !== null && subject.theoryScore !== undefined) ? subject.theoryScore : "",
+              practicalScore: (isActuallyEntered && !subject.isAbsent && subject.practicalScore !== null && subject.practicalScore !== undefined) ? subject.practicalScore : "",
+              ceMarks: (isActuallyEntered && !subject.isAbsent && (subject.ceScore ?? subject.ceMarks) !== null && (subject.ceScore ?? subject.ceMarks) !== undefined) ? (subject.ceScore ?? subject.ceMarks) : "",
               totalScore: subject.totalScore || 0,
               isEntered: isActuallyEntered,
+              isEnteredExplicitly: subject.isEnteredExplicitly || false,
             };
           });
         });
@@ -190,13 +198,21 @@ const MarksEntry = () => {
       subjects: student.subjects.map((subject) => {
         const key = subject.examSubjectId || subject.subjectId;
         const tm = tempMarks[student.studentId]?.[key] || {};
+        const isEntered = Boolean(
+          tm.isAbsent ||
+          (tm.theoryScore !== "" && tm.theoryScore !== undefined && tm.theoryScore !== null) ||
+          (tm.ceMarks !== "" && tm.ceMarks !== undefined && tm.ceMarks !== null) ||
+          tm.isEnteredExplicitly
+        );
         return {
           examSubjectId: subject.examSubjectId || subject.subjectId,
           subjectId: subject.actualSubjectId || subject.subjectId,
-          theoryScore: (tm.theoryScore === "" ? 0 : tm.theoryScore) ?? subject.theoryScore ?? 0,
-          practicalScore: (tm.practicalScore === "" ? 0 : tm.practicalScore) ?? subject.practicalScore ?? 0,
-          ceMarks: (tm.ceMarks === "" ? 0 : tm.ceMarks) ?? (subject.ceMarks || subject.ceScore) ?? 0,
-          isAbsent: tm.isAbsent ?? subject.isAbsent ?? false,
+          theoryScore: isEntered ? (tm.theoryScore === "" ? 0 : (Number(tm.theoryScore) || 0)) : 0,
+          practicalScore: isEntered ? (tm.practicalScore === "" ? 0 : (Number(tm.practicalScore) || 0)) : 0,
+          ceMarks: isEntered ? (tm.ceMarks === "" ? 0 : (Number(tm.ceMarks) || 0)) : 0,
+          isAbsent: tm.isAbsent ?? false,
+          isEntered: isEntered,
+          isEnteredExplicitly: isEntered,
           remarks: subject.remarks || "",
         };
       }),

@@ -280,11 +280,25 @@ const ClassMarksOverview = () => {
         const sm = student.subjects?.find(
           (s) => (s.examSubjectId?.toString() || s.subjectId?.toString()) === key
         )
+        const isEntered = Boolean(
+          sm?.isAbsent ||
+          sm?.isEnteredExplicitly ||
+          (sm?.isEntered && (
+            (sm?.theoryScore != null && Number(sm.theoryScore) > 0) ||
+            (sm?.ceScore != null && Number(sm.ceScore) > 0) ||
+            (sm?.ceMarks != null && Number(sm.ceMarks) > 0) ||
+            sm?.isAbsent ||
+            sm?.isEnteredExplicitly
+          )) ||
+          (sm?.theoryScore != null && Number(sm.theoryScore) > 0) ||
+          (sm?.ceScore != null && Number(sm.ceScore) > 0) ||
+          (sm?.ceMarks != null && Number(sm.ceMarks) > 0)
+        );
         const theory = sm?.theoryScore ?? 0
         const ce = sm?.ceMarks ?? sm?.ceScore ?? 0
-        const total = sm?.isAbsent ? 0 : (sm?.totalScore !== undefined ? sm.totalScore : theory + ce)
+        const total = sm?.isAbsent ? 0 : (isEntered ? (sm?.totalScore !== undefined ? sm.totalScore : theory + ce) : 0)
         const max = subj.maxMarks || 100
-        if (!sm?.isAbsent) {
+        if (!sm?.isAbsent && isEntered) {
           totalObtained += total
           totalMax += max
         }
@@ -294,7 +308,7 @@ const ClassMarksOverview = () => {
           total,
           max,
           isAbsent: sm?.isAbsent || false,
-          isEntered: sm?.isEntered || false,
+          isEntered: isEntered,
           theory,
           ce,
         }
@@ -357,14 +371,12 @@ const ClassMarksOverview = () => {
     if (!studentRows.length) return null
     const avg = studentRows.reduce((s, r) => s + r.percentage, 0) / studentRows.length
     const passCount = studentRows.filter((r) => r.percentage >= 40).length
-    const completedSubjects = data?.subjectProgress 
-      ? data.subjectProgress.filter(sp => sp.percentage === 100).length
-      : subjects.filter((subj) => {
-          const key = subj.examSubjectId?.toString()
-          return studentRows.every((s) =>
-            s.subjectMarks.find((sm) => sm.examSubjectId === key)?.isEntered
-          )
-        }).length
+    const completedSubjects = subjects.filter((subj) => {
+      const key = subj.examSubjectId?.toString()
+      return studentRows.length > 0 && studentRows.every((s) =>
+        s.subjectMarks.find((sm) => sm.examSubjectId === key)?.isEntered
+      )
+    }).length
     return { avg, passCount, total: studentRows.length, completedSubjects }
   }, [studentRows, subjects])
 
