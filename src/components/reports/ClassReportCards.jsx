@@ -65,11 +65,28 @@ const ClassReportCards = () => {
     try {
       const pdfBlob = await generateClassReportCardsPDF(data.classId, data.examId, data.academicYearId)
       const url = URL.createObjectURL(pdfBlob)
-      window.open(url, '_blank')
-      toast.success('Class report cards generated')
+      
+      // Trigger direct download to ensure file is saved even if popup blocker is active
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `Class_Report_Cards_${previewClass?.displayName || data.classId}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      // Attempt to open in a new window/tab
+      try {
+        window.open(url, '_blank')
+      } catch (e) {
+        console.warn('Tab open blocked by browser popup blocker, downloaded directly instead.')
+      }
+
+      setTimeout(() => URL.revokeObjectURL(url), 30000)
+      toast.success('Class report cards generated and downloaded')
     } catch (error) {
       console.error('Error generating class report cards:', error)
-      toast.error(error.message || 'Failed to generate report cards')
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to generate report cards'
+      toast.error(errorMsg)
     } finally {
       setIsGenerating(false)
     }
