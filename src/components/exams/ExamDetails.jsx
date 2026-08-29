@@ -66,11 +66,11 @@ const ExamDetails = () => {
   }, [dispatch, id])
 
   useEffect(() => {
-    if (activeTab === 'analytics' && !analytics) {
+    if (activeTab === 'analytics') {
       setLoadingTab(true)
       loadAnalytics().finally(() => setLoadingTab(false))
     }
-  }, [activeTab, id, analytics])
+  }, [activeTab, id])
 
   const loadAnalytics = async () => {
     try {
