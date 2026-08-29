@@ -141,18 +141,30 @@ const AnalyticsDashboard = () => {
   const withoutMathsList = analysis?.fullAPlusWithoutMaths || []
   const withoutEnglishList = analysis?.fullAPlusWithoutEnglish || []
   const withoutMalayalamList = analysis?.fullAPlusWithoutMalayalam || []
+  const withoutMalayalamIIList = analysis?.fullAPlusWithoutMalayalamII || []
   const withoutHindiList = analysis?.fullAPlusWithoutHindi || []
   const withoutArabicList = analysis?.fullAPlusWithoutArabic || []
   const withoutSocialList = analysis?.fullAPlusWithoutSocialScience || []
   const withoutITList = analysis?.fullAPlusWithoutIT || []
+  const withoutPhysicsList = analysis?.fullAPlusWithoutPhysics || []
+  const withoutChemistryList = analysis?.fullAPlusWithoutChemistry || []
+  const withoutBiologyList = analysis?.fullAPlusWithoutBiology || []
+  const withoutFirstLanguageList = analysis?.fullAPlusWithoutFirstLanguage || []
+  const withoutOtherList = analysis?.fullAPlusWithoutOther || []
 
   const hasNearFullData = withoutMathsList.length > 0 || 
     withoutEnglishList.length > 0 || 
     withoutMalayalamList.length > 0 || 
+    withoutMalayalamIIList.length > 0 || 
     withoutHindiList.length > 0 || 
     withoutArabicList.length > 0 || 
     withoutSocialList.length > 0 || 
-    withoutITList.length > 0
+    withoutITList.length > 0 ||
+    withoutPhysicsList.length > 0 ||
+    withoutChemistryList.length > 0 ||
+    withoutBiologyList.length > 0 ||
+    withoutFirstLanguageList.length > 0 ||
+    withoutOtherList.length > 0
 
   const renderStudentTable = (students, title, showMissingSubject = true) => {
     if (!students || students.length === 0) return null
@@ -830,17 +842,23 @@ const AnalyticsDashboard = () => {
                   <button
                     onClick={() => {
                       const allNearData = [
-                        ...withoutMathsList.map(s => ({ ...s, missingSubject: 'Mathematics' })),
-                        ...withoutEnglishList.map(s => ({ ...s, missingSubject: 'English' })),
-                        ...withoutMalayalamList.map(s => ({ ...s, missingSubject: 'Malayalam' })),
-                        ...withoutHindiList.map(s => ({ ...s, missingSubject: 'Hindi' })),
-                        ...withoutArabicList.map(s => ({ ...s, missingSubject: 'Arabic' })),
-                        ...withoutSocialList.map(s => ({ ...s, missingSubject: 'Social Science' })),
-                        ...withoutITList.map(s => ({ ...s, missingSubject: 'IT/Computer' }))
+                        ...withoutMathsList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Mathematics' })),
+                        ...withoutEnglishList.map(s => ({ ...s, missingSubject: s.missingSubject || 'English' })),
+                        ...withoutPhysicsList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Physics' })),
+                        ...withoutChemistryList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Chemistry' })),
+                        ...withoutBiologyList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Biology' })),
+                        ...withoutMalayalamList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Malayalam' })),
+                        ...withoutMalayalamIIList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Malayalam II' })),
+                        ...withoutHindiList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Hindi' })),
+                        ...withoutArabicList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Arabic' })),
+                        ...withoutSocialList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Social Science' })),
+                        ...withoutITList.map(s => ({ ...s, missingSubject: s.missingSubject || 'IT/Computer' })),
+                        ...withoutFirstLanguageList.map(s => ({ ...s, missingSubject: s.missingSubject || 'First Language' })),
+                        ...withoutOtherList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Other' }))
                       ]
                       exportToCSV(allNearData, 'Near_A+_Students_All')
                     }}
-                    className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                    className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1 font-medium bg-emerald-50 px-3 py-1.5 rounded-lg text-emerald-700"
                   >
                     <DocumentArrowDownIcon className="w-4 h-4" />
                     Export All
@@ -850,6 +868,27 @@ const AnalyticsDashboard = () => {
 
               {/* Subject-wise breakdown grid */}
               <div className="grid grid-cols-1 gap-4">
+                {renderSubjectWiseSection(
+                  '⚡ Missing A+ in Physics',
+                  withoutPhysicsList,
+                  'withoutPhysics',
+                  'bg-sky-500'
+                )}
+
+                {renderSubjectWiseSection(
+                  '🧪 Missing A+ in Chemistry',
+                  withoutChemistryList,
+                  'withoutChemistry',
+                  'bg-teal-500'
+                )}
+
+                {renderSubjectWiseSection(
+                  '🧬 Missing A+ in Biology',
+                  withoutBiologyList,
+                  'withoutBiology',
+                  'bg-emerald-500'
+                )}
+
                 {renderSubjectWiseSection(
                   '📐 Missing A+ in Mathematics',
                   withoutMathsList,
@@ -869,6 +908,20 @@ const AnalyticsDashboard = () => {
                   withoutMalayalamList,
                   'withoutMalayalam',
                   'bg-green-500'
+                )}
+
+                {renderSubjectWiseSection(
+                  '📜 Missing A+ in Malayalam II',
+                  withoutMalayalamIIList,
+                  'withoutMalayalamII',
+                  'bg-lime-500'
+                )}
+
+                {renderSubjectWiseSection(
+                  '🔖 Missing A+ in First Language',
+                  withoutFirstLanguageList,
+                  'withoutFirstLanguage',
+                  'bg-cyan-500'
                 )}
                 
                 {renderSubjectWiseSection(
@@ -897,6 +950,13 @@ const AnalyticsDashboard = () => {
                   withoutITList,
                   'withoutIT',
                   'bg-indigo-500'
+                )}
+
+                {renderSubjectWiseSection(
+                  '📋 Missing A+ in Other Subjects',
+                  withoutOtherList,
+                  'withoutOther',
+                  'bg-slate-500'
                 )}
               </div>
             </div>
