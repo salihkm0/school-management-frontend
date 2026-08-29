@@ -192,6 +192,7 @@ const AnalyticsDashboard = () => {
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">#</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Student Name</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Class</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Roll No</th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">Percentage</th>
                 {showMissingSubject && (
@@ -205,6 +206,7 @@ const AnalyticsDashboard = () => {
                 <tr key={student.studentId || i} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm text-gray-500">{i + 1}</td>
                   <td className="px-4 py-3 text-sm font-medium text-gray-800">{student.studentName}</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-gray-700">{student.className || '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{student.rollNumber || '-'}</td>
                   <td className="px-4 py-3 text-center text-sm font-medium text-emerald-600">
                     {student.percentage?.toFixed(1)}%
@@ -582,6 +584,7 @@ const AnalyticsDashboard = () => {
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">#</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Student Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Class</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Roll No</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Admission No</th>
                         <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">Percentage</th>
@@ -593,6 +596,7 @@ const AnalyticsDashboard = () => {
                         <tr key={student.studentId || i} className="hover:bg-gray-50">
                           <td className="px-6 py-4 text-sm text-gray-500">{i + 1}</td>
                           <td className="px-6 py-4 text-sm font-medium text-gray-900">{student.studentName}</td>
+                          <td className="px-6 py-4 text-sm font-semibold text-gray-700">{student.className || '-'}</td>
                           <td className="px-6 py-4 text-sm text-gray-500">{student.rollNumber || '-'}</td>
                           <td className="px-6 py-4 text-sm text-gray-500">{student.admissionNumber || student.studentCode || '-'}</td>
                           <td className="px-6 py-4 text-center">
@@ -658,6 +662,7 @@ const AnalyticsDashboard = () => {
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">#</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Student Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Class</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Roll No</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Admission No</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Missing Subject</th>
@@ -669,6 +674,7 @@ const AnalyticsDashboard = () => {
                         <tr key={student.studentId || i} className="hover:bg-gray-50">
                           <td className="px-6 py-4 text-sm text-gray-500">{i + 1}</td>
                           <td className="px-6 py-4 text-sm font-medium text-gray-900">{student.studentName}</td>
+                          <td className="px-6 py-4 text-sm font-semibold text-gray-700">{student.className || '-'}</td>
                           <td className="px-6 py-4 text-sm text-gray-500">{student.rollNumber || '-'}</td>
                           <td className="px-6 py-4 text-sm text-gray-500">{student.admissionNumber || student.studentCode || '-'}</td>
                           <td className="px-6 py-4 text-sm">
@@ -734,6 +740,7 @@ const AnalyticsDashboard = () => {
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">#</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Student Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Class</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Roll No</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Admission No</th>
                         <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">Percentage</th>
@@ -744,6 +751,7 @@ const AnalyticsDashboard = () => {
                         <tr key={student.studentId || i} className="hover:bg-gray-50">
                           <td className="px-6 py-4 text-sm text-gray-500">{i + 1}</td>
                           <td className="px-6 py-4 text-sm font-medium text-gray-900">{student.studentName}</td>
+                          <td className="px-6 py-4 text-sm font-semibold text-gray-700">{student.className || '-'}</td>
                           <td className="px-6 py-4 text-sm text-gray-500">{student.rollNumber || '-'}</td>
                           <td className="px-6 py-4 text-sm text-gray-500">{student.admissionNumber || student.studentCode || '-'}</td>
                           <td className="px-6 py-4 text-center">
@@ -804,6 +812,7 @@ const AnalyticsDashboard = () => {
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">#</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Student Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Class</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Roll No</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Admission No</th>
                         <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">Percentage</th>
@@ -814,6 +823,7 @@ const AnalyticsDashboard = () => {
                         <tr key={student.studentId || i} className="hover:bg-gray-50">
                           <td className="px-6 py-4 text-sm text-gray-500">{i + 1}</td>
                           <td className="px-6 py-4 text-sm font-medium text-gray-900">{student.studentName}</td>
+                          <td className="px-6 py-4 text-sm font-semibold text-gray-700">{student.className || '-'}</td>
                           <td className="px-6 py-4 text-sm text-gray-500">{student.rollNumber || '-'}</td>
                           <td className="px-6 py-4 text-sm text-gray-500">{student.admissionNumber || student.studentCode || '-'}</td>
                           <td className="px-6 py-4 text-center">
