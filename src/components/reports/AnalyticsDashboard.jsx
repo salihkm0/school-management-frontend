@@ -137,7 +137,12 @@ const AnalyticsDashboard = () => {
   const eightAPlusList = analysis?.eightAPlus || []
   const sevenAPlusList = analysis?.sevenAPlus || []
   
-  // Subject-wise near A+ lists
+  // Dynamic subject-wise near A+ map
+  const missingAPlusBySubjectMap = analysis?.missingAPlusBySubject || {}
+  const dynamicSubjectNames = Object.keys(missingAPlusBySubjectMap)
+  const hasDynamicSubjectData = dynamicSubjectNames.length > 0
+
+  // Subject-wise near A+ lists (legacy fallback)
   const withoutMathsList = analysis?.fullAPlusWithoutMaths || []
   const withoutEnglishList = analysis?.fullAPlusWithoutEnglish || []
   const withoutMalayalamList = analysis?.fullAPlusWithoutMalayalam || []
@@ -839,7 +844,7 @@ const AnalyticsDashboard = () => {
           )}
 
           {/* Near A+ Students Section with Subject-wise Breakdown */}
-          {hasNearFullData && (
+          {(hasNearFullData || hasDynamicSubjectData) && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -851,21 +856,23 @@ const AnalyticsDashboard = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
-                      const allNearData = [
-                        ...withoutMathsList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Mathematics' })),
-                        ...withoutEnglishList.map(s => ({ ...s, missingSubject: s.missingSubject || 'English' })),
-                        ...withoutPhysicsList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Physics' })),
-                        ...withoutChemistryList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Chemistry' })),
-                        ...withoutBiologyList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Biology' })),
-                        ...withoutMalayalamList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Malayalam' })),
-                        ...withoutMalayalamIIList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Malayalam II' })),
-                        ...withoutHindiList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Hindi' })),
-                        ...withoutArabicList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Arabic' })),
-                        ...withoutSocialList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Social Science' })),
-                        ...withoutITList.map(s => ({ ...s, missingSubject: s.missingSubject || 'IT/Computer' })),
-                        ...withoutFirstLanguageList.map(s => ({ ...s, missingSubject: s.missingSubject || 'First Language' })),
-                        ...withoutOtherList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Other' }))
-                      ]
+                      const allNearData = hasDynamicSubjectData
+                        ? dynamicSubjectNames.flatMap(name => (missingAPlusBySubjectMap[name] || []).map(s => ({ ...s, missingSubject: name })))
+                        : [
+                            ...withoutMathsList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Mathematics' })),
+                            ...withoutEnglishList.map(s => ({ ...s, missingSubject: s.missingSubject || 'English' })),
+                            ...withoutPhysicsList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Physics' })),
+                            ...withoutChemistryList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Chemistry' })),
+                            ...withoutBiologyList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Biology' })),
+                            ...withoutMalayalamList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Malayalam' })),
+                            ...withoutMalayalamIIList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Malayalam II' })),
+                            ...withoutHindiList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Hindi' })),
+                            ...withoutArabicList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Arabic' })),
+                            ...withoutSocialList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Social Science' })),
+                            ...withoutITList.map(s => ({ ...s, missingSubject: s.missingSubject || 'IT/Computer' })),
+                            ...withoutFirstLanguageList.map(s => ({ ...s, missingSubject: s.missingSubject || 'First Language' })),
+                            ...withoutOtherList.map(s => ({ ...s, missingSubject: s.missingSubject || 'Other' }))
+                          ]
                       exportToCSV(allNearData, 'Near_A+_Students_All')
                     }}
                     className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1 font-medium bg-emerald-50 px-3 py-1.5 rounded-lg text-emerald-700"
@@ -878,95 +885,114 @@ const AnalyticsDashboard = () => {
 
               {/* Subject-wise breakdown grid */}
               <div className="grid grid-cols-1 gap-4">
-                {renderSubjectWiseSection(
-                  '⚡ Missing A+ in Physics',
-                  withoutPhysicsList,
-                  'withoutPhysics',
-                  'bg-sky-500'
-                )}
+                {hasDynamicSubjectData ? (
+                  dynamicSubjectNames.map((subjName, idx) => {
+                    const colorClasses = [
+                      'bg-sky-500', 'bg-teal-500', 'bg-emerald-500', 'bg-amber-500',
+                      'bg-blue-500', 'bg-indigo-500', 'bg-purple-500', 'bg-rose-500',
+                      'bg-orange-500', 'bg-cyan-500'
+                    ]
+                    const themeColor = colorClasses[idx % colorClasses.length]
+                    return renderSubjectWiseSection(
+                      `📋 Missing A+ in ${subjName}`,
+                      missingAPlusBySubjectMap[subjName],
+                      `without_${subjName.replace(/\s+/g, '_')}`,
+                      themeColor
+                    )
+                  })
+                ) : (
+                  <>
+                    {renderSubjectWiseSection(
+                      '⚡ Missing A+ in Physics',
+                      withoutPhysicsList,
+                      'withoutPhysics',
+                      'bg-sky-500'
+                    )}
 
-                {renderSubjectWiseSection(
-                  '🧪 Missing A+ in Chemistry',
-                  withoutChemistryList,
-                  'withoutChemistry',
-                  'bg-teal-500'
-                )}
+                    {renderSubjectWiseSection(
+                      '🧪 Missing A+ in Chemistry',
+                      withoutChemistryList,
+                      'withoutChemistry',
+                      'bg-teal-500'
+                    )}
 
-                {renderSubjectWiseSection(
-                  '🧬 Missing A+ in Biology',
-                  withoutBiologyList,
-                  'withoutBiology',
-                  'bg-emerald-500'
-                )}
+                    {renderSubjectWiseSection(
+                      '🧬 Missing A+ in Biology',
+                      withoutBiologyList,
+                      'withoutBiology',
+                      'bg-emerald-500'
+                    )}
 
-                {renderSubjectWiseSection(
-                  '📐 Missing A+ in Mathematics',
-                  withoutMathsList,
-                  'withoutMaths',
-                  'bg-amber-500'
-                )}
-                
-                {renderSubjectWiseSection(
-                  '📖 Missing A+ in English',
-                  withoutEnglishList,
-                  'withoutEnglish',
-                  'bg-blue-500'
-                )}
-                
-                {renderSubjectWiseSection(
-                  '📚 Missing A+ in Malayalam',
-                  withoutMalayalamList,
-                  'withoutMalayalam',
-                  'bg-green-500'
-                )}
+                    {renderSubjectWiseSection(
+                      '📐 Missing A+ in Mathematics',
+                      withoutMathsList,
+                      'withoutMaths',
+                      'bg-amber-500'
+                    )}
+                    
+                    {renderSubjectWiseSection(
+                      '📖 Missing A+ in English',
+                      withoutEnglishList,
+                      'withoutEnglish',
+                      'bg-blue-500'
+                    )}
+                    
+                    {renderSubjectWiseSection(
+                      '📚 Missing A+ in Malayalam',
+                      withoutMalayalamList,
+                      'withoutMalayalam',
+                      'bg-green-500'
+                    )}
 
-                {renderSubjectWiseSection(
-                  '📜 Missing A+ in Malayalam II',
-                  withoutMalayalamIIList,
-                  'withoutMalayalamII',
-                  'bg-lime-500'
-                )}
+                    {renderSubjectWiseSection(
+                      '📜 Missing A+ in Malayalam II',
+                      withoutMalayalamIIList,
+                      'withoutMalayalamII',
+                      'bg-lime-500'
+                    )}
 
-                {renderSubjectWiseSection(
-                  '🔖 Missing A+ in First Language',
-                  withoutFirstLanguageList,
-                  'withoutFirstLanguage',
-                  'bg-cyan-500'
-                )}
-                
-                {renderSubjectWiseSection(
-                  '🔤 Missing A+ in Hindi',
-                  withoutHindiList,
-                  'withoutHindi',
-                  'bg-orange-500'
-                )}
-                
-                {renderSubjectWiseSection(
-                  '🕌 Missing A+ in Arabic',
-                  withoutArabicList,
-                  'withoutArabic',
-                  'bg-purple-500'
-                )}
-                
-                {renderSubjectWiseSection(
-                  '🌍 Missing A+ in Social Science',
-                  withoutSocialList,
-                  'withoutSocial',
-                  'bg-red-500'
-                )}
-                
-                {renderSubjectWiseSection(
-                  '💻 Missing A+ in IT/Computer Science',
-                  withoutITList,
-                  'withoutIT',
-                  'bg-indigo-500'
-                )}
+                    {renderSubjectWiseSection(
+                      '🔖 Missing A+ in First Language',
+                      withoutFirstLanguageList,
+                      'withoutFirstLanguage',
+                      'bg-cyan-500'
+                    )}
+                    
+                    {renderSubjectWiseSection(
+                      '🔤 Missing A+ in Hindi',
+                      withoutHindiList,
+                      'withoutHindi',
+                      'bg-orange-500'
+                    )}
+                    
+                    {renderSubjectWiseSection(
+                      '🕌 Missing A+ in Arabic',
+                      withoutArabicList,
+                      'withoutArabic',
+                      'bg-purple-500'
+                    )}
+                    
+                    {renderSubjectWiseSection(
+                      '🌍 Missing A+ in Social Science',
+                      withoutSocialList,
+                      'withoutSocial',
+                      'bg-red-500'
+                    )}
+                    
+                    {renderSubjectWiseSection(
+                      '💻 Missing A+ in IT/Computer Science',
+                      withoutITList,
+                      'withoutIT',
+                      'bg-indigo-500'
+                    )}
 
-                {renderSubjectWiseSection(
-                  '📋 Missing A+ in Other Subjects',
-                  withoutOtherList,
-                  'withoutOther',
-                  'bg-slate-500'
+                    {renderSubjectWiseSection(
+                      '📋 Missing A+ in Other Subjects',
+                      withoutOtherList,
+                      'withoutOther',
+                      'bg-slate-500'
+                    )}
+                  </>
                 )}
               </div>
             </div>
