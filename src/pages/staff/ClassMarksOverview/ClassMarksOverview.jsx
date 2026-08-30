@@ -443,7 +443,9 @@ const ClassMarksOverview = () => {
                 >
                   <option value="">— Choose Exam —</option>
                   {exams.map((e) => (
-                    <option key={e._id} value={e._id}>{e.name}</option>
+                    <option key={e._id} value={e._id}>
+                      {e.displayName || (e.name ? e.name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'Exam')} {e.examType ? `(${e.examType})` : ''}
+                    </option>
                   ))}
                 </select>
               )}
