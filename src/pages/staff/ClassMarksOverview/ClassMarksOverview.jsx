@@ -643,11 +643,11 @@ const ClassMarksOverview = () => {
                           </td>
                         </tr>
                       ) : filtered.map((student, idx) => (
-                        <tr key={student.studentId} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'} hover:bg-emerald-50/30 transition-colors`}>
-                          <td className="sticky left-0 px-4 py-2 text-center font-bold text-xs text-gray-900 border-r border-gray-100 bg-inherit z-10">
+                        <tr key={student.studentId} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-emerald-50/30 transition-colors`}>
+                          <td className={`sticky left-0 px-4 py-2 text-center font-bold text-xs text-gray-900 border-r border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} z-10`}>
                             {student.rollNumber || student.slNo || (idx + 1)}
                           </td>
-                          <td className="sticky left-[60px] px-4 py-2 border-r border-gray-100 bg-inherit z-10">
+                          <td className={`sticky left-[60px] px-4 py-2 border-r border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} z-10`}>
                             <p className="text-xs font-semibold text-gray-900">{student.name}</p>
                             <p className="text-[10px] text-gray-400">{student.admissionNo}</p>
                           </td>
