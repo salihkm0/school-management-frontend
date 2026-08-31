@@ -154,7 +154,7 @@ const ExportReports = () => {
         return {
           data: (staff || []).map(s => ({
             'Name': s.name,
-            'Staff Code': s.staffCode,
+            'Short Name': s.shortName || s.staffCode || '-',
             'Role': s.role,
             'Qualification': s.qualification || '-',
             'Contact': s.contact,
