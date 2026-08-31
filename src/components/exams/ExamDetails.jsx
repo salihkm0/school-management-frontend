@@ -585,13 +585,27 @@ const ExamDetails = () => {
                           const pct = subjData.percentage || 0;
                           return (
                             <td key={subjName} className="px-4 py-3 text-center">
-                              <div className="flex flex-col items-center gap-1">
+                              <div className="flex flex-col items-center gap-0.5">
                                 <span className={`text-xs font-bold ${pct === 100 ? 'text-emerald-600' : pct > 0 ? 'text-blue-600' : 'text-gray-500'}`}>
                                   {pct}%
                                 </span>
                                 <span className="text-[10px] text-gray-400">
                                   {subjData.currentMarks}/{subjData.expectedMarks}
                                 </span>
+                                {subjData.teacherShortName ? (
+                                  <span 
+                                    title={subjData.teacherName ? `Teacher: ${subjData.teacherName}` : ''}
+                                    className={`text-[10px] font-medium px-1.5 py-0.2 rounded mt-0.5 ${
+                                      pct === 100 
+                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                                        : pct > 0 
+                                          ? 'bg-blue-50 text-blue-700 border border-blue-200' 
+                                          : 'bg-amber-50 text-amber-800 border border-amber-300 font-semibold'
+                                    }`}
+                                  >
+                                    {subjData.teacherShortName}
+                                  </span>
+                                ) : null}
                               </div>
                             </td>
                           );
