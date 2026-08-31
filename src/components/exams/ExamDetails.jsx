@@ -509,27 +509,37 @@ const ExamDetails = () => {
       {activeTab === 'analytics' && !loadingTab && analytics && (
         <div className="space-y-4">
           {/* Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-white rounded-lg border border-gray-200 p-4">
               <p className="text-xs text-gray-500 font-medium">Total Students</p>
               <p className="text-xl font-bold text-gray-900 mt-1">{analytics.overallStats?.totalStudents || 0}</p>
             </div>
+
             <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-xs text-gray-500 font-medium">Average Percentage</p>
-              <p className="text-xl font-bold text-blue-600 mt-1">
-                {analytics.overallStats?.averagePercentage != null 
-                  ? `${Number(analytics.overallStats.averagePercentage).toFixed(1)}%` 
-                  : '0.0%'}
-              </p>
+              <p className="text-xs text-gray-500 font-medium">Mark Entry Percentage</p>
+              <div className="flex flex-col gap-1 mt-1">
+                <span className={`text-xl font-bold ${
+                  (analytics.overallStats?.markEntryPercentage || 0) === 100 
+                    ? 'text-emerald-600' 
+                    : (analytics.overallStats?.markEntryPercentage || 0) > 0 
+                      ? 'text-blue-600' 
+                      : 'text-gray-500'
+                }`}>
+                  {analytics.overallStats?.markEntryPercentage != null 
+                    ? `${Number(analytics.overallStats.markEntryPercentage).toFixed(1)}%` 
+                    : '0.0%'}
+                </span>
+                <div className="w-full bg-gray-100 rounded-full h-1.5 mt-0.5">
+                  <div 
+                    className={`h-1.5 rounded-full ${
+                      (analytics.overallStats?.markEntryPercentage || 0) === 100 ? 'bg-emerald-500' : 'bg-blue-500'
+                    }`} 
+                    style={{ width: `${Math.min(100, analytics.overallStats?.markEntryPercentage || 0)}%` }} 
+                  />
+                </div>
+              </div>
             </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-xs text-gray-500 font-medium">Pass Percentage</p>
-              <p className="text-xl font-bold text-emerald-600 mt-1">
-                {analytics.overallStats?.passPercentage != null 
-                  ? `${Number(analytics.overallStats.passPercentage).toFixed(1)}%` 
-                  : '0.0%'}
-              </p>
-            </div>
+
             <div className="bg-white rounded-lg border border-gray-200 p-4">
               <p className="text-xs text-gray-500 font-medium">Remaining Classes (&lt;100%)</p>
               <div className="flex items-baseline gap-1 mt-1">
