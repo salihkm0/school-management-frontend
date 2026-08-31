@@ -1,5 +1,5 @@
 // src/components/reports/ReportCard.jsx
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { generateReportCardPDF, fetchExamsForDropdown } from '../../services/analyticsService'
 import { fetchStudents } from '../../store/slices/studentSlice'
@@ -36,11 +36,35 @@ const ReportCard = () => {
     loadExams()
   }, [selectedClassId])
 
+  // Load initial static data (Classes & Academic Years)
   useEffect(() => {
-    dispatch(fetchStudents({ limit: 1000 }))
     dispatch(fetchAcademicYears({ limit: 10 }))
     dispatch(fetchClasses({ limit: 100 }))
   }, [dispatch])
+
+  // Fetch students filtered by class whenever selectedClassId changes
+  useEffect(() => {
+    if (selectedClassId) {
+      dispatch(fetchStudents({ classId: selectedClassId, limit: 1000, status: 'active' }))
+    } else {
+      dispatch(fetchStudents({ limit: 1000, status: 'active' }))
+    }
+  }, [dispatch, selectedClassId])
+
+  // Memoize and sort class students by roll number & name
+  const availableStudents = useMemo(() => {
+    if (!students || !Array.isArray(students)) return []
+    const filtered = selectedClassId 
+      ? students.filter(s => s.classId === selectedClassId || s.classId?._id === selectedClassId)
+      : students
+
+    return [...filtered].sort((a, b) => {
+      const rA = Number(a.rollNumber) || 9999
+      const rB = Number(b.rollNumber) || 9999
+      if (rA !== rB) return rA - rB
+      return (a.fullName || '').localeCompare(b.fullName || '')
+    })
+  }, [students, selectedClassId])
 
   useEffect(() => {
     if (selectedStudentId) {
@@ -104,7 +128,7 @@ const ReportCard = () => {
     }
   }
 
-  if (studentsLoading) return <LoadingSpinner />
+  if (studentsLoading && (!students || students.length === 0)) return <LoadingSpinner />
 
   return (
     <div className="space-y-6">
@@ -148,16 +172,16 @@ const ReportCard = () => {
               <select
                 {...register('studentId', { required: 'Student is required' })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-gray-50 hover:bg-white transition-colors"
-                disabled={!selectedClassId}
+                disabled={!selectedClassId || studentsLoading}
               >
-                <option value="">Choose a student...</option>
-                {students
-                  .filter(s => selectedClassId ? (s.classId === selectedClassId || s.classId?._id === selectedClassId) : true)
-                  .map(s => (
-                    <option key={s._id} value={s._id}>
-                      {s.fullName} ({s.admissionNo || s.studentCode})
-                    </option>
-                  ))}
+                <option value="">
+                  {studentsLoading ? 'Loading students...' : 'Choose a student...'}
+                </option>
+                {availableStudents.map(s => (
+                  <option key={s._id} value={s._id}>
+                    {s.rollNumber ? `${s.rollNumber}. ` : ''}{s.fullName} ({s.admissionNo || s.studentCode})
+                  </option>
+                ))}
               </select>
             </div>
 
