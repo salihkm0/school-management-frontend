@@ -509,18 +509,39 @@ const ExamDetails = () => {
       {activeTab === 'analytics' && !loadingTab && analytics && (
         <div className="space-y-4">
           {/* Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-xs text-gray-500">Total Students</p>
-              <p className="text-xl font-semibold text-gray-900">{analytics.overallStats?.totalStudents || 0}</p>
+              <p className="text-xs text-gray-500 font-medium">Total Students</p>
+              <p className="text-xl font-bold text-gray-900 mt-1">{analytics.overallStats?.totalStudents || 0}</p>
             </div>
             <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-xs text-gray-500">Average Percentage</p>
-              <p className="text-xl font-semibold text-blue-600">{analytics.overallStats?.averagePercentage?.toFixed(1) || 0}%</p>
+              <p className="text-xs text-gray-500 font-medium">Average Percentage</p>
+              <p className="text-xl font-bold text-blue-600 mt-1">
+                {analytics.overallStats?.averagePercentage != null 
+                  ? `${Number(analytics.overallStats.averagePercentage).toFixed(1)}%` 
+                  : '0.0%'}
+              </p>
             </div>
             <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-xs text-gray-500">Pass Percentage</p>
-              <p className="text-xl font-semibold text-emerald-600">{analytics.overallStats?.passPercentage?.toFixed(1) || 0}%</p>
+              <p className="text-xs text-gray-500 font-medium">Pass Percentage</p>
+              <p className="text-xl font-bold text-emerald-600 mt-1">
+                {analytics.overallStats?.passPercentage != null 
+                  ? `${Number(analytics.overallStats.passPercentage).toFixed(1)}%` 
+                  : '0.0%'}
+              </p>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <p className="text-xs text-gray-500 font-medium">Remaining Classes (&lt;100%)</p>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className={`text-xl font-bold ${
+                  (analytics.overallStats?.remainingClassesCount || 0) > 0 ? 'text-amber-600' : 'text-emerald-600'
+                }`}>
+                  {analytics.overallStats?.remainingClassesCount ?? 0}
+                </span>
+                <span className="text-xs text-gray-400">
+                  / {analytics.overallStats?.totalClasses || analytics.classWise?.length || 0} pending
+                </span>
+              </div>
             </div>
           </div>
 
