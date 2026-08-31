@@ -67,9 +67,10 @@ const ClassReportCards = () => {
       const url = URL.createObjectURL(pdfBlob)
       
       // Trigger direct download to ensure file is saved even if popup blocker is active
+      const className = selectedClassInfo?.displayName || selectedClassInfo?.name || 'Class'
       const link = document.createElement('a')
       link.href = url
-      link.download = `Class_Report_Cards_${previewClass?.displayName || data.classId}.pdf`
+      link.download = `Class_Report_Cards_${className.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
