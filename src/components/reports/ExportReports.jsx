@@ -69,7 +69,7 @@ const ExportReports = () => {
     const loadExportStudents = async () => {
       setIsLoadingStudents(true)
       try {
-        const params = { limit: 'all', status: 'active' }
+        const params = { limit: 10000, status: 'active' }
         if (currentAcademicYear?._id) {
           params.academicYearId = currentAcademicYear._id
         }
