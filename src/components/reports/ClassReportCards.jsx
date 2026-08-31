@@ -63,7 +63,13 @@ const ClassReportCards = () => {
     }
     setIsGenerating(true)
     try {
-      const pdfBlob = await generateClassReportCardsPDF(data.classId, data.examId, data.academicYearId)
+      const pdfBlob = await generateClassReportCardsPDF(
+        data.classId, 
+        data.examId, 
+        data.academicYearId,
+        data.attendanceStartDate,
+        data.attendanceEndDate
+      )
       const url = URL.createObjectURL(pdfBlob)
       
       // Trigger direct download to ensure file is saved even if popup blocker is active
@@ -162,6 +168,35 @@ const ClassReportCards = () => {
                   <option key={y._id} value={y._id}>{y.name}</option>
                 ))}
               </select>
+            </div>
+
+            <div className="p-3.5 bg-gray-50/80 rounded-xl border border-gray-200/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-gray-800 uppercase tracking-wider">
+                  Attendance Period <span className="text-gray-400 font-normal lowercase">(Optional Date Range)</span>
+                </label>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1 font-medium">Start Date</label>
+                  <input
+                    type="date"
+                    {...register('attendanceStartDate')}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1 font-medium">End Date</label>
+                  <input
+                    type="date"
+                    {...register('attendanceEndDate')}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white transition-colors"
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-gray-400">
+                Leave empty to automatically calculate attendance from the exam schedule dates.
+              </p>
             </div>
 
             <button

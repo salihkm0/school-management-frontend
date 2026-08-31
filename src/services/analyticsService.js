@@ -130,13 +130,19 @@ export const fetchExamsForDropdown = async () => {
   }
 }
 
-// Generate report card PDF with exam support
-export const generateReportCardPDF = async (studentId, examId = null, academicYearId = null) => {
+// Generate report card PDF with exam and attendance date range support
+export const generateReportCardPDF = async (studentId, examId = null, academicYearId = null, attendanceStartDate = null, attendanceEndDate = null) => {
   try {
     let url = `/pdf/report-card/view/${studentId}`
     if (examId) url += `/${examId}`
     if (academicYearId) url += `/${academicYearId}`
+
+    const params = {}
+    if (attendanceStartDate) params.attendanceStartDate = attendanceStartDate
+    if (attendanceEndDate) params.attendanceEndDate = attendanceEndDate
+
     const response = await api.get(url, {
+      params,
       responseType: 'blob',
     })
     return response.data
@@ -146,13 +152,19 @@ export const generateReportCardPDF = async (studentId, examId = null, academicYe
   }
 }
 
-// Generate class report cards PDF with exam support
-export const generateClassReportCardsPDF = async (classId, examId = null, academicYearId = null) => {
+// Generate class report cards PDF with exam and attendance date range support
+export const generateClassReportCardsPDF = async (classId, examId = null, academicYearId = null, attendanceStartDate = null, attendanceEndDate = null) => {
   try {
     let url = `/pdf/report-card/class/view/${classId}`
     if (examId) url += `/${examId}`
     if (academicYearId) url += `/${academicYearId}`
+
+    const params = {}
+    if (attendanceStartDate) params.attendanceStartDate = attendanceStartDate
+    if (attendanceEndDate) params.attendanceEndDate = attendanceEndDate
+
     const response = await api.get(url, {
+      params,
       responseType: 'blob',
     })
     return response.data
