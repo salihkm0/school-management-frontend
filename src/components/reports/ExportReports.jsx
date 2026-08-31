@@ -1,26 +1,35 @@
 // src/components/reports/ExportReports.jsx
-import React, { useState } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
-import { fetchStudents } from '../../store/slices/studentSlice'
-import { fetchStaff } from '../../store/slices/staffSlice'
 import { fetchClasses } from '../../store/slices/classSlice'
+import { fetchStaff } from '../../store/slices/staffSlice'
 import { useDispatch, useSelector } from 'react-redux'
 import { 
   DocumentArrowDownIcon, 
   UsersIcon, 
   UserGroupIcon, 
   AcademicCapIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  FunnelIcon
 } from '@heroicons/react/24/outline'
 import * as XLSX from 'xlsx'
 import toast from 'react-hot-toast'
+import studentService from '../../services/studentService'
 
 const ExportReports = () => {
   const dispatch = useDispatch()
-  const { students } = useSelector((state) => state.students)
   const { staff } = useSelector((state) => state.staff)
   const { classes } = useSelector((state) => state.classes)
+  const { currentAcademicYear } = useSelector((state) => state.academicYears || {})
+  
   const [isExporting, setIsExporting] = useState(false)
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false)
+  const [studentExportList, setStudentExportList] = useState([])
+
+  // Student Filter Options
+  const [studentFilterMode, setStudentFilterMode] = useState('all') // 'all' | 'standard' | 'class'
+  const [selectedStandard, setSelectedStandard] = useState('')
+  const [selectedClassId, setSelectedClassId] = useState('')
 
   const { register, handleSubmit, watch } = useForm({
     defaultValues: { format: 'excel', exportType: 'students' }
@@ -28,17 +37,80 @@ const ExportReports = () => {
   
   const selectedExportType = watch('exportType')
 
+  // Fetch classes and staff on mount if empty
+  useEffect(() => {
+    if (!classes || classes.length === 0) {
+      dispatch(fetchClasses({ limit: 1000, status: 'active' }))
+    }
+    if (!staff || staff.length === 0) {
+      dispatch(fetchStaff({ limit: 1000 }))
+    }
+  }, [dispatch, classes, staff])
+
+  // Extract unique standards from classes list (e.g. 10, 9, 8, 7...)
+  const standardsList = useMemo(() => {
+    if (!classes || classes.length === 0) return []
+    const stds = new Set()
+    classes.forEach(c => {
+      if (c.name) stds.add(c.name.toString().trim())
+    })
+    return Array.from(stds).sort((a, b) => {
+      const numA = parseInt(a, 10)
+      const numB = parseInt(b, 10)
+      if (!isNaN(numA) && !isNaN(numB)) return numB - numA // Descending: 10, 9, 8...
+      return a.localeCompare(b)
+    })
+  }, [classes])
+
+  // Fetch students based on selected filter (limit='all' to fetch full academic year list)
+  useEffect(() => {
+    if (selectedExportType !== 'students') return
+
+    const loadExportStudents = async () => {
+      setIsLoadingStudents(true)
+      try {
+        const params = { limit: 'all', status: 'active' }
+        if (currentAcademicYear?._id) {
+          params.academicYearId = currentAcademicYear._id
+        }
+
+        if (studentFilterMode === 'standard' && selectedStandard) {
+          params.standard = selectedStandard
+        } else if (studentFilterMode === 'class' && selectedClassId) {
+          params.classId = selectedClassId
+        }
+
+        const res = await studentService.getStudents(params)
+        if (res?.data) {
+          setStudentExportList(res.data)
+        } else if (Array.isArray(res)) {
+          setStudentExportList(res)
+        } else {
+          setStudentExportList([])
+        }
+      } catch (err) {
+        console.error('Error fetching students for export:', err)
+        toast.error('Failed to fetch student data')
+        setStudentExportList([])
+      } finally {
+        setIsLoadingStudents(false)
+      }
+    }
+
+    loadExportStudents()
+  }, [selectedExportType, studentFilterMode, selectedStandard, selectedClassId, currentAcademicYear])
+
   const exportToExcel = (data, filename) => {
     const ws = XLSX.utils.json_to_sheet(data)
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
+    XLSX.utils.book_append_sheet(wb, ws, 'ExportData')
     XLSX.writeFile(wb, `${filename}.xlsx`)
   }
 
   const exportToCSV = (data, filename) => {
     const ws = XLSX.utils.json_to_sheet(data)
     const csv = XLSX.utils.sheet_to_csv(ws)
-    const blob = new Blob([csv], { type: 'text/csv' })
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -49,45 +121,55 @@ const ExportReports = () => {
 
   const getExportData = () => {
     switch(selectedExportType) {
-      case 'students':
+      case 'students': {
+        let suffix = 'all_current_year'
+        if (studentFilterMode === 'standard' && selectedStandard) {
+          suffix = `standard_${selectedStandard}`
+        } else if (studentFilterMode === 'class' && selectedClassId) {
+          const matchedClass = classes.find(c => c._id === selectedClassId)
+          suffix = `class_${matchedClass?.displayName || matchedClass?.name || selectedClassId}`
+        }
+
         return {
-          data: students.map(s => ({
-            'Name': s.fullName,
-            'Admission No': s.admissionNo,
-            'Student Code': s.studentCode,
-            'Class': s.className,
+          data: studentExportList.map(s => ({
+            'Name': s.fullName || '',
+            'Admission No': s.admissionNo || '',
+            'Student Code': s.studentCode || '',
+            'Class': s.classId?.displayName || `${s.className || ''}${s.division ? `-${s.division}` : ''}`.trim() || '-',
+            'Division': s.division || s.classId?.section || '-',
             'Roll Number': s.rollNumber || '-',
             'Gender': s.gender || '-',
-            'Date of Birth': s.dateOfBirth ? new Date(s.dateOfBirth).toLocaleDateString() : '-',
+            'Date of Birth': s.dateOfBirth ? new Date(s.dateOfBirth).toLocaleDateString('en-GB') : '-',
             'Status': s.status || 'active',
-            'Parent Name': s.parentName || '-',
-            'Parent Phone': s.parentPhone || '-'
+            'Parent Name': s.parentIds?.[0]?.fullName || s.fatherFullName || s.motherFullName || s.parentName || '-',
+            'Parent Phone': s.parentIds?.[0]?.phone || s.phoneNumber || s.parentPhone || '-'
           })),
-          filename: 'students_export',
+          filename: `students_export_${suffix}`,
           icon: UsersIcon,
           color: 'from-blue-500 to-blue-600',
-          count: students.length
+          count: studentExportList.length
         }
+      }
       case 'staff':
         return {
-          data: staff.map(s => ({
+          data: (staff || []).map(s => ({
             'Name': s.name,
             'Staff Code': s.staffCode,
             'Role': s.role,
             'Qualification': s.qualification || '-',
             'Contact': s.contact,
             'Email': s.email || '-',
-            'Date of Joining': s.dateOfJoining ? new Date(s.dateOfJoining).toLocaleDateString() : '-',
+            'Date of Joining': s.dateOfJoining ? new Date(s.dateOfJoining).toLocaleDateString('en-GB') : '-',
             'Status': s.isActive ? 'Active' : 'Inactive'
           })),
           filename: 'staff_export',
           icon: UserGroupIcon,
           color: 'from-green-500 to-green-600',
-          count: staff.length
+          count: (staff || []).length
         }
       case 'classes':
         return {
-          data: classes.map(c => ({
+          data: (classes || []).map(c => ({
             'Class': c.name,
             'Section': c.section || '-',
             'Display Name': c.displayName || `${c.name}${c.section ? `-${c.section}` : ''}`,
@@ -99,14 +181,14 @@ const ExportReports = () => {
           filename: 'classes_export',
           icon: AcademicCapIcon,
           color: 'from-purple-500 to-purple-600',
-          count: classes.length
+          count: (classes || []).length
         }
       default:
         return null
     }
   }
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (formData) => {
     const exportInfo = getExportData()
     if (!exportInfo || exportInfo.data.length === 0) {
       toast.error('No data available to export')
@@ -115,13 +197,14 @@ const ExportReports = () => {
 
     setIsExporting(true)
     try {
-      if (data.format === 'excel') {
+      if (formData.format === 'excel') {
         exportToExcel(exportInfo.data, exportInfo.filename)
       } else {
         exportToCSV(exportInfo.data, exportInfo.filename)
       }
-      toast.success(`${selectedExportType} exported successfully`)
+      toast.success(`${selectedExportType} exported successfully (${exportInfo.count} records)`)
     } catch (error) {
+      console.error('Export error:', error)
       toast.error('Failed to export data')
     } finally {
       setIsExporting(false)
@@ -144,6 +227,7 @@ const ExportReports = () => {
           </div>
           
           <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5">
+            {/* Export Type Selector */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Export Type <span className="text-red-500">*</span>
@@ -196,6 +280,113 @@ const ExportReports = () => {
               </div>
             </div>
 
+            {/* Student Filter Scope (Only shown when Export Type === 'students') */}
+            {selectedExportType === 'students' && (
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-3">
+                <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                  <FunnelIcon className="w-4 h-4 text-blue-500" />
+                  <span>Student Selection Filter (Current Academic Year)</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStudentFilterMode('all')
+                      setSelectedStandard('')
+                      setSelectedClassId('')
+                    }}
+                    className={`px-3 py-2 text-xs font-semibold rounded-md border text-center transition-colors ${
+                      studentFilterMode === 'all'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                    }`}
+                  >
+                    All Students
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStudentFilterMode('standard')
+                      setSelectedClassId('')
+                      if (standardsList.length > 0 && !selectedStandard) {
+                        setSelectedStandard(standardsList[0])
+                      }
+                    }}
+                    className={`px-3 py-2 text-xs font-semibold rounded-md border text-center transition-colors ${
+                      studentFilterMode === 'standard'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                    }`}
+                  >
+                    Standard Wise (10, 9, 8...)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStudentFilterMode('class')
+                      setSelectedStandard('')
+                      if (classes.length > 0 && !selectedClassId) {
+                        setSelectedClassId(classes[0]._id)
+                      }
+                    }}
+                    className={`px-3 py-2 text-xs font-semibold rounded-md border text-center transition-colors ${
+                      studentFilterMode === 'class'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                    }`}
+                  >
+                    Class Wise (10A, 8D...)
+                  </button>
+                </div>
+
+                {/* Standard Selection Dropdown */}
+                {studentFilterMode === 'standard' && (
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                      Select Standard <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={selectedStandard}
+                      onChange={(e) => setSelectedStandard(e.target.value)}
+                      className="w-full text-sm border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 bg-white"
+                    >
+                      <option value="">-- All Standards --</option>
+                      {standardsList.map((std) => (
+                        <option key={std} value={std}>
+                          Std {std}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Class & Division Selection Dropdown */}
+                {studentFilterMode === 'class' && (
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                      Select Class & Division <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={selectedClassId}
+                      onChange={(e) => setSelectedClassId(e.target.value)}
+                      className="w-full text-sm border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 bg-white"
+                    >
+                      <option value="">-- All Classes --</option>
+                      {classes.map((cls) => (
+                        <option key={cls._id} value={cls._id}>
+                          {cls.displayName || `${cls.name}${cls.section ? `-${cls.section}` : ''}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Format Selector */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Format <span className="text-red-500">*</span>
@@ -235,13 +426,13 @@ const ExportReports = () => {
 
             <button
               type="submit"
-              disabled={isExporting}
+              disabled={isExporting || isLoadingStudents}
               className="w-full flex items-center justify-center gap-2 bg-primary-500 text-white py-2.5 rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 font-medium"
             >
               {isExporting ? (
                 <>
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  <span>Exporting...</span>
+                  <span>Exporting Data...</span>
                 </>
               ) : (
                 <>
@@ -270,8 +461,15 @@ const ExportReports = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <exportInfo.icon className="w-8 h-8 opacity-80 mb-2" />
-                      <p className="text-2xl font-bold">{exportInfo.count}</p>
-                      <p className="text-sm opacity-90">Records to export</p>
+                      {isLoadingStudents ? (
+                        <div className="flex items-center gap-2 my-1">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                          <span className="text-sm">Fetching student records...</span>
+                        </div>
+                      ) : (
+                        <p className="text-3xl font-bold">{exportInfo.count}</p>
+                      )}
+                      <p className="text-sm opacity-90 mt-1">Records to export</p>
                     </div>
                     <DocumentArrowDownIcon className="w-10 h-10 opacity-50" />
                   </div>
