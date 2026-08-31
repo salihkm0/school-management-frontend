@@ -656,18 +656,25 @@ const ExamDetails = () => {
                                   {subjData.currentMarks}/{subjData.expectedMarks}
                                 </span>
                                 {subjData.teacherShortName ? (
-                                  <span 
-                                    title={subjData.teacherName ? `Teacher: ${subjData.teacherName}` : ''}
-                                    className={`text-[10px] font-medium px-1.5 py-0.2 rounded mt-0.5 ${
-                                      pct === 100 
-                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                                        : pct > 0 
-                                          ? 'bg-blue-50 text-blue-700 border border-blue-200' 
-                                          : 'bg-amber-50 text-amber-800 border border-amber-300 font-semibold'
-                                    }`}
+                                  <div 
+                                    className="flex flex-wrap items-center justify-center gap-1 mt-0.5" 
+                                    title={subjData.teacherName ? `Teachers: ${subjData.teacherName}` : ''}
                                   >
-                                    {subjData.teacherShortName}
-                                  </span>
+                                    {subjData.teacherShortName.split(',').map((shortName, idx) => (
+                                      <span 
+                                        key={idx}
+                                        className={`text-[9px] font-medium px-1.5 py-0.2 rounded ${
+                                          pct === 100 
+                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                                            : pct > 0 
+                                              ? 'bg-blue-50 text-blue-700 border border-blue-200' 
+                                              : 'bg-amber-50 text-amber-800 border border-amber-300 font-semibold'
+                                        }`}
+                                      >
+                                        {shortName.trim()}
+                                      </span>
+                                    ))}
+                                  </div>
                                 ) : null}
                               </div>
                             </td>
