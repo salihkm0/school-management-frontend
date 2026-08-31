@@ -24,6 +24,7 @@ import {
   CheckCircleIcon,
   XCircleIcon
 } from '@heroicons/react/24/outline'
+import { reviewMarks } from '../../services/markService'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
 
@@ -39,6 +40,45 @@ const ExamDetails = () => {
   const [loadingTab, setLoadingTab] = useState(false)
   const [isInitializing, setIsInitializing] = useState(true)
   const [expandedStudent, setExpandedStudent] = useState(null)
+  const [showReviewModal, setShowReviewModal] = useState(false)
+  const [isReviewing, setIsReviewing] = useState(false)
+
+  const handleReviewClass = async (classId, className) => {
+    setIsReviewing(true)
+    try {
+      await reviewMarks(id, classId)
+      toast.success(`Marks for ${className || 'class'} marked as Reviewed!`)
+      await dispatch(fetchExamById(id))
+    } catch (err) {
+      console.error('Failed to review marks:', err)
+      toast.error(err.response?.data?.message || 'Failed to mark as reviewed')
+    } finally {
+      setIsReviewing(false)
+    }
+  }
+
+  const handleReviewAllSubmitted = async () => {
+    const submittedClasses = (currentExam?.classSubmissionStatus || []).filter(cs => cs.status === 'submitted')
+    if (submittedClasses.length === 0) {
+      toast.error('No submitted classes to review')
+      return
+    }
+
+    setIsReviewing(true)
+    try {
+      for (const cs of submittedClasses) {
+        await reviewMarks(id, cs.classId?._id || cs.classId)
+      }
+      toast.success(`All ${submittedClasses.length} submitted classes marked as Reviewed!`)
+      await dispatch(fetchExamById(id))
+      setShowReviewModal(false)
+    } catch (err) {
+      console.error('Failed to review all classes:', err)
+      toast.error(err.response?.data?.message || 'Failed to review classes')
+    } finally {
+      setIsReviewing(false)
+    }
+  }
 
   const uniqueSubjects = useMemo(() => {
     if (!analytics?.classWise) return [];
@@ -173,6 +213,15 @@ const ExamDetails = () => {
           </div>
         </div>
         <div className="flex gap-2">
+          {classesSubmitted > classesReviewed && (
+            <button 
+              onClick={() => setShowReviewModal(true)}
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-md transition-colors border border-purple-200 shadow-sm"
+            >
+              <ClipboardDocumentCheckIcon className="w-4 h-4 text-purple-600" />
+              <span>Review Marks ({classesSubmitted - classesReviewed})</span>
+            </button>
+          )}
           {currentExam.overallStatus !== 'published' && (
             <button 
               onClick={handlePublish} 
@@ -229,8 +278,8 @@ const ExamDetails = () => {
       )}
 
       {/* Overview Tab */}
-      {activeTab === 'overview' && !loadingTab && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      {activeTab === 'overview' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Exam Information */}
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
@@ -239,64 +288,62 @@ const ExamDetails = () => {
                 <h2 className="text-sm font-semibold text-gray-900">Exam Information</h2>
               </div>
             </div>
-            <div className="p-4 space-y-2">
-              <div className="flex justify-between py-1.5">
-                <span className="text-xs text-gray-500">Exam Type</span>
-                <span className="text-xs font-medium text-gray-900 capitalize">{currentExam.examType}</span>
+            <div className="p-4 space-y-3">
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500">Exam Type</span>
+                <span className="font-medium text-gray-900 capitalize">{currentExam.examType?.replace('_', ' ')}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-t border-gray-100">
-                <span className="text-xs text-gray-500">Term</span>
-                <span className="text-xs font-medium text-gray-900 capitalize">{currentExam.term}</span>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500">Term</span>
+                <span className="font-medium text-gray-900 capitalize">{currentExam.term}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-t border-gray-100">
-                <span className="text-xs text-gray-500">Start Date</span>
-                <span className="text-xs font-medium text-gray-900">{new Date(currentExam.startDate).toLocaleDateString()}</span>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500">Start Date</span>
+                <span className="font-medium text-gray-900">{currentExam.startDate ? new Date(currentExam.startDate).toLocaleDateString() : 'N/A'}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-t border-gray-100">
-                <span className="text-xs text-gray-500">End Date</span>
-                <span className="text-xs font-medium text-gray-900">{new Date(currentExam.endDate).toLocaleDateString()}</span>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500">End Date</span>
+                <span className="font-medium text-gray-900">{currentExam.endDate ? new Date(currentExam.endDate).toLocaleDateString() : 'N/A'}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-t border-gray-100">
-                <span className="text-xs text-gray-500">Duration</span>
-                <span className="text-xs font-medium text-gray-900">{Math.ceil((new Date(currentExam.endDate) - new Date(currentExam.startDate)) / (1000 * 60 * 60 * 24))} days</span>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500">Duration</span>
+                <span className="font-medium text-gray-900">
+                  {currentExam.startDate && currentExam.endDate
+                    ? `${Math.ceil((new Date(currentExam.endDate) - new Date(currentExam.startDate)) / (1000 * 60 * 60 * 24))} days`
+                    : 'N/A'}
+                </span>
               </div>
-              {currentExam.resultDeclarationDate && (
-                <div className="flex justify-between py-1.5 border-t border-gray-100">
-                  <span className="text-xs text-gray-500">Result Date</span>
-                  <span className="text-xs font-medium text-gray-900">{new Date(currentExam.resultDeclarationDate).toLocaleDateString()}</span>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Academic Summary */}
+          {/* Summary Stats */}
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
               <div className="flex items-center gap-2">
-                <BookOpenIcon className="w-4 h-4 text-emerald-600" />
+                <AcademicCapIcon className="w-4 h-4 text-emerald-600" />
                 <h2 className="text-sm font-semibold text-gray-900">Academic Summary</h2>
               </div>
             </div>
-            <div className="p-4 space-y-2">
-              <div className="flex justify-between py-1.5">
-                <span className="text-xs text-gray-500">Total Classes</span>
-                <span className="text-xs font-medium text-gray-900">{totalClasses}</span>
+            <div className="p-4 space-y-3">
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500">Total Classes</span>
+                <span className="font-medium text-gray-900">{totalClasses}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-t border-gray-100">
-                <span className="text-xs text-gray-500">Total Students</span>
-                <span className="text-xs font-medium text-gray-900">{currentExam?.summary?.totalStudents || '-'}</span>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500">Total Students</span>
+                <span className="font-medium text-gray-900">{currentExam.summary?.totalStudents || 0}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-t border-gray-100">
-                <span className="text-xs text-gray-500">Total Subjects</span>
-                <span className="text-xs font-medium text-gray-900">{currentExam.subjects?.length || 0}</span>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500">Total Subjects</span>
+                <span className="font-medium text-gray-900">{currentExam.subjects?.length || 0}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-t border-gray-100">
-                <span className="text-xs text-gray-500">Total Max Marks</span>
-                <span className="text-xs font-medium text-gray-900">{currentExam.totalMaxMarks || 0}</span>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500">Total Max Marks</span>
+                <span className="font-medium text-gray-900">{currentExam.summary?.totalMaxMarks || 0}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-t border-gray-100">
-                <span className="text-xs text-gray-500">CE Enabled</span>
-                <span className="text-xs font-medium text-gray-900">{currentExam.schedule?.some(s => s.ceEnabled) ? 'Yes' : 'No'}</span>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500">CE Enabled</span>
+                <span className="font-medium text-gray-900">{currentExam.ceConfig?.enabled ? 'Yes' : 'No'}</span>
               </div>
             </div>
           </div>
@@ -310,17 +357,23 @@ const ExamDetails = () => {
               </div>
             </div>
             <div className="p-4 space-y-3">
-              <div className="flex justify-between text-xs">
+              <div className="flex justify-between items-center text-xs">
                 <span className="text-gray-500">Submitted</span>
-                <span className="font-medium text-gray-900">{classesSubmitted}/{totalClasses}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-gray-900">{classesSubmitted}/{totalClasses}</span>
+                  {classesSubmitted > classesReviewed && (
+                    <button
+                      onClick={() => setShowReviewModal(true)}
+                      className="text-[11px] font-semibold text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 px-2 py-0.5 rounded border border-purple-200 transition-colors"
+                    >
+                      Review Marks
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-gray-500">Reviewed</span>
                 <span className="font-medium text-gray-900">{classesReviewed}/{totalClasses}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-500">Published</span>
-                <span className="font-medium text-gray-900">{classesPublished}/{totalClasses}</span>
               </div>
               <div className="pt-2">
                 <div className="flex justify-between text-xs text-gray-500 mb-1">
@@ -332,14 +385,14 @@ const ExamDetails = () => {
                 </div>
               </div>
               {readyForPublish && (
-                <div className="mt-2 text-center text-xs text-emerald-600 bg-emerald-50 rounded-md py-1.5">
-                  Ready to publish results
+                <div className="mt-2 text-center text-xs text-emerald-600 bg-emerald-50 rounded-md py-1.5 font-medium">
+                  ✓ Ready to publish results
                 </div>
               )}
             </div>
           </div>
 
-          {/* Settings & Instructions - Fixed: Changed SettingsIcon to Cog6ToothIcon */}
+          {/* Settings & Instructions */}
           {currentExam.settings && (
             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden lg:col-span-3">
               <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
@@ -627,6 +680,98 @@ const ExamDetails = () => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Review Submitted Classes Modal */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-purple-50/50">
+              <div className="flex items-center gap-2">
+                <ClipboardDocumentCheckIcon className="w-5 h-5 text-purple-600" />
+                <h3 className="text-base font-bold text-gray-900">Review & Approve Class Marks</h3>
+              </div>
+              <button
+                onClick={() => setShowReviewModal(false)}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                <XCircleIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 flex-1 overflow-y-auto space-y-4">
+              <div className="flex items-center justify-between bg-purple-50 border border-purple-100 rounded-lg p-3 text-xs text-purple-900">
+                <div>
+                  <span className="font-bold">{classesSubmitted - classesReviewed} class(es)</span> pending review out of <span className="font-bold">{classesSubmitted} submitted</span>.
+                </div>
+                {classesSubmitted > classesReviewed && (
+                  <button
+                    onClick={handleReviewAllSubmitted}
+                    disabled={isReviewing}
+                    className="px-3 py-1.5 bg-purple-600 text-white rounded-md font-semibold hover:bg-purple-700 disabled:opacity-50 transition-colors shadow-sm text-xs whitespace-nowrap"
+                  >
+                    {isReviewing ? "Processing..." : "Mark All Submitted as Reviewed"}
+                  </button>
+                )}
+              </div>
+
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left font-semibold text-gray-600">Class</th>
+                      <th className="px-4 py-2.5 text-center font-semibold text-gray-600">Status</th>
+                      <th className="px-4 py-2.5 text-right font-semibold text-gray-600">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {(currentExam.classSubmissionStatus || []).map((cs) => {
+                      const classObj = (currentExam.classDetails || []).find(c => (c._id || c.id) === (cs.classId?._id || cs.classId))
+                      const className = classObj?.displayName || `${classObj?.className || ''} ${classObj?.section || ''}`.trim() || 'Class'
+                      const isSubmitted = cs.status === 'submitted'
+                      const isReviewed = cs.status === 'reviewed' || cs.status === 'published'
+
+                      return (
+                        <tr key={cs._id || cs.classId} className="hover:bg-gray-50/50">
+                          <td className="px-4 py-3 font-medium text-gray-900">{className}</td>
+                          <td className="px-4 py-3 text-center">
+                            {getStatusBadge(cs.status)}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {isSubmitted ? (
+                              <button
+                                onClick={() => handleReviewClass(cs.classId?._id || cs.classId, className)}
+                                disabled={isReviewing}
+                                className="px-3 py-1 bg-purple-600 text-white font-semibold rounded hover:bg-purple-700 disabled:opacity-50 transition-colors shadow-sm text-[11px]"
+                              >
+                                {isReviewing ? "Saving..." : "Mark as Reviewed"}
+                              </button>
+                            ) : isReviewed ? (
+                              <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold">
+                                <CheckCircleIcon className="w-4 h-4" /> Reviewed
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 italic">Not Submitted</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="px-6 py-3 border-t border-gray-100 bg-gray-50 flex justify-end">
+              <button
+                onClick={() => setShowReviewModal(false)}
+                className="px-4 py-2 text-xs font-semibold bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

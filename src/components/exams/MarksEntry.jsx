@@ -22,6 +22,7 @@ import {
   bulkUpdateMarks,
   getTeacherPermissions,
   submitMarksForReview,
+  reviewMarks,
 } from "../../services/markService";
 import LoadingSpinner from "../common/LoadingSpinner";
 import toast from "react-hot-toast";
@@ -253,6 +254,29 @@ const MarksEntry = () => {
     } catch (error) {
       console.error("Failed to submit marks:", error);
       toast.error(error.response?.data?.message || "Failed to submit marks");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReviewMarks = async () => {
+    if (!permissions?.canReview && permissions?.role !== "school_admin") {
+      toast.error("You don't have permission to mark as reviewed");
+      return;
+    }
+    
+    if (!window.confirm("Mark all submitted marks for this class as Reviewed?")) {
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      await reviewMarks(selectedExam, selectedClass);
+      toast.success("Marks marked as Reviewed successfully");
+      await loadData();
+    } catch (error) {
+      console.error("Failed to review marks:", error);
+      toast.error(error.response?.data?.message || "Failed to review marks");
     } finally {
       setIsSubmitting(false);
     }
@@ -503,6 +527,16 @@ const MarksEntry = () => {
                     >
                       <CheckIcon className="w-3.5 h-3.5" />
                       {isSubmitting ? "Saving…" : "Save Marks"}
+                    </button>
+                  )}
+                  {(permissions?.canReview || permissions?.role === "school_admin") && (
+                    <button
+                      onClick={handleReviewMarks}
+                      disabled={isSubmitting}
+                      className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors whitespace-nowrap shadow-sm"
+                    >
+                      <CheckCircleIcon className="w-3.5 h-3.5" />
+                      {isSubmitting ? "Reviewing…" : "Mark as Reviewed"}
                     </button>
                   )}
                 </div>
