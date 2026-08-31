@@ -628,9 +628,6 @@ const ClassMarksOverview = () => {
                           %
                         </th>
                         <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap bg-gray-100/60">
-                          Grade
-                        </th>
-                        <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap bg-gray-100/60">
                           Rank
                         </th>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap bg-gray-100/80 border-l border-gray-200">
@@ -641,7 +638,7 @@ const ClassMarksOverview = () => {
                     <tbody className="divide-y divide-gray-100">
                       {filtered.length === 0 ? (
                         <tr>
-                          <td colSpan={5 + subjects.length} className="py-10 text-center text-gray-400 text-sm">
+                          <td colSpan={4 + subjects.length} className="py-10 text-center text-gray-400 text-sm">
                             No students found
                           </td>
                         </tr>
@@ -654,19 +651,27 @@ const ClassMarksOverview = () => {
                             <p className="text-xs font-semibold text-gray-900">{student.name}</p>
                             <p className="text-[10px] text-gray-400">{student.admissionNo}</p>
                           </td>
-                          {student.subjectMarks.map((sm) => (
-                            <td key={sm.examSubjectId} className="px-2 py-2 text-center border-r border-gray-100">
-                              {sm.isAbsent ? (
-                                <span className="text-xs font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">AB</span>
-                              ) : !sm.isEntered ? (
-                                <span className="text-xs text-gray-300">—</span>
-                              ) : (
-                                <span className="text-xs font-mono font-semibold text-gray-900">
-                                  {sm.total}<span className="text-gray-400 font-normal">/{sm.max}</span>
-                                </span>
-                              )}
-                            </td>
-                          ))}
+                          {student.subjectMarks.map((sm) => {
+                            const gradeObj = getGradeInfo(sm.total, sm.max);
+                            return (
+                              <td key={sm.examSubjectId} className="px-2 py-2 text-center border-r border-gray-100">
+                                {sm.isAbsent ? (
+                                  <span className="text-xs font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">AB</span>
+                                ) : !sm.isEntered ? (
+                                  <span className="text-xs text-gray-300">—</span>
+                                ) : (
+                                  <div className="flex flex-col items-center justify-center gap-0.5">
+                                    <span className="text-xs font-mono font-semibold text-gray-900">
+                                      {sm.total}<span className="text-gray-400 font-normal">/{sm.max}</span>
+                                    </span>
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${gradeObj.color}`}>
+                                      {gradeObj.grade}
+                                    </span>
+                                  </div>
+                                )}
+                              </td>
+                            );
+                          })}
                           <td className="px-3 py-2 text-center border-l border-gray-200 bg-gray-50/60">
                             <span className="text-xs font-bold font-mono text-gray-900">
                               {student.totalObtained}<span className="text-gray-400 font-normal">/{student.totalMax}</span>
@@ -675,11 +680,6 @@ const ClassMarksOverview = () => {
                           <td className="px-3 py-2 text-center bg-gray-50/60">
                             <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${getPercentageBadge(student.percentage)}`}>
                               {student.percentage.toFixed(1)}%
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 text-center bg-gray-50/60">
-                            <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${student.gradeInfo.color}`}>
-                              {student.gradeInfo.grade}
                             </span>
                           </td>
                           <td className="px-3 py-2 text-center bg-gray-50/60">
