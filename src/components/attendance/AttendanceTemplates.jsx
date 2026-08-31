@@ -23,10 +23,8 @@ const AttendanceTemplates = () => {
     classId: null,
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
-    totalWorkingDays: 25,
-    holidays: []
+    totalWorkingDays: 25
   })
-  const [holidayInput, setHolidayInput] = useState({ name: '', date: '', type: 'public' })
 
   useEffect(() => {
     dispatch(fetchAcademicYears({ limit: 100 }))
@@ -56,8 +54,7 @@ const AttendanceTemplates = () => {
         classId: formData.classId || null,
         month: formData.month,
         year: formData.year,
-        totalWorkingDays: formData.totalWorkingDays,
-        holidays: formData.holidays.filter(h => h.name && h.date)
+        totalWorkingDays: formData.totalWorkingDays
       }
       
       if (editingTemplate) {
@@ -126,10 +123,8 @@ const AttendanceTemplates = () => {
       classId: null,
       month: new Date().getMonth() + 1,
       year: new Date().getFullYear(),
-      totalWorkingDays: 25,
-      holidays: []
+      totalWorkingDays: 25
     })
-    setHolidayInput({ name: '', date: '', type: 'public' })
   }
 
   const editTemplate = (template) => {
@@ -140,29 +135,9 @@ const AttendanceTemplates = () => {
       classId: template.classId?._id || template.classId || null,
       month: template.month,
       year: template.year,
-      totalWorkingDays: template.totalWorkingDays,
-      holidays: template.holidays || []
+      totalWorkingDays: template.totalWorkingDays
     })
     setShowModal(true)
-  }
-
-  const addHoliday = () => {
-    if (holidayInput.name && holidayInput.date) {
-      setFormData({
-        ...formData,
-        holidays: [...formData.holidays, { ...holidayInput }]
-      })
-      setHolidayInput({ name: '', date: '', type: 'public' })
-    } else {
-      toast.error('Please enter holiday name and date')
-    }
-  }
-
-  const removeHoliday = (index) => {
-    setFormData({
-      ...formData,
-      holidays: formData.holidays.filter((_, i) => i !== index)
-    })
   }
 
   const months = Array.from({ length: 12 }, (_, i) => ({ value: i + 1, name: new Date(2000, i, 1).toLocaleString('default', { month: 'long' }) }))
@@ -224,10 +199,6 @@ const AttendanceTemplates = () => {
                   <span className="text-gray-500">Working Days:</span>
                   <span className="font-medium text-gray-900">{template.totalWorkingDays}</span>
                 </div>
-                <div className="flex justify-between text-xs mt-1">
-                  <span className="text-gray-500">Holidays:</span>
-                  <span className="font-medium text-gray-900">{template.holidays?.length || 0}</span>
-                </div>
                 {template.classId && (
                   <div className="flex justify-between text-xs mt-1">
                     <span className="text-gray-500">Class:</span>
@@ -235,13 +206,6 @@ const AttendanceTemplates = () => {
                   </div>
                 )}
               </div>
-              
-              {template.holidays?.length > 0 && (
-                <div className="mt-2 text-xs text-gray-400 truncate">
-                  {template.holidays.slice(0, 2).map(h => h.name).join(', ')}
-                  {template.holidays.length > 2 && ` +${template.holidays.length - 2} more`}
-                </div>
-              )}
               
               <button
                 onClick={() => handleApply(template)}
@@ -260,7 +224,7 @@ const AttendanceTemplates = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowModal(false)} />
           <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-5 py-4 flex justify-between items-center">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-5 py-4 flex justify-between items-center z-10">
               <h2 className="text-base font-semibold text-gray-900">
                 {editingTemplate ? 'Edit Template' : 'Create New Template'}
               </h2>
@@ -348,83 +312,11 @@ const AttendanceTemplates = () => {
                 />
               </div>
               
-              {/* Holidays Section */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Holidays</label>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  <input
-                    type="text"
-                    placeholder="Holiday Name"
-                    value={holidayInput.name}
-                    onChange={(e) => setHolidayInput({ ...holidayInput, name: e.target.value })}
-                    className="flex-1 min-w-[120px] px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                  <input
-                    type="date"
-                    value={holidayInput.date}
-                    onChange={(e) => setHolidayInput({ ...holidayInput, date: e.target.value })}
-                    className="w-36 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                  <select
-                    value={holidayInput.type}
-                    onChange={(e) => setHolidayInput({ ...holidayInput, type: e.target.value })}
-                    className="w-28 px-3 py-2 text-sm border border-gray-200 rounded-lg"
-                  >
-                    <option value="public">Public</option>
-                    <option value="religious">Religious</option>
-                    <option value="school">School</option>
-                    <option value="emergency">Emergency</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={addHoliday}
-                    className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors"
-                  >
-                    Add
-                  </button>
-                </div>
-                
-                {formData.holidays.length > 0 && (
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full text-sm">
-                        <thead className="bg-gray-50">
-                          <tr className="border-b border-gray-200">
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Name</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Date</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Type</th>
-                            <th className="px-3 py-2 text-center text-xs font-medium text-gray-500">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {formData.holidays.map((holiday, index) => (
-                            <tr key={index} className="hover:bg-gray-50">
-                              <td className="px-3 py-2 text-sm text-gray-900">{holiday.name}</td>
-                              <td className="px-3 py-2 text-sm text-gray-600">{new Date(holiday.date).toLocaleDateString()}</td>
-                              <td className="px-3 py-2 text-sm text-gray-600 capitalize">{holiday.type}</td>
-                              <td className="px-3 py-2 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() => removeHoliday(index)}
-                                  className="text-rose-600 hover:text-rose-700 text-sm font-medium"
-                                >
-                                  Remove
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+              <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   Cancel
                 </button>
