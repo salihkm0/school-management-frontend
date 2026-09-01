@@ -97,6 +97,10 @@ const ReportCard = () => {
       toast.error('Please select a student')
       return
     }
+    if (!data.examId) {
+      toast.error('Please select an exam')
+      return
+    }
     setIsGenerating(true)
     try {
       const pdfBlob = await generateReportCardPDF(
@@ -127,7 +131,20 @@ const ReportCard = () => {
       toast.success('Report card generated and downloaded')
     } catch (error) {
       console.error('Error generating report card:', error)
-      const errorMsg = error.response?.data?.message || error.message || 'Failed to generate report card'
+      let errorMsg = 'Failed to generate report card'
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text()
+          const json = JSON.parse(text)
+          errorMsg = json.message || errorMsg
+        } catch (e) {
+          errorMsg = error.message || errorMsg
+        }
+      } else if (error.response?.data?.message) {
+        errorMsg = error.response.data.message
+      } else if (error.message) {
+        errorMsg = error.message
+      }
       toast.error(errorMsg)
     } finally {
       setIsGenerating(false)
@@ -193,14 +210,14 @@ const ReportCard = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Select Exam <span className="text-gray-400 text-xs">(Optional - Latest if not selected)</span>
+                Select Exam <span className="text-red-500">*</span>
               </label>
               <select
-                {...register('examId')}
+                {...register('examId', { required: 'Exam is required' })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-gray-50 hover:bg-white transition-colors"
                 disabled={isLoadingExams}
               >
-                <option value="">Latest Exam</option>
+                <option value="">Choose an exam...</option>
                 {exams.map(e => (
                   <option key={e._id} value={e._id}>
                     {e.displayName || e.name} ({e.examType})
