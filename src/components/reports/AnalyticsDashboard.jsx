@@ -454,6 +454,121 @@ const AnalyticsDashboard = () => {
             </div>
           )}
 
+          {/* Subject-wise Grade Distribution */}
+          {gradeAnalysis?.subjectWiseGradeDistribution && Object.keys(gradeAnalysis.subjectWiseGradeDistribution).length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-6 py-4 bg-gradient-to-r from-emerald-50 to-white border-b border-gray-100 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Subject-wise Grade Distribution</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">Student count by grade for each subject</p>
+                </div>
+                <button
+                  onClick={() => {
+                    const dist = gradeAnalysis.subjectWiseGradeDistribution
+                    const gradesList = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D+', 'D', 'E', 'AB']
+                    const exportData = Object.entries(dist).map(([subj, counts]) => {
+                      const row = { Subject: subj }
+                      gradesList.forEach(g => {
+                        row[`Grade ${g}`] = counts[g] || 0
+                      })
+                      row['Total Students'] = counts.total || 0
+                      return row
+                    })
+                    exportToCSV(exportData, `Subject_Grade_Distribution_${selectedExam}`)
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors border border-emerald-200"
+                >
+                  <DocumentArrowDownIcon className="w-4 h-4" />
+                  Export CSV
+                </button>
+              </div>
+
+              <div className="p-6 overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[700px]">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      <th className="py-3 px-4 rounded-tl-lg">Subject</th>
+                      <th className="py-3 px-2 text-center text-emerald-700 bg-emerald-50/60">A+</th>
+                      <th className="py-3 px-2 text-center text-green-700 bg-green-50/60">A</th>
+                      <th className="py-3 px-2 text-center text-blue-700 bg-blue-50/60">B+</th>
+                      <th className="py-3 px-2 text-center text-cyan-700 bg-cyan-50/60">B</th>
+                      <th className="py-3 px-2 text-center text-amber-700 bg-amber-50/60">C+</th>
+                      <th className="py-3 px-2 text-center text-orange-700 bg-orange-50/60">C</th>
+                      <th className="py-3 px-2 text-center text-amber-800 bg-amber-100/60">D+</th>
+                      <th className="py-3 px-2 text-center text-rose-700 bg-rose-50/60">D</th>
+                      <th className="py-3 px-2 text-center text-gray-700 bg-gray-100/60">E</th>
+                      <th className="py-3 px-2 text-center text-red-700 bg-red-50/60">AB</th>
+                      <th className="py-3 px-4 text-center rounded-tr-lg">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-sm">
+                    {Object.entries(gradeAnalysis.subjectWiseGradeDistribution).map(([subjectName, counts], idx) => {
+                      const total = counts.total || 0
+                      return (
+                        <tr key={subjectName} className={idx % 2 === 0 ? 'bg-white hover:bg-gray-50/80' : 'bg-gray-50/40 hover:bg-gray-50'}>
+                          <td className="py-3 px-4 font-medium text-gray-900">{subjectName}</td>
+                          
+                          <td className="py-3 px-2 text-center">
+                            <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-semibold ${counts['A+'] > 0 ? 'bg-emerald-100 text-emerald-800' : 'text-gray-400'}`}>
+                              {counts['A+'] || 0}
+                            </span>
+                          </td>
+                          <td className="py-3 px-2 text-center">
+                            <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-medium ${counts['A'] > 0 ? 'bg-green-100 text-green-800' : 'text-gray-400'}`}>
+                              {counts['A'] || 0}
+                            </span>
+                          </td>
+                          <td className="py-3 px-2 text-center">
+                            <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-medium ${counts['B+'] > 0 ? 'bg-blue-100 text-blue-800' : 'text-gray-400'}`}>
+                              {counts['B+'] || 0}
+                            </span>
+                          </td>
+                          <td className="py-3 px-2 text-center">
+                            <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-medium ${counts['B'] > 0 ? 'bg-cyan-100 text-cyan-800' : 'text-gray-400'}`}>
+                              {counts['B'] || 0}
+                            </span>
+                          </td>
+                          <td className="py-3 px-2 text-center">
+                            <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-medium ${counts['C+'] > 0 ? 'bg-amber-100 text-amber-800' : 'text-gray-400'}`}>
+                              {counts['C+'] || 0}
+                            </span>
+                          </td>
+                          <td className="py-3 px-2 text-center">
+                            <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-medium ${counts['C'] > 0 ? 'bg-orange-100 text-orange-800' : 'text-gray-400'}`}>
+                              {counts['C'] || 0}
+                            </span>
+                          </td>
+                          <td className="py-3 px-2 text-center">
+                            <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-medium ${counts['D+'] > 0 ? 'bg-amber-200 text-amber-900' : 'text-gray-400'}`}>
+                              {counts['D+'] || 0}
+                            </span>
+                          </td>
+                          <td className="py-3 px-2 text-center">
+                            <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-medium ${counts['D'] > 0 ? 'bg-rose-100 text-rose-800' : 'text-gray-400'}`}>
+                              {counts['D'] || 0}
+                            </span>
+                          </td>
+                          <td className="py-3 px-2 text-center">
+                            <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-medium ${counts['E'] > 0 ? 'bg-gray-200 text-gray-800' : 'text-gray-400'}`}>
+                              {counts['E'] || 0}
+                            </span>
+                          </td>
+                          <td className="py-3 px-2 text-center">
+                            <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-medium ${counts['AB'] > 0 ? 'bg-red-100 text-red-800 font-semibold' : 'text-gray-400'}`}>
+                              {counts['AB'] || 0}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-4 text-center font-semibold text-gray-700">{total}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Two Column Layout for Top Performers */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Top Performing Classes */}
