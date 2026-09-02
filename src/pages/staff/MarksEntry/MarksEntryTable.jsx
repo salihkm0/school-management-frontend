@@ -207,7 +207,7 @@ const MarksEntryTable = () => {
             initial[student.studentId][key] = {
               theoryScore: (isActuallyEntered && !subject.isAbsent && subject.theoryScore !== null && subject.theoryScore !== undefined) ? subject.theoryScore : "",
               practicalScore: (isActuallyEntered && !subject.isAbsent && subject.practicalScore !== null && subject.practicalScore !== undefined) ? subject.practicalScore : "",
-              ceMarks: (isActuallyEntered && !subject.isAbsent && (subject.ceScore ?? subject.ceMarks) !== null && (subject.ceScore ?? subject.ceMarks) !== undefined) ? (subject.ceScore ?? subject.ceMarks) : "",
+              ceMarks: ((subject.ceScore ?? subject.ceMarks) !== null && (subject.ceScore ?? subject.ceMarks) !== undefined) ? (subject.ceScore ?? subject.ceMarks) : "",
               isAbsent: subject.isAbsent || false,
               isEntered: isActuallyEntered,
               isEnteredExplicitly: subject.isEnteredExplicitly || false,
@@ -785,15 +785,21 @@ const MarksEntryTable = () => {
                                   <td className="px-1 py-1 text-center border-l border-gray-200">
                                     <input
                                       type="number" onWheel={(e) => e.target.blur()}
-                                      value={absent ? "" : ce}
+                                      value={ce}
                                       onChange={(e) => handleMarkChange(student.studentId, key, "ceMarks", e.target.value)}
                                       onKeyDown={(e) => handleKeyDown(e, idx, subjIdx, "ceMarks")}
-                                      disabled={!canEdit || absent}
+                                      disabled={!canEdit}
                                       min={0}
                                       max={subj.ceMaxMarks}
                                       placeholder="0"
                                       id={`mark-input-${idx}-${subjIdx}-ceMarks`}
-                                      className={getBaseInputClass(isCeError)}
+                                      className={`w-14 text-center px-1 py-1 text-xs border rounded focus:outline-none focus:ring-1 transition-colors font-mono ${
+                                        !canEdit
+                                          ? "bg-gray-50 text-gray-400 border-gray-100 cursor-not-allowed"
+                                          : isCeError 
+                                            ? "bg-red-50 border-red-500 text-red-900 focus:ring-red-400"
+                                            : "bg-white border-gray-300 hover:border-emerald-300 text-gray-900 focus:ring-emerald-400 font-semibold"
+                                      }`}
                                     />
                                   </td>
                                 )}
