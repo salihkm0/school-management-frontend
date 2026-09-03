@@ -102,16 +102,10 @@ const SendNotification = () => {
           await notificationService.sendToClass(data.classId, data.title, data.message, data.type, { link: data.link })
           toast.success('Notification sent to all class parents')
         } else {
-          const validIds = selectedParentIds.filter((id) => id && !String(id).startsWith('unlinked_'))
-          if (validIds.length === 0) {
-            toast.error('Selected parents do not have registered app accounts')
-            setIsSending(false)
-            return
-          }
-          for (const parentId of validIds) {
+          for (const parentId of selectedParentIds) {
             await notificationService.sendToUser(parentId, data.title, data.message, data.type, { link: data.link })
           }
-          toast.success(`Notification sent to ${validIds.length} selected parents`)
+          toast.success(`Notification sent to ${selectedParentIds.length} selected parents`)
         }
       } else if (recipientType === 'user' && selectedUser) {
         await notificationService.sendToUser(selectedUser._id || selectedUser.id, data.title, data.message, data.type, { link: data.link })
