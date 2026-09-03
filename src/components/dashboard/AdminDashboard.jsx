@@ -17,6 +17,7 @@ import {
 import { fetchAdminDashboard, updateStats, addActivity } from '../../store/slices/dashboardSlice'
 import useSocket from '../../hooks/useSocket'
 import LoadingSpinner from '../common/LoadingSpinner'
+import SchoolContactsWidget from '../common/SchoolContactsWidget'
 
 // Heroicons
 import {
@@ -954,6 +955,9 @@ const AdminDashboard = () => {
           )
         })}
       </div>
+
+      {/* School Key Contacts Widget */}
+      <SchoolContactsWidget />
 
       {/* Main Charts Section */}
       <div className="grid gap-5 lg:grid-cols-3">

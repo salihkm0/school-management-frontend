@@ -28,6 +28,7 @@ import useSocket from '../../hooks/useSocket'
 import { fetchStaffDashboard, updateStats, addActivity } from '../../store/slices/dashboardSlice'
 import LoadingSpinner from '../common/LoadingSpinner'
 import QuickActions from './QuickActions'
+import SchoolContactsWidget from '../common/SchoolContactsWidget'
 
 // Stat Card Component
 const StatCard = ({ config, value, trend }) => {
@@ -299,6 +300,9 @@ const StaffDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* School Key Contacts Widget */}
+      <SchoolContactsWidget />
 
       {/* Class Assignments */}
       <div className="space-y-6">

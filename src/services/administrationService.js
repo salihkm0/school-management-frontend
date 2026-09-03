@@ -56,6 +56,11 @@ const administrationService = {
     return response.data;
   },
 
+  getMaintenanceMode: async () => {
+    const response = await api.get('/administration/system/maintenance');
+    return response.data;
+  },
+
   toggleMaintenanceMode: async (enabled) => {
     const response = await api.post('/administration/system/maintenance', { enabled });
     return response.data;
@@ -84,6 +89,16 @@ const administrationService = {
   getAppUpdateHistory: async () => {
     const response = await api.get('/app-config/history');
     return response.data.data;
+  },
+
+  getSchoolContacts: async () => {
+    const response = await api.get('/app-config/school-contacts');
+    return response.data.data;
+  },
+
+  updateSchoolContacts: async (data) => {
+    const response = await api.put('/app-config/school-contacts', data);
+    return response.data;
   }
 };
 

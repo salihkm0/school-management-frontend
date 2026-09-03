@@ -92,13 +92,14 @@ const AdministrationDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const [healthData, dbData, usersData, cpuData, memoryData, dauData] = await Promise.all([
+      const [healthData, dbData, usersData, cpuData, memoryData, dauData, maintenanceData] = await Promise.all([
         administrationService.getSystemHealth(),
         administrationService.getDbStats(),
         administrationService.getActiveUsers(),
         administrationService.getSystemMetrics({ range: cpuRange }),
         administrationService.getSystemMetrics({ range: memoryRange }),
-        administrationService.getDailyActiveUsers({ days: dauRange })
+        administrationService.getDailyActiveUsers({ days: dauRange }),
+        administrationService.getMaintenanceMode()
       ]);
       setHealth(healthData);
       setDbStats(dbData.data);
@@ -106,6 +107,11 @@ const AdministrationDashboard = () => {
       setCpuMetrics(cpuData.data || []);
       setMemoryMetrics(memoryData.data || []);
       setDailyUsers(dauData.data || []);
+      if (healthData && typeof healthData.maintenanceMode === 'boolean') {
+        setMaintenanceMode(healthData.maintenanceMode);
+      } else if (maintenanceData && typeof maintenanceData.enabled === 'boolean') {
+        setMaintenanceMode(maintenanceData.enabled);
+      }
     } catch (error) {
       toast.error('Failed to fetch dashboard metrics');
     } finally {

@@ -1,6 +1,5 @@
-// src/components/settings/SystemSettings.jsx
-import React, { useState } from 'react'
-import { ShieldCheckIcon, ArrowPathIcon, CloudArrowDownIcon, CheckCircleIcon, ExclamationTriangleIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline'
+import React, { useState, useEffect } from 'react'
+import { ShieldCheckIcon, ArrowPathIcon, CloudArrowDownIcon, CheckCircleIcon, ExclamationTriangleIcon, DevicePhoneMobileIcon, UserGroupIcon, PhoneIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import administrationService from '../../services/administrationService'
 import Modal from '../common/Modal'
@@ -8,6 +7,56 @@ import Modal from '../common/Modal'
 const SystemSettings = () => {
   const [isBackupLoading, setIsBackupLoading] = useState(false)
   const [isClearingCache, setIsClearingCache] = useState(false)
+
+  // School Key Contacts State
+  const [contactsData, setContactsData] = useState({
+    headmasterName: '',
+    headmasterPhone: '',
+    sitcName: '',
+    sitcPhone: '',
+    ptaPresidentName: '',
+    ptaPresidentPhone: ''
+  })
+  const [isFetchingContacts, setIsFetchingContacts] = useState(false)
+  const [isSavingContacts, setIsSavingContacts] = useState(false)
+
+  useEffect(() => {
+    fetchSchoolContacts()
+  }, [])
+
+  const fetchSchoolContacts = async () => {
+    setIsFetchingContacts(true)
+    try {
+      const data = await administrationService.getSchoolContacts()
+      if (data) {
+        setContactsData({
+          headmasterName: data.headmasterName || '',
+          headmasterPhone: data.headmasterPhone || '',
+          sitcName: data.sitcName || '',
+          sitcPhone: data.sitcPhone || '',
+          ptaPresidentName: data.ptaPresidentName || '',
+          ptaPresidentPhone: data.ptaPresidentPhone || ''
+        })
+      }
+    } catch (error) {
+      toast.error('Failed to fetch school contacts')
+    } finally {
+      setIsFetchingContacts(false)
+    }
+  }
+
+  const handleSaveContacts = async (e) => {
+    e.preventDefault()
+    setIsSavingContacts(true)
+    try {
+      await administrationService.updateSchoolContacts(contactsData)
+      toast.success('School key contacts updated successfully')
+    } catch (error) {
+      toast.error('Failed to update school contacts')
+    } finally {
+      setIsSavingContacts(false)
+    }
+  }
 
   // App Updates State
   const [isAppUpdateModalOpen, setIsAppUpdateModalOpen] = useState(false)
@@ -131,6 +180,116 @@ const SystemSettings = () => {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* School Key Contacts */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <UserGroupIcon className="w-4 h-4 text-emerald-600" />
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">School Key Contacts</h3>
+              <p className="text-xs text-gray-500">Manage contact information for key school officials (Headmaster, SITC, PTA President)</p>
+            </div>
+          </div>
+        </div>
+        <form onSubmit={handleSaveContacts} className="p-4 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Headmaster */}
+            <div className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-lg space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-800">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                Headmaster Details
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={contactsData.headmasterName}
+                  onChange={(e) => setContactsData({ ...contactsData, headmasterName: e.target.value })}
+                  placeholder="e.g. Muhammed Ali"
+                  className="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-md focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  value={contactsData.headmasterPhone}
+                  onChange={(e) => setContactsData({ ...contactsData, headmasterPhone: e.target.value })}
+                  placeholder="e.g. 9876543210"
+                  className="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-md focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            {/* SITC */}
+            <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-lg space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-800">
+                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                SITC (System In-Charge) Details
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={contactsData.sitcName}
+                  onChange={(e) => setContactsData({ ...contactsData, sitcName: e.target.value })}
+                  placeholder="e.g. Shabeed P"
+                  className="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  value={contactsData.sitcPhone}
+                  onChange={(e) => setContactsData({ ...contactsData, sitcPhone: e.target.value })}
+                  placeholder="e.g. 9645687383"
+                  className="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* PTA President */}
+            <div className="p-3 bg-purple-50/50 border border-purple-100 rounded-lg space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-800">
+                <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                PTA President Details
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={contactsData.ptaPresidentName}
+                  onChange={(e) => setContactsData({ ...contactsData, ptaPresidentName: e.target.value })}
+                  placeholder="e.g. Abdul Rahman"
+                  className="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-md focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  value={contactsData.ptaPresidentPhone}
+                  onChange={(e) => setContactsData({ ...contactsData, ptaPresidentPhone: e.target.value })}
+                  placeholder="e.g. 9447123456"
+                  className="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-md focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={isSavingContacts}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-sm"
+            >
+              <span>{isSavingContacts ? 'Saving...' : 'Save School Contacts'}</span>
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* Grading System */}

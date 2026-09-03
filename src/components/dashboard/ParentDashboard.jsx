@@ -22,6 +22,7 @@ import { fetchParentDashboard } from '../../store/slices/dashboardSlice'
 import { fetchMyChildren, connectStudent, fetchMyParentProfile } from '../../store/slices/parentSlice'
 import useSocket from '../../hooks/useSocket'
 import LoadingSpinner from '../common/LoadingSpinner'
+import SchoolContactsWidget from '../common/SchoolContactsWidget'
 import toast from 'react-hot-toast'
 
 const ParentDashboard = () => {
@@ -257,6 +258,9 @@ const ParentDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* School Key Contacts Widget */}
+      <SchoolContactsWidget />
 
       {/* Quick Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
