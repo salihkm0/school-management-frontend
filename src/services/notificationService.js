@@ -59,6 +59,11 @@ const notificationService = {
     return response.data
   },
 
+  getClassParents: async (classId) => {
+    const response = await api.get(`/users/parents/class/${classId}`)
+    return response.data
+  },
+
   sendBulk: async (userIds, title, message, type = 'info', data = {}) => {
     const response = await api.post('/notifications/bulk', {
       userIds,
