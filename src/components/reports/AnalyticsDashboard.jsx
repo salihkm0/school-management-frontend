@@ -345,11 +345,19 @@ const AnalyticsDashboard = () => {
               className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-gray-50 hover:bg-white transition-colors"
             >
               {!isStaff && <option value="">All Classes</option>}
-              {availableClasses.map(cls => (
-                <option key={cls._id || cls.id} value={cls._id || cls.id}>
-                  {cls.displayName || cls.name || `${cls.className || ''} ${cls.section || ''}`}
-                </option>
-              ))}
+              {availableClasses.map(cls => {
+                const baseName = cls.name || cls.className || '';
+                const section = cls.section || '';
+                let label = cls.displayName || baseName;
+                if (section && !label.toLowerCase().includes(section.toLowerCase())) {
+                  label = `${label}-${section}`;
+                }
+                return (
+                  <option key={cls._id || cls.id} value={cls._id || cls.id}>
+                    {label}
+                  </option>
+                );
+              })}
             </select>
           </div>
           
