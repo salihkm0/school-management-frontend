@@ -450,6 +450,40 @@ const MarksEntryTable = () => {
       return;
     }
 
+    // Check if any non-absent student has TE mark equal to 0 or missing
+    const zeroTEMarkEntries = [];
+    for (const subj of draftAllowedSubjects) {
+      const sKey = subj.examSubjectId?.toString() || subj.subjectId?.toString();
+      for (const student of students) {
+        const sid = student.studentId?.toString();
+        const tm = tempMarks[sid]?.[sKey];
+        const subjObj = (student.subjects || []).find(
+          (s) => s.examSubjectId?.toString() === sKey || s.subjectId?.toString() === sKey
+        );
+
+        const isAbsent = tm ? tm.isAbsent === true : (subjObj?.isAbsent === true);
+        const theoryScoreVal = tm ? tm.theoryScore : (subjObj?.theoryScore ?? "");
+        const tNum = theoryScoreVal === "" || theoryScoreVal === null || theoryScoreVal === undefined ? 0 : Number(theoryScoreVal);
+
+        if (!isAbsent && (tNum === 0 || isNaN(tNum))) {
+          zeroTEMarkEntries.push({
+            studentName: student.studentName || student.name || "Student",
+            rollNumber: student.rollNumber || "-",
+            subjectName: subj.displayName || subj.subjectName || "Subject",
+          });
+        }
+      }
+    }
+
+    if (zeroTEMarkEntries.length > 0) {
+      const first = zeroTEMarkEntries[0];
+      toast.error(
+        `Cannot submit for review: ${first.studentName} (Roll ${first.rollNumber}) has 0 TE marks for ${first.subjectName}. Please enter valid marks or mark as Absent.`,
+        { duration: 6000 }
+      );
+      return;
+    }
+
     setSubmittingSubjects(draftAllowedSubjects);
     setShowSubmitModal(true);
   };
