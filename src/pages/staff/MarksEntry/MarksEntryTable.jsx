@@ -554,9 +554,9 @@ const MarksEntryTable = () => {
               {user?.role === 'admin'
                 ? "Admin – Enter marks for any class and subject"
                 : isClassTeacher
-                ? "Class Teacher – Enter marks for your subject(s)"
+                ? "Class Teacher – Enter marks and submit class for review when complete"
                 : hasEditPermission
-                ? "Subject Teacher – Enter marks for your assigned subject(s)"
+                ? "Subject Teacher – Enter & Save Draft marks for assigned subject(s). Class Teacher submits class for review."
                 : "View Only"}
             </p>
           </div>
@@ -651,7 +651,7 @@ const MarksEntryTable = () => {
                       {isSubmitting ? "Saving…" : "Save Draft"}
                     </button>
                   )}
-                  {permissions?.canSubmit && (
+                  {permissions?.canSubmit ? (
                     <button
                       onClick={handleSubmitForReview}
                       disabled={isSubmitting}
@@ -661,6 +661,10 @@ const MarksEntryTable = () => {
                       <PaperAirplaneIcon className="w-3.5 h-3.5" />
                       Submit for Review
                     </button>
+                  ) : !isClassTeacher && !isAdmin && hasEditPermission && (
+                    <span className="text-[11px] text-gray-500 bg-gray-100 px-2 py-1.5 rounded-lg font-medium" title="Class Teacher submits overall marks for review">
+                      Class Teacher Submits
+                    </span>
                   )}
                 </div>
               </div>
