@@ -30,8 +30,7 @@ const actionsByRole = {
     { label: 'Mark Entry', icon: ClipboardDocumentListIcon, path: '/staff/marks-entry', color: 'bg-purple-500' },
     { label: 'Class Marks Overview', icon: TableCellsIcon, path: '/staff/class-marks', color: 'bg-emerald-500' },
     { label: 'Exams', icon: DocumentPlusIcon, path: '/staff/exams', color: 'bg-blue-500' },
-    { label: 'Reports & Analytics', icon: ChartBarIcon, path: '/reports', color: 'bg-rose-500' },
-    { label: 'PDF Reports', icon: DocumentTextIcon, path: '/pdf-reports', color: 'bg-indigo-500' },
+    { label: 'Analytics', icon: ChartBarIcon, path: '/reports', color: 'bg-rose-500' },
   ],
   parent: [
     { label: 'View Progress', icon: ChartBarIcon, path: '/reports/child', color: 'bg-emerald-500' },

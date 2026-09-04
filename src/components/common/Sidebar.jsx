@@ -40,13 +40,14 @@ const menuItems = [
   { path: '/exams', name: 'Exams', icon: ClipboardDocumentListIcon, roles: ['admin'] },
   { path: '/attendance', name: 'Attendance', icon: CalendarIcon, roles: ['admin'] },
   { path: '/duties', name: 'Duties', icon: CalendarIcon, roles: ['admin'] },
-  { path: '/reports', name: 'Reports', icon: ChartBarIcon, roles: ['admin', 'staff'] },
-  { path: '/pdf-reports', name: 'PDF Reports', icon: DocumentTextIcon, roles: ['admin', 'staff'] },
+  { path: '/reports', name: 'Reports', icon: ChartBarIcon, roles: ['admin'] },
+  { path: '/pdf-reports', name: 'PDF Reports', icon: DocumentTextIcon, roles: ['admin'] },
   { path: '/historical-records', name: 'Historical Records', icon: ArchiveBoxIcon, roles: ['admin'] },
   { path: '/admin/marks-entry', name: 'Mark Entry', icon: ClipboardDocumentListIcon, roles: ['admin'] },
   { path: '/admin/class-marks', name: 'Class Marks', icon: TableCellsIcon, roles: ['admin'] },
 
   // Staff-specific routes
+  { path: '/reports', name: 'Analytics', icon: ChartBarIcon, roles: ['staff'] },
   { path: '/staff/my-classes', name: 'My Classes', icon: AcademicCapIcon, roles: ['staff'] },
   { path: '/staff/my-duties', name: 'My Duties', icon: ClipboardDocumentListIcon, roles: ['staff'] },
   { path: '/staff/exams', name: 'Exams', icon: ClipboardDocumentListIcon, roles: ['staff'] },
