@@ -223,7 +223,7 @@ const MyClassesPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50/50 to-white">
       {/* Header */}
-      <div className="border-b border-gray-100 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+      <div className="border-b border-gray-100 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -350,68 +350,101 @@ const MyClassesPage = () => {
           </div>
         )}
 
-        {/* Students Table */}
+        {/* Students List / Table */}
         {selectedClass && !studentsLoading && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead className="bg-gray-50/80 border-b border-gray-100">
-                  <tr>
-                    <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">#</th>
-                    <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Student Name</th>
-                    <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Roll No</th>
-                    <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Admission No</th>
-                    <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Parent Contact</th>
-                    <th className="px-5 py-3.5 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-50">
-                  {currentStudents.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="px-5 py-12 text-center">
-                        <BookOpen className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                        <p className="text-gray-500 text-sm">
-                          {searchTerm ? 'No students found matching your search.' : 'No students enrolled in this class.'}
-                        </p>
-                      </td>
-                    </tr>
-                  ) : (
-                    currentStudents.map((student, index) => (
-                      <tr key={student._id} className="hover:bg-emerald-50/30 transition-colors">
-                        <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {indexOfFirstItem + index + 1}
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{student.fullName}</div>
-                          <div className="text-xs text-gray-500 mt-0.5">{student.studentCode}</div>
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200">
-                            {student.rollNumber || '-'}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {student.admissionNo || '-'}
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-700">{student.parentName || '-'}</div>
-                          <div className="text-xs text-gray-500 mt-0.5">{student.parentPhone || student.parentEmail || '-'}</div>
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap text-center">
-                          <button
-                            onClick={() => handleEditStudent(student)}
-                            className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                            title="Edit Student"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                        </td>
+            {currentStudents.length === 0 ? (
+              <div className="p-8 text-center">
+                <BookOpen className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 text-sm">
+                  {searchTerm ? 'No students found matching your search.' : 'No students enrolled in this class.'}
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Mobile View Card List */}
+                <div className="block sm:hidden divide-y divide-gray-100">
+                  {currentStudents.map((student, index) => (
+                    <div key={student._id} className="p-3.5 flex items-center justify-between hover:bg-emerald-50/20 transition-colors">
+                      <div className="flex items-center gap-3 min-w-0 pr-2">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 font-bold text-xs flex items-center justify-center shrink-0">
+                          {student.rollNumber || (indexOfFirstItem + index + 1)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{student.fullName}</p>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-gray-500 mt-0.5">
+                            <span>Code: {student.studentCode}</span>
+                            {student.admissionNo && <span>• Adm: {student.admissionNo}</span>}
+                          </div>
+                          {(student.parentName || student.parentPhone) && (
+                            <p className="text-xs text-gray-400 mt-0.5 truncate">
+                              Parent: {student.parentName || 'N/A'} {student.parentPhone ? `(${student.parentPhone})` : ''}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleEditStudent(student)}
+                        className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors shrink-0"
+                        title="Edit Student"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop View Table */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead className="bg-gray-50/80 border-b border-gray-100">
+                      <tr>
+                        <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">#</th>
+                        <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Student Name</th>
+                        <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Roll No</th>
+                        <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Admission No</th>
+                        <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Parent Contact</th>
+                        <th className="px-5 py-3.5 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-50">
+                      {currentStudents.map((student, index) => (
+                        <tr key={student._id} className="hover:bg-emerald-50/30 transition-colors">
+                          <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {indexOfFirstItem + index + 1}
+                          </td>
+                          <td className="px-5 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{student.fullName}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{student.studentCode}</div>
+                          </td>
+                          <td className="px-5 py-4 whitespace-nowrap">
+                            <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200">
+                              {student.rollNumber || '-'}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {student.admissionNo || '-'}
+                          </td>
+                          <td className="px-5 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-700">{student.parentName || '-'}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{student.parentPhone || student.parentEmail || '-'}</div>
+                          </td>
+                          <td className="px-5 py-4 whitespace-nowrap text-center">
+                            <button
+                              onClick={() => handleEditStudent(student)}
+                              className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                              title="Edit Student"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
 
             {/* Pagination */}
             {totalPages > 1 && (

@@ -544,23 +544,23 @@ const ClassMarksOverview = () => {
                 )}
 
             {/* Controls bar */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 mb-4 flex flex-wrap gap-3 items-center justify-between">
-              <div className="flex items-center gap-2">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 sm:px-4 sm:py-3 mb-4 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
+              <div className="flex items-center justify-between sm:justify-start gap-2">
                 <p className="text-sm font-semibold text-gray-700">
                   {className} — <span className="text-emerald-600">{examName}</span>
                 </p>
                 <span className="text-xs text-gray-400">({filtered.length} students)</span>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                 {/* Search */}
-                <div className="relative">
+                <div className="relative flex-1 sm:flex-none min-w-[130px]">
                   <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                   <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search student…"
-                    className="pl-8 pr-6 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 w-36 sm:w-48"
+                    className="pl-8 pr-6 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full sm:w-48"
                   />
                   {search && (
                     <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -570,8 +570,8 @@ const ClassMarksOverview = () => {
                 </div>
 
                 {/* Sort */}
-                <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-1.5">
-                  <ChevronUpDownIcon className="w-3.5 h-3.5 text-gray-400" />
+                <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-1.5 bg-white">
+                  <ChevronUpDownIcon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
@@ -585,16 +585,18 @@ const ClassMarksOverview = () => {
                 </div>
 
                 {/* View toggle */}
-                <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                <div className="flex rounded-lg border border-gray-200 overflow-hidden shrink-0">
                   <button
                     onClick={() => setView('table')}
                     className={`p-2 transition-colors ${view === 'table' ? 'bg-emerald-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                    title="Table View"
                   >
                     <TableCellsIcon className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setView('card')}
                     className={`p-2 transition-colors ${view === 'card' ? 'bg-emerald-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                    title="Card View"
                   >
                     <Squares2X2Icon className="w-4 h-4" />
                   </button>
