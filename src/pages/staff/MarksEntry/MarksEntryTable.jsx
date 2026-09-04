@@ -605,7 +605,7 @@ const MarksEntryTable = () => {
               {/* Search + Save bar */}
               <div className="px-4 py-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
-                  <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-gray-900 flex flex-wrap items-center gap-2">
                     <BookOpenIcon className="w-4 h-4 text-emerald-600" />
                     Marks Entry Grid
                     {!hasEditPermission && (
@@ -613,9 +613,15 @@ const MarksEntryTable = () => {
                         <LockClosedIcon className="w-3 h-3" /> View Only
                       </span>
                     )}
+                    {permissions?.classStatus && permissions.classStatus !== 'draft' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        <LockClosedIcon className="w-3 h-3 text-amber-600" /> 
+                        {permissions.classStatus === 'submitted' ? 'Submitted for Review' : permissions.classStatus === 'reviewed' ? 'Reviewed by Admin' : permissions.classStatus}
+                      </span>
+                    )}
                   </h2>
                 </div>
-                <div className="flex gap-2 items-center">
+                <div className="flex gap-2 items-center flex-wrap">
                   <div className="relative">
                     <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                     <input
@@ -623,7 +629,7 @@ const MarksEntryTable = () => {
                       placeholder="Search student…"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8 pr-7 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 w-40 sm:w-52"
+                      className="pl-8 pr-7 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 w-40 sm:w-48"
                     />
                     {searchTerm && (
                       <button
@@ -638,10 +644,22 @@ const MarksEntryTable = () => {
                     <button
                       onClick={handleSave}
                       disabled={isSubmitting || hasValidationErrors}
-                      className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors whitespace-nowrap shadow-sm"
+                      className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors whitespace-nowrap shadow-sm"
+                      title="Save marks in draft mode"
                     >
                       <CheckIcon className="w-3.5 h-3.5" />
-                      {isSubmitting ? "Saving…" : "Save Marks"}
+                      {isSubmitting ? "Saving…" : "Save Draft"}
+                    </button>
+                  )}
+                  {permissions?.canSubmit && (
+                    <button
+                      onClick={handleSubmitForReview}
+                      disabled={isSubmitting}
+                      className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors whitespace-nowrap shadow-sm"
+                      title="Submit class marks to admin for review"
+                    >
+                      <PaperAirplaneIcon className="w-3.5 h-3.5" />
+                      Submit for Review
                     </button>
                   )}
                 </div>
@@ -901,28 +919,33 @@ const MarksEntryTable = () => {
             </div>
 
             {/* ── Sticky Save Footer ── */}
-            {hasEditPermission && filteredStudents.length > 0 && (
-              <div className="sticky bottom-3 mt-4 flex gap-2 z-30">
+            <div className="sticky bottom-3 mt-4 flex flex-wrap gap-2 z-30">
+              {hasEditPermission && filteredStudents.length > 0 && (
                 <button
                   onClick={handleSave}
                   disabled={isSubmitting || hasValidationErrors}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 shadow-lg transition-all active:scale-95"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 shadow-lg transition-all active:scale-95 min-w-[160px]"
                 >
                   <CheckIcon className="w-4 h-4" />
-                  {isSubmitting ? "Saving…" : "Save All Marks"}
+                  {isSubmitting ? "Saving…" : "Save Draft"}
                 </button>
-                {permissions?.canSubmit && (
-                  <button
-                    onClick={handleSubmitForReview}
-                    disabled={isSubmitting}
-                    className="flex items-center gap-2 px-4 py-3 text-sm font-bold bg-amber-500 text-white rounded-xl hover:bg-amber-600 disabled:opacity-50 shadow-lg transition-all active:scale-95"
-                  >
-                    <PaperAirplaneIcon className="w-4 h-4" />
-                    <span className="hidden sm:inline">Submit for Review</span>
-                  </button>
-                )}
-              </div>
-            )}
+              )}
+              {permissions?.canSubmit ? (
+                <button
+                  onClick={handleSubmitForReview}
+                  disabled={isSubmitting}
+                  className="flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold bg-amber-500 text-white rounded-xl hover:bg-amber-600 disabled:opacity-50 shadow-lg transition-all active:scale-95 whitespace-nowrap"
+                >
+                  <PaperAirplaneIcon className="w-4 h-4" />
+                  <span>Submit for Review</span>
+                </button>
+              ) : permissions?.classStatus === 'submitted' || permissions?.classStatus === 'reviewed' ? (
+                <div className="flex items-center justify-center gap-2 px-4 py-3 text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 rounded-xl shadow-sm whitespace-nowrap">
+                  <CheckBadgeIcon className="w-4 h-4 text-amber-600" />
+                  <span>Submitted for Review ({permissions.classStatus})</span>
+                </div>
+              ) : null}
+            </div>
 
             {/* ── No Edit Permission State ── */}
             {!hasEditPermission && examSubjects.length > 0 && !isLoading && (

@@ -770,28 +770,33 @@ const MarksEntry = () => {
             </div>
 
             {/* ── Sticky Save Footer ── */}
-            {hasEditPermission && filteredStudents.length > 0 && (
-              <div className="sticky bottom-3 mt-4 flex gap-2 z-30">
+            <div className="sticky bottom-3 mt-4 flex flex-wrap gap-2 z-30">
+              {hasEditPermission && filteredStudents.length > 0 && (
                 <button
                   onClick={handleSave}
                   disabled={isSubmitting}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 shadow-lg transition-all active:scale-95"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 shadow-lg transition-all active:scale-95 min-w-[160px]"
                 >
                   <CheckIcon className="w-4 h-4" />
-                  {isSubmitting ? "Saving…" : "Save All Marks"}
+                  {isSubmitting ? "Saving…" : "Save Draft"}
                 </button>
-                {permissions?.canSubmit && (
-                  <button
-                    onClick={handleSubmitForReview}
-                    disabled={isSubmitting}
-                    className="flex items-center gap-2 px-4 py-3 text-sm font-bold bg-amber-500 text-white rounded-xl hover:bg-amber-600 disabled:opacity-50 shadow-lg transition-all active:scale-95"
-                  >
-                    <PaperAirplaneIcon className="w-4 h-4" />
-                    <span className="hidden sm:inline">Submit for Review</span>
-                  </button>
-                )}
-              </div>
-            )}
+              )}
+              {permissions?.canSubmit ? (
+                <button
+                  onClick={handleSubmitForReview}
+                  disabled={isSubmitting}
+                  className="flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold bg-amber-500 text-white rounded-xl hover:bg-amber-600 disabled:opacity-50 shadow-lg transition-all active:scale-95 whitespace-nowrap"
+                >
+                  <PaperAirplaneIcon className="w-4 h-4" />
+                  <span>Submit for Review</span>
+                </button>
+              ) : permissions?.classStatus === 'submitted' || permissions?.classStatus === 'reviewed' ? (
+                <div className="flex items-center justify-center gap-2 px-4 py-3 text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 rounded-xl shadow-sm whitespace-nowrap">
+                  <CheckCircleIcon className="w-4 h-4 text-amber-600" />
+                  <span>Submitted for Review ({permissions.classStatus})</span>
+                </div>
+              ) : null}
+            </div>
 
             {/* ── No Edit Permission State ── */}
             {!hasEditPermission && examSubjects.length > 0 && !isLoading && (
