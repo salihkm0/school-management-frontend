@@ -125,10 +125,11 @@ const MarksEntryTable = () => {
   const [tempMarks, setTempMarks] = useState({});
   const [currentAcademicYear, setCurrentAcademicYear] = useState(null);
 
-  // ── UI state ──
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [submittingSubjects, setSubmittingSubjects] = useState([]);
 
   // ── Dirty tracking: only send modified students on save ──
   const dirtyStudents = useRef(new Set());
@@ -436,7 +437,7 @@ const MarksEntryTable = () => {
     }
   };
 
-  const handleSubmitForReview = async () => {
+  const handleOpenSubmitModal = () => {
     if (!examId || !classId) return;
     if (dirtyStudents.current.size > 0) {
       toast.error("Please save your changes first");
@@ -449,12 +450,16 @@ const MarksEntryTable = () => {
       return;
     }
 
-    const subjectNames = draftAllowedSubjects.map((s) => s.displayName || s.subjectName).join(", ");
-    if (!window.confirm(`Submit marks for review for subject(s): ${subjectNames}? They will be locked for editing.`)) return;
+    setSubmittingSubjects(draftAllowedSubjects);
+    setShowSubmitModal(true);
+  };
 
+  const handleConfirmSubmit = async () => {
+    if (submittingSubjects.length === 0) return;
     setIsSubmitting(true);
+    setShowSubmitModal(false);
     try {
-      const subjectIds = draftAllowedSubjects.map((s) => s.examSubjectId || s.subjectId);
+      const subjectIds = submittingSubjects.map((s) => s.examSubjectId || s.subjectId);
       await submitMarksForReview(examId, classId, subjectIds.length === 1 ? subjectIds[0] : subjectIds);
       toast.success("Subject marks submitted for review successfully");
       await loadData();
@@ -941,7 +946,7 @@ const MarksEntryTable = () => {
               )}
               {permissions?.canSubmit ? (
                 <button
-                  onClick={handleSubmitForReview}
+                  onClick={handleOpenSubmitModal}
                   disabled={isSubmitting}
                   className="flex items-center justify-center gap-1.5 py-2.5 px-4 text-xs sm:text-sm font-bold bg-amber-500 text-white rounded-xl hover:bg-amber-600 disabled:opacity-50 shadow-sm transition-all active:scale-95 whitespace-nowrap"
                 >
@@ -969,6 +974,76 @@ const MarksEntryTable = () => {
           </>
         )}
 
+
+      {/* ── Warning Confirmation Modal ── */}
+      {showSubmitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 transform transition-all scale-100">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="p-3 bg-amber-100 text-amber-600 rounded-2xl flex-shrink-0">
+                <ExclamationTriangleIcon className="w-7 h-7" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Submit Marks for Review?</h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  You are about to submit marks for the following subject(s):
+                </p>
+              </div>
+            </div>
+
+            {/* Subject list badges */}
+            <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3.5 mb-5 space-y-2">
+              <div className="flex flex-wrap gap-1.5">
+                {submittingSubjects.map((s) => (
+                  <span
+                    key={s.examSubjectId || s.subjectId}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-white text-amber-900 border border-amber-200 shadow-2xs"
+                  >
+                    <BookOpenIcon className="w-3.5 h-3.5 text-amber-600" />
+                    {s.displayName || s.subjectName}
+                  </span>
+                ))}
+              </div>
+              <ul className="text-xs text-amber-800 space-y-1.5 pt-2 border-t border-amber-200/60">
+                <li className="flex items-start gap-1.5">
+                  <LockClosedIcon className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <span>Marks will be <strong>locked for editing</strong> by staff after submission.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <PaperAirplaneIcon className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <span>Status will change to <strong>Submitted</strong> for admin review.</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowSubmitModal(false)}
+                disabled={isSubmitting}
+                className="px-4 py-2.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSubmit}
+                disabled={isSubmitting}
+                className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  "Submitting…"
+                ) : (
+                  <>
+                    <PaperAirplaneIcon className="w-4 h-4" />
+                    <span>Submit Marks</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       </div>
     </div>
