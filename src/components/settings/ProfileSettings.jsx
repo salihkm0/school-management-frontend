@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useForm } from 'react-hook-form'
 import ChangePassword from '../auth/ChangePassword'
+import SchoolContactsWidget from '../common/SchoolContactsWidget'
 import { updateProfile } from '../../store/slices/authSlice'
 import { UserCircleIcon, EnvelopeIcon, PhoneIcon, CalendarIcon, ShieldCheckIcon, CheckCircleIcon, PencilSquareIcon, XMarkIcon, CheckIcon } from '@heroicons/react/24/outline'
 
@@ -188,6 +189,9 @@ const ProfileSettings = () => {
         {/* Change Password Card */}
         <ChangePassword />
       </div>
+
+      {/* School Key Contacts */}
+      <SchoolContactsWidget />
       
       {/* Info Note for non-admin */}
       {userRole !== 'admin' && (
