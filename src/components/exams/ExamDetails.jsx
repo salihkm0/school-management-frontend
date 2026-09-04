@@ -58,14 +58,15 @@ const ExamDetails = () => {
     }
   }
 
-  const handleRevertToDraft = async (classId, className) => {
-    if (!window.confirm(`Are you sure you want to set marks status for ${className || 'this class'} back to Draft? Teachers will be able to edit marks again.`)) {
+  const handleRevertToDraft = async (classId, className, subjectId = null, subjectName = null) => {
+    const targetText = subjectName ? `subject "${subjectName}" in ${className || 'this class'}` : `all subjects in ${className || 'this class'}`
+    if (!window.confirm(`Are you sure you want to set marks status for ${targetText} back to Draft? Teachers will be able to edit marks again.`)) {
       return
     }
     setIsReviewing(true)
     try {
-      await revertMarksToDraft(id, classId)
-      toast.success(`Marks status for ${className || 'class'} reverted to Draft. Editing unlocked!`)
+      await revertMarksToDraft(id, classId, subjectId)
+      toast.success(`Marks status for ${targetText} reverted to Draft. Editing unlocked!`)
       await dispatch(fetchExamById(id))
     } catch (err) {
       console.error('Failed to revert status to draft:', err)
@@ -444,49 +445,94 @@ const ExamDetails = () => {
                     const isReviewed = cs.status === 'reviewed'
                     const isPublished = cs.status === 'published'
                     const isDraft = cs.status === 'draft' || !cs.status
+                    const subjectSubs = cs.subjectSubmissions || classObj?.subjectSubmissions || []
+                    const hasSubmittedSubject = subjectSubs.some(s => s.status !== 'draft')
 
                     return (
-                      <tr key={cs._id || classIdStr} className="hover:bg-gray-50/50">
-                        <td className="px-4 py-3 font-medium text-gray-900">{className}</td>
-                        <td className="px-4 py-3 text-center">
-                          {getStatusBadge(cs.status || 'draft')}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {cs.submittedByName || cs.submittedBy?.name || '-'}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {cs.submittedAt ? new Date(cs.submittedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-right space-x-2">
-                          {isSubmitted && (
-                            <button
-                              onClick={() => handleReviewClass(classIdStr, className)}
-                              disabled={isReviewing}
-                              className="px-2.5 py-1 bg-purple-600 text-white font-medium rounded hover:bg-purple-700 disabled:opacity-50 transition-colors shadow-sm text-xs inline-flex items-center gap-1"
-                            >
-                              <CheckCircleIcon className="w-3.5 h-3.5" />
-                              Mark Reviewed
-                            </button>
-                          )}
-                          {(isSubmitted || isReviewed) && (
-                            <button
-                              onClick={() => handleRevertToDraft(classIdStr, className)}
-                              disabled={isReviewing}
-                              className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-300 font-medium rounded hover:bg-amber-100 disabled:opacity-50 transition-colors text-xs inline-flex items-center gap-1"
-                              title="Set status to Draft so teacher can edit marks"
-                            >
-                              <ArrowPathIcon className="w-3.5 h-3.5" />
-                              Set to Draft (Allow Edit)
-                            </button>
-                          )}
-                          {isDraft && (
-                            <span className="text-gray-400 text-xs italic">Draft (Teachers Can Edit)</span>
-                          )}
-                          {isPublished && (
-                            <span className="text-emerald-600 text-xs font-medium">Published</span>
-                          )}
-                        </td>
-                      </tr>
+                      <React.Fragment key={cs._id || classIdStr}>
+                        <tr className="hover:bg-gray-50/50">
+                          <td className="px-4 py-3 font-medium text-gray-900">{className}</td>
+                          <td className="px-4 py-3 text-center">
+                            {getStatusBadge(cs.status || 'draft')}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">
+                            {cs.submittedByName || cs.submittedBy?.name || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">
+                            {cs.submittedAt ? new Date(cs.submittedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-right space-x-2">
+                            {isSubmitted && (
+                              <button
+                                onClick={() => handleReviewClass(classIdStr, className)}
+                                disabled={isReviewing}
+                                className="px-2.5 py-1 bg-purple-600 text-white font-medium rounded hover:bg-purple-700 disabled:opacity-50 transition-colors shadow-sm text-xs inline-flex items-center gap-1"
+                              >
+                                <CheckCircleIcon className="w-3.5 h-3.5" />
+                                Mark Reviewed
+                              </button>
+                            )}
+                            {(isSubmitted || isReviewed || hasSubmittedSubject) && (
+                              <button
+                                onClick={() => handleRevertToDraft(classIdStr, className)}
+                                disabled={isReviewing}
+                                className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-300 font-medium rounded hover:bg-amber-100 disabled:opacity-50 transition-colors text-xs inline-flex items-center gap-1"
+                                title="Set all subjects in class to Draft"
+                              >
+                                <ArrowPathIcon className="w-3.5 h-3.5" />
+                                Set All to Draft
+                              </button>
+                            )}
+                            {isDraft && !hasSubmittedSubject && (
+                              <span className="text-gray-400 text-xs italic">Draft (Teachers Can Edit)</span>
+                            )}
+                            {isPublished && (
+                              <span className="text-emerald-600 text-xs font-medium">Published</span>
+                            )}
+                          </td>
+                        </tr>
+
+                        {subjectSubs.length > 0 && (
+                          <tr className="bg-gray-50/40 border-b border-gray-100">
+                            <td colSpan={5} className="px-4 py-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-[11px] font-semibold text-gray-500 mr-1">Subject Statuses:</span>
+                                {subjectSubs.map((sub) => {
+                                  const subSubmitted = sub.status === 'submitted' || sub.status === 'reviewed' || sub.status === 'published';
+                                  return (
+                                    <div
+                                      key={sub.subjectId}
+                                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${
+                                        subSubmitted
+                                          ? 'bg-purple-50 text-purple-800 border-purple-200'
+                                          : 'bg-gray-100 text-gray-600 border-gray-200'
+                                      }`}
+                                    >
+                                      <span>{sub.subjectName}:</span>
+                                      <span className={`font-bold ${subSubmitted ? 'text-purple-700' : 'text-gray-500'}`}>
+                                        {sub.status === 'submitted' ? 'Submitted' : sub.status === 'reviewed' ? 'Reviewed' : sub.status === 'published' ? 'Published' : 'Draft'}
+                                      </span>
+                                      {subSubmitted && sub.submittedByName && (
+                                        <span className="text-[10px] text-purple-600">({sub.submittedByName})</span>
+                                      )}
+                                      {subSubmitted && (
+                                        <button
+                                          onClick={() => handleRevertToDraft(classIdStr, className, sub.subjectId, sub.subjectName)}
+                                          disabled={isReviewing}
+                                          className="ml-1 text-[10px] bg-amber-100 hover:bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded border border-amber-300 transition-colors font-semibold"
+                                          title={`Set ${sub.subjectName} to Draft`}
+                                        >
+                                          Set to Draft
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     )
                   })}
                 </tbody>

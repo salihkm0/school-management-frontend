@@ -61,36 +61,40 @@ const getGradeInfo = (obtained, max) => {
 const SubjectProgressCard = ({ subject }) => {
   const pct = subject.percentage ?? 0;
   const done = pct === 100;
+  const isSubmitted = subject.status === "submitted" || subject.status === "reviewed" || subject.status === "published";
   return (
-    <div className="flex-shrink-0 w-44 bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
+    <div className={`flex-shrink-0 w-48 bg-white border ${isSubmitted ? 'border-purple-200 bg-purple-50/20' : 'border-gray-200'} rounded-xl p-3 shadow-sm`}>
       <div className="flex items-start justify-between mb-1 gap-1">
         <p className="text-xs font-medium text-gray-800 leading-tight line-clamp-2">
           {subject.subjectName}
         </p>
-        {done ? (
+        {isSubmitted ? (
+          <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-purple-100 text-purple-700 border border-purple-200 flex-shrink-0">
+            Submitted
+          </span>
+        ) : done ? (
           <CheckBadgeIcon className="w-4 h-4 text-emerald-500 flex-shrink-0" />
         ) : (
           <ClockIcon className="w-4 h-4 text-amber-400 flex-shrink-0" />
         )}
       </div>
-      <div className="text-xs text-gray-500 mb-1.5">
-        {subject.enteredCount}/{subject.totalStudents} students
+      <div className="text-xs text-gray-500 mb-1 flex items-center justify-between">
+        <span>{subject.enteredCount}/{subject.totalStudents} students</span>
+        <span className={`font-semibold ${done ? "text-emerald-600" : "text-amber-500"}`}>{pct}%</span>
       </div>
-      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-1">
         <div
           className={`h-full rounded-full transition-all duration-500 ${
-            done ? "bg-emerald-500" : pct > 0 ? "bg-amber-400" : "bg-gray-300"
+            isSubmitted ? "bg-purple-500" : done ? "bg-emerald-500" : pct > 0 ? "bg-amber-400" : "bg-gray-300"
           }`}
           style={{ width: `${pct}%` }}
         />
       </div>
-      <div
-        className={`text-right text-xs font-semibold mt-0.5 ${
-          done ? "text-emerald-600" : "text-amber-500"
-        }`}
-      >
-        {pct}%
-      </div>
+      {isSubmitted && subject.submittedByName && (
+        <p className="text-[10px] text-purple-600 truncate mt-0.5" title={`Submitted by ${subject.submittedByName}`}>
+          By: {subject.submittedByName}
+        </p>
+      )}
     </div>
   );
 };
@@ -238,20 +242,29 @@ const MarksEntryTable = () => {
   // ─────────────────────────────────────────
   // Permission Helpers
   // ─────────────────────────────────────────
-  // Class Teacher can only edit subjects they are personally assigned to teach
   const canEditSubject = useCallback(
     (examSubjectId) => {
       if (!permissions) return false;
       if (permissions.isAdmin) return true;
+
+      // Check subject-level submission status
+      const subject = examSubjects.find(
+        (s) => s.examSubjectId?.toString() === examSubjectId?.toString() || s.subjectId?.toString() === examSubjectId?.toString()
+      );
+      if (subject && subject.status && subject.status !== 'draft') {
+        return false; // Subject is submitted and locked
+      }
+
       // Check if this subject is in the allowed subjects list
       if (permissions.allowedSubjects && permissions.allowedSubjects.length > 0) {
-        return permissions.allowedSubjects.some(
+        const allowed = permissions.allowedSubjects.find(
           (s) => s.subjectId === examSubjectId || s.subjectId?.toString() === examSubjectId?.toString()
         );
+        return allowed ? allowed.canEdit !== false : false;
       }
       return false;
     },
-    [permissions]
+    [permissions, examSubjects]
   );
 
   const isClassTeacher = permissions?.isClassTeacher === true;
@@ -429,12 +442,21 @@ const MarksEntryTable = () => {
       toast.error("Please save your changes first");
       return;
     }
-    if (!window.confirm("Submit marks for review? They will be locked for editing.")) return;
+
+    const draftAllowedSubjects = examSubjects.filter((s) => canEditSubject(s.examSubjectId));
+    if (draftAllowedSubjects.length === 0) {
+      toast.error("No editable draft subjects available to submit");
+      return;
+    }
+
+    const subjectNames = draftAllowedSubjects.map((s) => s.displayName || s.subjectName).join(", ");
+    if (!window.confirm(`Submit marks for review for subject(s): ${subjectNames}? They will be locked for editing.`)) return;
 
     setIsSubmitting(true);
     try {
-      await submitMarksForReview(examId, classId);
-      toast.success("Marks submitted for review successfully");
+      const subjectIds = draftAllowedSubjects.map((s) => s.examSubjectId || s.subjectId);
+      await submitMarksForReview(examId, classId, subjectIds.length === 1 ? subjectIds[0] : subjectIds);
+      toast.success("Subject marks submitted for review successfully");
       await loadData();
     } catch (e) {
       console.error("Failed to submit:", e);
