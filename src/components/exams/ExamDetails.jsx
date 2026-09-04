@@ -22,9 +22,10 @@ import {
   Cog6ToothIcon,
   EyeIcon,
   CheckCircleIcon,
-  XCircleIcon
+  XCircleIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline'
-import { reviewMarks } from '../../services/markService'
+import { reviewMarks, revertMarksToDraft } from '../../services/markService'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
 
@@ -52,6 +53,23 @@ const ExamDetails = () => {
     } catch (err) {
       console.error('Failed to review marks:', err)
       toast.error(err.response?.data?.message || 'Failed to mark as reviewed')
+    } finally {
+      setIsReviewing(false)
+    }
+  }
+
+  const handleRevertToDraft = async (classId, className) => {
+    if (!window.confirm(`Are you sure you want to set marks status for ${className || 'this class'} back to Draft? Teachers will be able to edit marks again.`)) {
+      return
+    }
+    setIsReviewing(true)
+    try {
+      await revertMarksToDraft(id, classId)
+      toast.success(`Marks status for ${className || 'class'} reverted to Draft. Editing unlocked!`)
+      await dispatch(fetchExamById(id))
+    } catch (err) {
+      console.error('Failed to revert status to draft:', err)
+      toast.error(err.response?.data?.message || 'Failed to set status to draft')
     } finally {
       setIsReviewing(false)
     }
@@ -213,13 +231,13 @@ const ExamDetails = () => {
           </div>
         </div>
         <div className="flex gap-2">
-          {classesSubmitted > classesReviewed && (
+          {totalClasses > 0 && (
             <button 
               onClick={() => setShowReviewModal(true)}
               className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-md transition-colors border border-purple-200 shadow-sm"
             >
               <ClipboardDocumentCheckIcon className="w-4 h-4 text-purple-600" />
-              <span>Review Marks ({classesSubmitted - classesReviewed})</span>
+              <span>Review Marks ({classesSubmitted})</span>
             </button>
           )}
           {currentExam.overallStatus !== 'published' && (
@@ -361,7 +379,7 @@ const ExamDetails = () => {
                 <span className="text-gray-500">Submitted</span>
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-gray-900">{classesSubmitted}/{totalClasses}</span>
-                  {classesSubmitted > classesReviewed && (
+                  {totalClasses > 0 && (
                     <button
                       onClick={() => setShowReviewModal(true)}
                       className="text-[11px] font-semibold text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 px-2 py-0.5 rounded border border-purple-200 transition-colors"
@@ -389,6 +407,90 @@ const ExamDetails = () => {
                   ✓ Ready to publish results
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Class Submissions & Edit Permissions Section */}
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden lg:col-span-3">
+            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <ClipboardDocumentCheckIcon className="w-4 h-4 text-purple-600" />
+                <h2 className="text-sm font-semibold text-gray-900">Class Submission Status & Edit Permissions</h2>
+              </div>
+              <span className="text-xs text-gray-500">
+                Set status to <span className="font-semibold text-amber-700">Draft</span> to unlock mark editing for teachers
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-xs">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50/50">
+                    <th className="px-4 py-2.5 text-left font-semibold text-gray-600">Class</th>
+                    <th className="px-4 py-2.5 text-center font-semibold text-gray-600">Status</th>
+                    <th className="px-4 py-2.5 text-left font-semibold text-gray-600">Submitted By</th>
+                    <th className="px-4 py-2.5 text-left font-semibold text-gray-600">Submitted Date</th>
+                    <th className="px-4 py-2.5 text-right font-semibold text-gray-600">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {((currentExam.classSubmissionStatus && currentExam.classSubmissionStatus.length > 0)
+                    ? currentExam.classSubmissionStatus
+                    : (currentExam.classDetails || []).map(c => ({ classId: c._id || c.classId, status: 'draft' }))
+                  ).map((cs) => {
+                    const classIdStr = (cs.classId?._id || cs.classId || '').toString()
+                    const classObj = (currentExam.classDetails || []).find(c => (c._id || c.classId || c.id)?.toString() === classIdStr)
+                    const className = cs.classDisplayName || classObj?.displayName || `${classObj?.className || ''} ${classObj?.section || ''}`.trim() || cs.className || 'Class'
+                    const isSubmitted = cs.status === 'submitted'
+                    const isReviewed = cs.status === 'reviewed'
+                    const isPublished = cs.status === 'published'
+                    const isDraft = cs.status === 'draft' || !cs.status
+
+                    return (
+                      <tr key={cs._id || classIdStr} className="hover:bg-gray-50/50">
+                        <td className="px-4 py-3 font-medium text-gray-900">{className}</td>
+                        <td className="px-4 py-3 text-center">
+                          {getStatusBadge(cs.status || 'draft')}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {cs.submittedByName || cs.submittedBy?.name || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {cs.submittedAt ? new Date(cs.submittedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right space-x-2">
+                          {isSubmitted && (
+                            <button
+                              onClick={() => handleReviewClass(classIdStr, className)}
+                              disabled={isReviewing}
+                              className="px-2.5 py-1 bg-purple-600 text-white font-medium rounded hover:bg-purple-700 disabled:opacity-50 transition-colors shadow-sm text-xs inline-flex items-center gap-1"
+                            >
+                              <CheckCircleIcon className="w-3.5 h-3.5" />
+                              Mark Reviewed
+                            </button>
+                          )}
+                          {(isSubmitted || isReviewed) && (
+                            <button
+                              onClick={() => handleRevertToDraft(classIdStr, className)}
+                              disabled={isReviewing}
+                              className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-300 font-medium rounded hover:bg-amber-100 disabled:opacity-50 transition-colors text-xs inline-flex items-center gap-1"
+                              title="Set status to Draft so teacher can edit marks"
+                            >
+                              <ArrowPathIcon className="w-3.5 h-3.5" />
+                              Set to Draft (Allow Edit)
+                            </button>
+                          )}
+                          {isDraft && (
+                            <span className="text-gray-400 text-xs italic">Draft (Teachers Can Edit)</span>
+                          )}
+                          {isPublished && (
+                            <span className="text-emerald-600 text-xs font-medium">Published</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -734,33 +836,53 @@ const ExamDetails = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {(currentExam.classSubmissionStatus || []).map((cs) => {
-                      const classObj = (currentExam.classDetails || []).find(c => (c._id || c.id) === (cs.classId?._id || cs.classId))
-                      const className = classObj?.displayName || `${classObj?.className || ''} ${classObj?.section || ''}`.trim() || 'Class'
+                      const classIdStr = (cs.classId?._id || cs.classId || '').toString()
+                      const classObj = (currentExam.classDetails || []).find(c => (c._id || c.classId || c.id)?.toString() === classIdStr)
+                      const className = cs.classDisplayName || classObj?.displayName || `${classObj?.className || ''} ${classObj?.section || ''}`.trim() || cs.className || 'Class'
                       const isSubmitted = cs.status === 'submitted'
-                      const isReviewed = cs.status === 'reviewed' || cs.status === 'published'
+                      const isReviewed = cs.status === 'reviewed'
+                      const isPublished = cs.status === 'published'
 
                       return (
-                        <tr key={cs._id || cs.classId} className="hover:bg-gray-50/50">
-                          <td className="px-4 py-3 font-medium text-gray-900">{className}</td>
+                        <tr key={cs._id || classIdStr} className="hover:bg-gray-50/50">
+                          <td className="px-4 py-3 font-medium text-gray-900">
+                            <div>{className}</div>
+                            {(cs.submittedByName || cs.submittedBy?.name) && (
+                              <div className="text-[10px] text-gray-400 font-normal">Sub: {cs.submittedByName || cs.submittedBy?.name}</div>
+                            )}
+                          </td>
                           <td className="px-4 py-3 text-center">
-                            {getStatusBadge(cs.status)}
+                            {getStatusBadge(cs.status || 'draft')}
                           </td>
                           <td className="px-4 py-3 text-right">
-                            {isSubmitted ? (
-                              <button
-                                onClick={() => handleReviewClass(cs.classId?._id || cs.classId, className)}
-                                disabled={isReviewing}
-                                className="px-3 py-1 bg-purple-600 text-white font-semibold rounded hover:bg-purple-700 disabled:opacity-50 transition-colors shadow-sm text-[11px]"
-                              >
-                                {isReviewing ? "Saving..." : "Mark as Reviewed"}
-                              </button>
-                            ) : isReviewed ? (
-                              <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold">
-                                <CheckCircleIcon className="w-4 h-4" /> Reviewed
-                              </span>
-                            ) : (
-                              <span className="text-gray-400 italic">Not Submitted</span>
-                            )}
+                            <div className="flex items-center justify-end gap-2">
+                              {isSubmitted && (
+                                <button
+                                  onClick={() => handleReviewClass(classIdStr, className)}
+                                  disabled={isReviewing}
+                                  className="px-2.5 py-1 bg-purple-600 text-white font-semibold rounded hover:bg-purple-700 disabled:opacity-50 transition-colors shadow-sm text-[11px]"
+                                >
+                                  {isReviewing ? "Saving..." : "Mark as Reviewed"}
+                                </button>
+                              )}
+                              {(isSubmitted || isReviewed) && (
+                                <button
+                                  onClick={() => handleRevertToDraft(classIdStr, className)}
+                                  disabled={isReviewing}
+                                  className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-300 font-medium rounded hover:bg-amber-100 disabled:opacity-50 transition-colors text-[11px] inline-flex items-center gap-1"
+                                  title="Set status back to Draft so teacher can edit marks"
+                                >
+                                  <ArrowPathIcon className="w-3 h-3 text-amber-600" />
+                                  Set to Draft (Allow Edit)
+                                </button>
+                              )}
+                              {cs.status === 'draft' && (
+                                <span className="text-gray-400 italic text-[11px]">Draft (Editable)</span>
+                              )}
+                              {isPublished && (
+                                <span className="text-emerald-600 font-semibold text-[11px]">Published</span>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       )

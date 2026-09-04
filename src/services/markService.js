@@ -43,6 +43,12 @@ export const reviewMarks = async (examId, classId, reviewData = {}) => {
   return response.data
 }
 
+// Revert marks status to draft (admin)
+export const revertMarksToDraft = async (examId, classId) => {
+  const response = await api.post('/marks/revert-draft', { examId, classId })
+  return response.data
+}
+
 // Get student marksheet (for viewing)
 export const getStudentMarksheet = async (examId, studentId) => {
   const response = await api.get(`/marks/result/${examId}/${studentId}`)
@@ -85,6 +91,7 @@ export default {
   bulkUpdateMarks,
   submitMarksForReview,
   reviewMarks,
+  revertMarksToDraft,
   getStudentMarksheet,
   getClassRankings,
   publishResults,
