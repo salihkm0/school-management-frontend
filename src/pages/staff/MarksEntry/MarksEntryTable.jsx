@@ -510,38 +510,26 @@ const MarksEntryTable = () => {
   // Filtering / Helpers
   // ─────────────────────────────────────────
   const handleKeyDown = (e, studentIdx, subjIdx, fieldType) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" || e.key === "ArrowDown") {
       e.preventDefault();
-      
-      const currentSubject = examSubjects[subjIdx];
-      const hasPrac = false;
-      
-      let nextStudentIdx = studentIdx;
-      let nextSubjIdx = subjIdx;
-      let nextFieldType = "";
-
-      if (fieldType === "ceMarks") {
-        nextFieldType = "theoryScore";
-      } else if (fieldType === "theoryScore") {
-        if (hasPrac) {
-          nextFieldType = "practicalScore";
-        } else {
-          nextStudentIdx = studentIdx + 1;
-          const nextSubj = examSubjects[nextSubjIdx];
-          nextFieldType = nextSubj?.ceEnabled && nextSubj?.ceMaxMarks > 0 ? "ceMarks" : "theoryScore";
-        }
-      } else if (fieldType === "practicalScore") {
-        nextStudentIdx = studentIdx + 1;
-        const nextSubj = examSubjects[nextSubjIdx];
-        nextFieldType = nextSubj?.ceEnabled && nextSubj?.ceMaxMarks > 0 ? "ceMarks" : "theoryScore";
-      }
-
-      if (nextStudentIdx < filteredStudents.length) {
-        const nextInputId = `mark-input-${nextStudentIdx}-${nextSubjIdx}-${nextFieldType}`;
+      for (let nextIdx = studentIdx + 1; nextIdx < filteredStudents.length; nextIdx++) {
+        const nextInputId = `mark-input-${nextIdx}-${subjIdx}-${fieldType}`;
         const nextInput = document.getElementById(nextInputId);
-        if (nextInput) {
+        if (nextInput && !nextInput.disabled) {
           nextInput.focus();
           nextInput.select();
+          break;
+        }
+      }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      for (let prevIdx = studentIdx - 1; prevIdx >= 0; prevIdx--) {
+        const prevInputId = `mark-input-${prevIdx}-${subjIdx}-${fieldType}`;
+        const prevInput = document.getElementById(prevInputId);
+        if (prevInput && !prevInput.disabled) {
+          prevInput.focus();
+          prevInput.select();
+          break;
         }
       }
     }
