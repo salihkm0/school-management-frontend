@@ -322,7 +322,7 @@ const SystemSettings = () => {
           <div>
             <p className="text-sm font-medium text-blue-800">System Information</p>
             <p className="text-xs text-blue-700 mt-1">
-              Version: 2.0.0 | Environment: Production | Last Updated: {new Date().toLocaleDateString()}
+              Version: 2.0.1 | Environment: Production | Last Updated: {new Date().toLocaleDateString()}
             </p>
           </div>
         </div>
