@@ -520,6 +520,29 @@ const ExamDetails = () => {
                     const totalCount = subjectSubs.length;
                     const isExpanded = !!expandedClasses[classIdStr];
 
+                    const submittedTeachers = subjectSubs
+                      .filter(s => (s.status === 'submitted' || s.status === 'reviewed' || s.status === 'published') && (s.submittedByName || s.submittedBy?.name))
+                      .map(s => s.submittedByName || s.submittedBy?.name);
+                    const uniqueSubmittedTeachers = [...new Set(submittedTeachers)];
+
+                    let displaySubmittedBy = '-';
+                    if (cs.submittedByName || cs.submittedBy?.name) {
+                      displaySubmittedBy = cs.submittedByName || cs.submittedBy?.name;
+                    } else if (uniqueSubmittedTeachers.length === 1) {
+                      displaySubmittedBy = uniqueSubmittedTeachers[0];
+                    } else if (uniqueSubmittedTeachers.length > 1) {
+                      displaySubmittedBy = `${uniqueSubmittedTeachers.length} Teachers`;
+                    }
+
+                    const subDates = subjectSubs
+                      .map(s => s.submittedAt || s.updatedAt)
+                      .filter(Boolean)
+                      .map(d => new Date(d).getTime())
+                      .filter(t => !isNaN(t));
+                    const latestSubTime = cs.submittedAt
+                      ? new Date(cs.submittedAt).getTime()
+                      : (subDates.length > 0 ? Math.max(...subDates) : null);
+
                     return (
                       <React.Fragment key={cs._id || classIdStr}>
                         <tr className={`hover:bg-slate-50/70 transition-colors ${isExpanded ? 'bg-slate-50/40' : ''}`}>
@@ -543,10 +566,16 @@ const ExamDetails = () => {
                             {getStatusBadge(cs.status || 'draft')}
                           </td>
                           <td className="px-4 py-3 text-gray-600">
-                            {cs.submittedByName || cs.submittedBy?.name || '-'}
+                            {uniqueSubmittedTeachers.length > 1 && !cs.submittedByName ? (
+                              <span className="cursor-help underline decoration-dotted text-purple-700 font-medium" title={`Submitted by: ${uniqueSubmittedTeachers.join(', ')}`}>
+                                {displaySubmittedBy}
+                              </span>
+                            ) : (
+                              <span>{displaySubmittedBy}</span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-gray-600">
-                            {cs.submittedAt ? new Date(cs.submittedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                            {latestSubTime ? new Date(latestSubTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
                           </td>
                           <td className="px-5 py-3 text-right space-x-2">
                             {isSubmitted && (
@@ -635,21 +664,28 @@ const ExamDetails = () => {
                                         </div>
 
                                         <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-100">
-                                          <span className="text-slate-500 truncate max-w-[120px]" title={subSubmitted && sub.submittedByName ? `By: ${sub.submittedByName}` : 'Teacher'}>
-                                            {subSubmitted && sub.submittedByName ? sub.submittedByName : 'Teacher input'}
-                                          </span>
-                                          {subSubmitted && (
-                                            <button
-                                              onClick={() => handleRevertToDraft(classIdStr, className, sub.subjectId, sub.subjectName)}
-                                              disabled={isReviewing}
-                                              className="text-[11px] text-amber-700 hover:text-amber-800 font-semibold hover:underline inline-flex items-center gap-0.5 cursor-pointer"
-                                              title={`Revert ${sub.subjectName} to Draft`}
-                                            >
-                                              <ArrowPathIcon className="w-3 h-3 text-amber-600" />
-                                              Draft
-                                            </button>
-                                          )}
-                                        </div>
+                                           <div className="flex flex-col truncate max-w-[130px]">
+                                             <span className="text-slate-700 font-medium truncate" title={subSubmitted && (sub.submittedByName || sub.submittedBy?.name) ? `Submitted by: ${sub.submittedByName || sub.submittedBy?.name}` : 'Not submitted yet'}>
+                                               {subSubmitted && (sub.submittedByName || sub.submittedBy?.name) ? (sub.submittedByName || sub.submittedBy?.name) : 'Draft'}
+                                             </span>
+                                             {subSubmitted && (sub.submittedAt || sub.updatedAt) && (
+                                               <span className="text-[10px] text-slate-400">
+                                                 {new Date(sub.submittedAt || sub.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                               </span>
+                                             )}
+                                           </div>
+                                           {subSubmitted && (
+                                             <button
+                                               onClick={() => handleRevertToDraft(classIdStr, className, sub.subjectId, sub.subjectName)}
+                                               disabled={isReviewing}
+                                               className="text-[11px] text-amber-700 hover:text-amber-800 font-semibold hover:underline inline-flex items-center gap-0.5 cursor-pointer shrink-0 ml-1"
+                                               title={`Revert ${sub.subjectName} to Draft`}
+                                             >
+                                               <ArrowPathIcon className="w-3 h-3 text-amber-600" />
+                                               Draft
+                                             </button>
+                                           )}
+                                         </div>
                                       </div>
                                     );
                                   })}
