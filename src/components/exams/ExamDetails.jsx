@@ -17,6 +17,8 @@ import {
   DocumentTextIcon,
   TrophyIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   ClockIcon,
   BuildingOfficeIcon,
   Cog6ToothIcon,
@@ -43,6 +45,43 @@ const ExamDetails = () => {
   const [expandedStudent, setExpandedStudent] = useState(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [isReviewing, setIsReviewing] = useState(false)
+  const [expandedClasses, setExpandedClasses] = useState({})
+
+  const classSubmissionsList = useMemo(() => {
+    if (!currentExam) return []
+    return (currentExam.classSubmissionStatus && currentExam.classSubmissionStatus.length > 0)
+      ? currentExam.classSubmissionStatus
+      : (currentExam.classDetails || []).map(c => ({ classId: c._id || c.classId, status: 'draft' }))
+  }, [currentExam])
+
+  const isAllExpanded = useMemo(() => {
+    if (!classSubmissionsList.length) return false
+    return classSubmissionsList.every(cs => {
+      const classIdStr = (cs.classId?._id || cs.classId || '').toString()
+      return !!expandedClasses[classIdStr]
+    })
+  }, [classSubmissionsList, expandedClasses])
+
+  const toggleClassExpand = (classIdStr) => {
+    setExpandedClasses(prev => ({
+      ...prev,
+      [classIdStr]: !prev[classIdStr]
+    }))
+  }
+
+  const toggleExpandAll = (classList) => {
+    const allExpanded = classList.every(cs => {
+      const classIdStr = (cs.classId?._id || cs.classId || '').toString()
+      return !!expandedClasses[classIdStr]
+    })
+
+    const nextState = {}
+    classList.forEach(cs => {
+      const classIdStr = (cs.classId?._id || cs.classId || '').toString()
+      nextState[classIdStr] = !allExpanded
+    })
+    setExpandedClasses(nextState)
+  }
 
   const handleReviewClass = async (classId, className) => {
     setIsReviewing(true)
@@ -159,14 +198,15 @@ const ExamDetails = () => {
 
   const getStatusBadge = (status) => {
     const config = {
-      draft: { bg: 'bg-gray-100', text: 'text-gray-700', ring: 'ring-gray-600/20', label: 'Draft' },
-      submitted: { bg: 'bg-amber-50', text: 'text-amber-700', ring: 'ring-amber-600/20', label: 'Submitted' },
-      reviewed: { bg: 'bg-blue-50', text: 'text-blue-700', ring: 'ring-blue-600/20', label: 'Reviewed' },
-      published: { bg: 'bg-emerald-50', text: 'text-emerald-700', ring: 'ring-emerald-600/20', label: 'Published' }
+      draft: { bg: 'bg-slate-100', text: 'text-slate-700', dot: 'bg-slate-400', label: 'Draft' },
+      submitted: { bg: 'bg-amber-50', text: 'text-amber-800', dot: 'bg-amber-500', label: 'Submitted' },
+      reviewed: { bg: 'bg-purple-50', text: 'text-purple-800', dot: 'bg-purple-500', label: 'Reviewed' },
+      published: { bg: 'bg-emerald-50', text: 'text-emerald-800', dot: 'bg-emerald-500', label: 'Published' }
     }
-    const { bg, text, ring, label } = config[status] || config.draft
+    const { bg, text, dot, label } = config[status] || config.draft
     return (
-      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${bg} ${text} ring-1 ${ring}`}>
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${bg} ${text} border border-black/5`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${dot}`}></span>
         {label}
       </span>
     )
@@ -412,32 +452,52 @@ const ExamDetails = () => {
           </div>
 
           {/* Class Submissions & Edit Permissions Section */}
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden lg:col-span-3">
-            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <ClipboardDocumentCheckIcon className="w-4 h-4 text-purple-600" />
-                <h2 className="text-sm font-semibold text-gray-900">Class Submission Status & Edit Permissions</h2>
+          <div className="bg-white rounded-xl border border-gray-200/80 shadow-xs overflow-hidden lg:col-span-3">
+            <div className="px-5 py-3.5 bg-slate-50/80 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-purple-50 rounded-lg border border-purple-100">
+                  <ClipboardDocumentCheckIcon className="w-4 h-4 text-purple-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">Class Submission Status & Edit Permissions</h2>
+                  <p className="text-xs text-gray-500">
+                    Set status to <span className="font-semibold text-amber-700">Draft</span> to unlock mark editing for teachers
+                  </p>
+                </div>
               </div>
-              <span className="text-xs text-gray-500">
-                Set status to <span className="font-semibold text-amber-700">Draft</span> to unlock mark editing for teachers
-              </span>
+              
+              {classSubmissionsList.length > 0 && (
+                <button
+                  onClick={() => toggleExpandAll(classSubmissionsList)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+                >
+                  {isAllExpanded ? (
+                    <>
+                      <ChevronUpIcon className="w-3.5 h-3.5 text-slate-500" />
+                      Collapse All Subjects
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDownIcon className="w-3.5 h-3.5 text-slate-500" />
+                      Expand All Subjects
+                    </>
+                  )}
+                </button>
+              )}
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-xs">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50/50">
-                    <th className="px-4 py-2.5 text-left font-semibold text-gray-600">Class</th>
-                    <th className="px-4 py-2.5 text-center font-semibold text-gray-600">Status</th>
-                    <th className="px-4 py-2.5 text-left font-semibold text-gray-600">Submitted By</th>
-                    <th className="px-4 py-2.5 text-left font-semibold text-gray-600">Submitted Date</th>
-                    <th className="px-4 py-2.5 text-right font-semibold text-gray-600">Actions</th>
+                    <th className="px-5 py-3 text-left font-semibold text-gray-600">Class</th>
+                    <th className="px-4 py-3 text-center font-semibold text-gray-600">Status</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Submitted By</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Submitted Date</th>
+                    <th className="px-5 py-3 text-right font-semibold text-gray-600">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {((currentExam.classSubmissionStatus && currentExam.classSubmissionStatus.length > 0)
-                    ? currentExam.classSubmissionStatus
-                    : (currentExam.classDetails || []).map(c => ({ classId: c._id || c.classId, status: 'draft' }))
-                  ).map((cs) => {
+                  {classSubmissionsList.map((cs) => {
                     const classIdStr = (cs.classId?._id || cs.classId || '').toString()
                     const classObj = (currentExam.classDetails || []).find(c => (c._id || c.classId || c.id)?.toString() === classIdStr)
                     const className = cs.classDisplayName || classObj?.displayName || `${classObj?.className || ''} ${classObj?.section || ''}`.trim() || cs.className || 'Class'
@@ -456,11 +516,29 @@ const ExamDetails = () => {
                           submittedByName: cs.submittedByName || cs.submittedBy?.name || null,
                         }));
                     const hasSubmittedSubject = subjectSubs.some(s => s.status !== 'draft');
+                    const submittedCount = subjectSubs.filter(s => s.status === 'submitted' || s.status === 'reviewed' || s.status === 'published').length;
+                    const totalCount = subjectSubs.length;
+                    const isExpanded = !!expandedClasses[classIdStr];
 
                     return (
                       <React.Fragment key={cs._id || classIdStr}>
-                        <tr className="hover:bg-gray-50/50">
-                          <td className="px-4 py-3 font-medium text-gray-900">{className}</td>
+                        <tr className={`hover:bg-slate-50/70 transition-colors ${isExpanded ? 'bg-slate-50/40' : ''}`}>
+                          <td className="px-5 py-3 font-semibold text-gray-900">
+                            <div className="flex items-center gap-2">
+                              <span>{className}</span>
+                              {totalCount > 0 && (
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+                                  submittedCount === totalCount && totalCount > 0
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : submittedCount > 0
+                                    ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                    : 'bg-slate-100 text-slate-600 border-slate-200'
+                                }`}>
+                                  {submittedCount}/{totalCount} Subjects Submitted
+                                </span>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-4 py-3 text-center">
                             {getStatusBadge(cs.status || 'draft')}
                           </td>
@@ -470,12 +548,12 @@ const ExamDetails = () => {
                           <td className="px-4 py-3 text-gray-600">
                             {cs.submittedAt ? new Date(cs.submittedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
                           </td>
-                          <td className="px-4 py-3 text-right space-x-2">
+                          <td className="px-5 py-3 text-right space-x-2">
                             {isSubmitted && (
                               <button
                                 onClick={() => handleReviewClass(classIdStr, className)}
                                 disabled={isReviewing}
-                                className="px-2.5 py-1 bg-purple-600 text-white font-medium rounded hover:bg-purple-700 disabled:opacity-50 transition-colors shadow-sm text-xs inline-flex items-center gap-1"
+                                className="px-2.5 py-1 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors shadow-2xs text-xs inline-flex items-center gap-1 cursor-pointer"
                               >
                                 <CheckCircleIcon className="w-3.5 h-3.5" />
                                 Mark Reviewed
@@ -485,7 +563,7 @@ const ExamDetails = () => {
                               <button
                                 onClick={() => handleRevertToDraft(classIdStr, className)}
                                 disabled={isReviewing}
-                                className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-300 font-medium rounded hover:bg-amber-100 disabled:opacity-50 transition-colors text-xs inline-flex items-center gap-1"
+                                className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-300 font-medium rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-colors text-xs inline-flex items-center gap-1 cursor-pointer"
                                 title="Set all subjects in class to Draft"
                               >
                                 <ArrowPathIcon className="w-3.5 h-3.5" />
@@ -498,57 +576,84 @@ const ExamDetails = () => {
                             {isPublished && (
                               <span className="text-emerald-600 text-xs font-medium">Published</span>
                             )}
+                            {subjectSubs.length > 0 && (
+                              <button
+                                onClick={() => toggleClassExpand(classIdStr)}
+                                className="ml-2 px-2 py-1 text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 font-medium rounded-lg transition-colors text-xs inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <span>Subjects</span>
+                                {isExpanded ? (
+                                  <ChevronUpIcon className="w-3.5 h-3.5 text-slate-500" />
+                                ) : (
+                                  <ChevronDownIcon className="w-3.5 h-3.5 text-slate-500" />
+                                )}
+                              </button>
+                            )}
                           </td>
                         </tr>
 
-                        {subjectSubs.length > 0 && (
-                          <tr className="bg-slate-50/80 border-b border-gray-200/80">
-                            <td colSpan={5} className="px-4 py-2.5">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-xs font-bold text-gray-700 mr-1 flex items-center gap-1">
-                                  <BookOpenIcon className="w-3.5 h-3.5 text-purple-600" />
-                                  Subject Submissions:
-                                </span>
-                                {subjectSubs.map((sub) => {
-                                  const subSubmitted = sub.status === 'submitted' || sub.status === 'reviewed' || sub.status === 'published';
-                                  return (
-                                    <div
-                                      key={sub.subjectId || sub.subjectName}
-                                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border shadow-2xs transition-all ${
-                                        subSubmitted
-                                          ? 'bg-purple-50/90 text-purple-900 border-purple-200'
-                                          : 'bg-white text-gray-600 border-gray-200'
-                                      }`}
-                                    >
-                                      <span className="font-bold text-gray-800">{sub.subjectName}:</span>
-                                      <span className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${
-                                        sub.status === 'submitted'
-                                          ? 'bg-amber-100 text-amber-800'
-                                          : sub.status === 'reviewed'
-                                          ? 'bg-purple-100 text-purple-800'
-                                          : sub.status === 'published'
-                                          ? 'bg-emerald-100 text-emerald-800'
-                                          : 'bg-gray-100 text-gray-600'
-                                      }`}>
-                                        {sub.status === 'submitted' ? 'Submitted' : sub.status === 'reviewed' ? 'Reviewed' : sub.status === 'published' ? 'Published' : 'Draft'}
-                                      </span>
-                                      {subSubmitted && sub.submittedByName && (
-                                        <span className="text-[11px] font-medium text-purple-700">({sub.submittedByName})</span>
-                                      )}
-                                      {subSubmitted && (
-                                        <button
-                                          onClick={() => handleRevertToDraft(classIdStr, className, sub.subjectId, sub.subjectName)}
-                                          disabled={isReviewing}
-                                          className="ml-1 text-[11px] bg-amber-100 hover:bg-amber-200 text-amber-900 px-2 py-0.5 rounded-lg border border-amber-300 transition-colors font-bold flex items-center gap-1 shadow-2xs"
-                                          title={`Revert ${sub.subjectName} to Draft`}
-                                        >
-                                          <ArrowPathIcon className="w-3 h-3 text-amber-700" />
-                                          Set to Draft
-                                        </button>
-                                      )}
-                                    </div>
-                                  );
-                                })}
+                        {isExpanded && subjectSubs.length > 0 && (
+                          <tr className="bg-slate-50/70 border-b border-slate-200">
+                            <td colSpan={5} className="px-5 py-3.5">
+                              <div className="bg-white rounded-lg p-3.5 border border-slate-200/80 shadow-2xs">
+                                <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+                                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                                    <BookOpenIcon className="w-4 h-4 text-purple-600" />
+                                    Subject Submissions for {className}
+                                  </div>
+                                  <span className="text-xs font-medium text-slate-500">
+                                    {submittedCount} of {totalCount} subjects submitted
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5">
+                                  {subjectSubs.map((sub) => {
+                                    const subSubmitted = sub.status === 'submitted' || sub.status === 'reviewed' || sub.status === 'published';
+                                    return (
+                                      <div
+                                        key={sub.subjectId || sub.subjectName}
+                                        className={`flex flex-col justify-between p-2.5 rounded-lg border transition-all ${
+                                          subSubmitted
+                                            ? 'bg-purple-50/40 border-purple-200 text-purple-950'
+                                            : 'bg-slate-50/50 border-slate-200 text-slate-700'
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                                          <span className="font-semibold text-xs text-slate-900 truncate" title={sub.subjectName}>
+                                            {sub.subjectName}
+                                          </span>
+                                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
+                                            sub.status === 'submitted'
+                                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                              : sub.status === 'reviewed'
+                                              ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                              : sub.status === 'published'
+                                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                              : 'bg-gray-100 text-gray-600 border border-gray-200'
+                                          }`}>
+                                            {sub.status === 'submitted' ? 'Submitted' : sub.status === 'reviewed' ? 'Reviewed' : sub.status === 'published' ? 'Published' : 'Draft'}
+                                          </span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-100">
+                                          <span className="text-slate-500 truncate max-w-[120px]" title={subSubmitted && sub.submittedByName ? `By: ${sub.submittedByName}` : 'Teacher'}>
+                                            {subSubmitted && sub.submittedByName ? sub.submittedByName : 'Teacher input'}
+                                          </span>
+                                          {subSubmitted && (
+                                            <button
+                                              onClick={() => handleRevertToDraft(classIdStr, className, sub.subjectId, sub.subjectName)}
+                                              disabled={isReviewing}
+                                              className="text-[11px] text-amber-700 hover:text-amber-800 font-semibold hover:underline inline-flex items-center gap-0.5 cursor-pointer"
+                                              title={`Revert ${sub.subjectName} to Draft`}
+                                            >
+                                              <ArrowPathIcon className="w-3 h-3 text-amber-600" />
+                                              Draft
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               </div>
                             </td>
                           </tr>
