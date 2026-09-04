@@ -200,7 +200,7 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
         {/* Version Info */}
         {isOpen && (
           <div className="px-4 py-3 border-t border-gray-200">
-            <p className="text-[10px] text-gray-400 text-center">v2.0.0</p>
+            <p className="text-[10px] text-gray-400 text-center">v2.0.1</p>
           </div>
         )}
       </div>

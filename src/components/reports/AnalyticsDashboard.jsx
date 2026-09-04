@@ -18,11 +18,18 @@ import {
 } from '@heroicons/react/24/outline'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
+import { useAdminTeacherClasses } from '../../hooks/useAdminTeacherClasses'
 
 const AnalyticsDashboard = () => {
   const dispatch = useDispatch()
+  const { user } = useSelector((state) => state.auth)
+  const isStaff = user?.role === 'staff'
   const { exams } = useSelector((state) => state.exams)
   const { classes } = useSelector((state) => state.classes)
+  const { myClasses } = useAdminTeacherClasses('all')
+  
+  const availableClasses = isStaff ? myClasses : classes
+
   const [selectedExam, setSelectedExam] = useState('')
   const [selectedClass, setSelectedClass] = useState('')
   const [gradeAnalysis, setGradeAnalysis] = useState(null)
@@ -47,6 +54,13 @@ const AnalyticsDashboard = () => {
     dispatch(fetchExams({ limit: 100 }))
     dispatch(fetchClasses({ limit: 100 }))
   }, [dispatch])
+
+  useEffect(() => {
+    if (isStaff && myClasses.length > 0 && !selectedClass) {
+      const firstClassId = myClasses[0]._id || myClasses[0].id
+      if (firstClassId) setSelectedClass(firstClassId.toString())
+    }
+  }, [isStaff, myClasses])
 
   useEffect(() => {
     if (selectedExam) {
@@ -323,17 +337,17 @@ const AnalyticsDashboard = () => {
           
           <div className="flex-1 min-w-[200px]">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Filter by Class (Optional)
+              {isStaff ? "Teaching Class" : "Filter by Class (Optional)"}
             </label>
             <select
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-gray-50 hover:bg-white transition-colors"
             >
-              <option value="">All Classes</option>
-              {classes.map(cls => (
-                <option key={cls._id} value={cls._id}>
-                  {cls.displayName || cls.name}
+              {!isStaff && <option value="">All Classes</option>}
+              {availableClasses.map(cls => (
+                <option key={cls._id || cls.id} value={cls._id || cls.id}>
+                  {cls.displayName || cls.name || `${cls.className || ''} ${cls.section || ''}`}
                 </option>
               ))}
             </select>
