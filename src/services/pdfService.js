@@ -403,6 +403,29 @@ const pdfService = {
     });
     return response.data;
   },
+
+  // Sports Meet Entry Form
+  getSportsEntryPDF: async (classId = null, academicYearId = null, params = {}) => {
+    let url = `/pdf/sports/view`;
+    if (classId) url += `/${classId}`;
+    if (academicYearId) url += `/${academicYearId}`;
+    const response = await api.get(url, {
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
+  },
+
+  downloadSportsEntryPDF: async (classId = null, academicYearId = null, params = {}) => {
+    let url = `/pdf/sports/download`;
+    if (classId) url += `/${classId}`;
+    if (academicYearId) url += `/${academicYearId}`;
+    const response = await api.get(url, {
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
+  },
 };
 
 // Helper function to download PDF

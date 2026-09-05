@@ -9,6 +9,7 @@ import {
   BanknotesIcon,
   UserIcon,
   ChartBarIcon,
+  TrophyIcon,
   EyeIcon,
   ArrowDownTrayIcon,
   ChevronDownIcon,
@@ -90,6 +91,9 @@ const PdfReports = () => {
   const [certificatePlace, setCertificatePlace] = useState('Kottukkara');
   const [workingDays, setWorkingDays] = useState(25);
   const [expandedSections, setExpandedSections] = useState({});
+  const [sportsCategory, setSportsCategory] = useState('auto');
+  const [sportsGender, setSportsGender] = useState('all');
+  const [sportsHouse, setSportsHouse] = useState('');
 
   useEffect(() => {
     dispatch(fetchClasses({ limit: 100 }));
@@ -138,6 +142,7 @@ const PdfReports = () => {
     { id: 'noon-meal', name: 'Noon Meals', icon: CakeIcon },
     { id: 'rice-distribution', name: 'Rice Distribution', icon: BuildingLibraryIcon },
     { id: 'student', name: 'Student Reports', icon: AcademicCapIcon },
+    { id: 'sports', name: 'Sports Meet', icon: TrophyIcon },
     { id: 'exam', name: 'Exam Reports', icon: ClipboardDocumentListIcon },
     { id: 'financial', name: 'Financial', icon: BanknotesIcon },
     { id: 'staff', name: 'Staff Reports', icon: UserIcon },
@@ -532,6 +537,112 @@ const PdfReports = () => {
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
                 onDownload={() => handleDownloadPDF(async () => { if (!selectedStudent) throw new Error('Select student'); return await pdfService.getAbstractPDF(selectedStudent?.value, { date: reportDate, station: reportStation }); }, {}, `Abstract_${selectedStudent?.value}.pdf`, 'Select student')}
+              />
+            </div>
+          </ReportCard>
+        </div>
+      )}
+
+      {/* ==================== SPORTS MEET REPORTS ==================== */}
+      {activeCategory === 'sports' && (
+        <div className="space-y-4">
+          <ReportCard 
+            title="School Sports Meet Entry Form" 
+            description="Official Sports Meet Entry Form for Junior (Class 8) & Senior (Class 9 & 10) with dynamic event tick boxes, chest numbers and official signatures"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Class</label>
+                <select 
+                  value={selectedClass} 
+                  onChange={(e) => setSelectedClass(e.target.value)} 
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">All Classes</option>
+                  {classes.map(c => (
+                    <option key={c._id} value={c._id}>{c.displayName || c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Academic Year</label>
+                <select 
+                  value={selectedAcademicYear} 
+                  onChange={(e) => setSelectedAcademicYear(e.target.value)} 
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">Current Academic Year</option>
+                  {academicYears.map(y => (
+                    <option key={y._id} value={y._id}>{y.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+                <select 
+                  value={sportsCategory} 
+                  onChange={(e) => setSportsCategory(e.target.value)} 
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="auto">Auto-detect (8th: Junior, 9th/10th: Senior)</option>
+                  <option value="junior">Junior (8 Events - Class 8)</option>
+                  <option value="senior">Senior (10 Events - Class 9 & 10)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Gender Group</label>
+                <select 
+                  value={sportsGender} 
+                  onChange={(e) => setSportsGender(e.target.value)} 
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="all">Boys & Girls (Separate Pages)</option>
+                  <option value="boys">Boys Only</option>
+                  <option value="girls">Girls Only</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">House (Optional)</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Red, Blue, Green, Yellow" 
+                  value={sportsHouse} 
+                  onChange={(e) => setSportsHouse(e.target.value)} 
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Date</label>
+                <input 
+                  type="date" 
+                  value={reportDate} 
+                  onChange={(e) => setReportDate(e.target.value)} 
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
+              <ActionButtons
+                onDownload={() => handleDownloadPDF(
+                  async () => {
+                    return await pdfService.getSportsEntryPDF(selectedClass, selectedAcademicYear, {
+                      category: sportsCategory,
+                      gender: sportsGender,
+                      house: sportsHouse,
+                      date: reportDate
+                    });
+                  },
+                  {},
+                  `Sports_Entry_Form_${getCurrentAcademicYear()}.pdf`,
+                  'Failed to generate sports entry form'
+                )}
+                isLoading={isLoading}
               />
             </div>
           </ReportCard>
