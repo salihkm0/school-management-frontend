@@ -586,9 +586,10 @@ const PdfReports = () => {
                   onChange={(e) => setSportsCategory(e.target.value)} 
                   className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500"
                 >
-                  <option value="auto">Auto-detect (8th: Junior, 9th/10th: Senior)</option>
-                  <option value="junior">Junior (8 Events - Class 8)</option>
-                  <option value="senior">Senior (10 Events - Class 9 & 10)</option>
+                  <option value="auto">Auto-detect (8th: Sub Junior, 9th: Junior, 10th: Senior)</option>
+                  <option value="sub_junior">Sub Junior (7 Events - Class 8)</option>
+                  <option value="junior">Junior (10 Events - Class 9)</option>
+                  <option value="senior">Senior (10 Events - Class 10)</option>
                 </select>
               </div>
 
