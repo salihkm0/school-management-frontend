@@ -324,14 +324,16 @@ const ClassMarksOverview = () => {
           (sm?.ceScore != null && Number(sm.ceScore) > 0) ||
           (sm?.ceMarks != null && Number(sm.ceMarks) > 0)
         );
-        const theory = sm?.theoryScore ?? 0
+        const isAbsent = sm?.isAbsent || false
+        const theory = isAbsent ? 0 : (sm?.theoryScore ?? 0)
         const ce = sm?.ceMarks ?? sm?.ceScore ?? 0
-        const total = sm?.isAbsent ? 0 : (isEntered ? (sm?.totalScore !== undefined ? sm.totalScore : theory + ce) : 0)
+        const total = isEntered 
+          ? (sm?.totalScore !== undefined && sm.totalScore > 0 ? sm.totalScore : (isAbsent ? ce : theory + ce)) 
+          : (isAbsent ? ce : 0)
         const teMax = sm?.termMaxMarks || sm?.theoryMaxMarks || getSubjectTeMax(subj)
         const max = sm?.maxMarks || getSubjectTotalMax(subj)
-        const isAbsent = sm?.isAbsent || false
 
-        if (!isAbsent && isEntered) {
+        if (isEntered || (isAbsent && ce > 0)) {
           totalObtained += total
           totalMax += max
           teTotalObtained += theory
@@ -772,41 +774,61 @@ const ClassMarksOverview = () => {
                           {student.subjectMarks.map((sm) => {
                             return (
                               <td key={sm.examSubjectId} className="px-2 py-2 text-center border-r border-gray-100">
-                                {sm.isAbsent ? (
-                                  <span className="text-xs font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">AB</span>
-                                ) : !sm.isEntered ? (
-                                  <span className="text-xs text-gray-300">—</span>
-                                ) : marksMode === 'te' ? (
-                                  <div className="flex flex-col items-center justify-center gap-0.5">
-                                    <span className={`text-xs font-mono font-semibold ${sm.isTeWarning ? 'text-red-600 font-bold' : 'text-gray-900'}`}>
-                                      {sm.theory}<span className="text-gray-400 font-normal">/{sm.teMax}</span>
-                                    </span>
-                                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${sm.teGradeInfo.color}`}>
-                                      {sm.teGradeInfo.grade}{sm.isTeWarning ? '*' : ''}
-                                    </span>
-                                  </div>
+                                {marksMode === 'te' ? (
+                                  sm.isAbsent ? (
+                                    <span className="text-xs font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">AB</span>
+                                  ) : !sm.isEntered ? (
+                                    <span className="text-xs text-gray-300">—</span>
+                                  ) : (
+                                    <div className="flex flex-col items-center justify-center gap-0.5">
+                                      <span className={`text-xs font-mono font-semibold ${sm.isTeWarning ? 'text-red-600 font-bold' : 'text-gray-900'}`}>
+                                        {sm.theory}<span className="text-gray-400 font-normal">/{sm.teMax}</span>
+                                      </span>
+                                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${sm.teGradeInfo.color}`}>
+                                        {sm.teGradeInfo.grade}{sm.isTeWarning ? '*' : ''}
+                                      </span>
+                                    </div>
+                                  )
                                 ) : marksMode === 'both' ? (
-                                  <div className="flex flex-col items-center justify-center gap-0.5 py-0.5">
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-[10px] text-gray-400 font-medium">TE:</span>
-                                      <span className={`text-xs font-mono font-semibold ${sm.isTeWarning ? 'text-red-600' : 'text-gray-900'}`}>{sm.theory}</span>
-                                      <span className={`text-[9px] font-bold px-1 rounded ${sm.teGradeInfo.color}`}>{sm.teGradeInfo.grade}</span>
+                                  sm.isAbsent && sm.total === 0 ? (
+                                    <span className="text-xs font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">AB</span>
+                                  ) : !sm.isEntered && !sm.isAbsent ? (
+                                    <span className="text-xs text-gray-300">—</span>
+                                  ) : (
+                                    <div className="flex flex-col items-center justify-center gap-0.5 py-0.5">
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-[10px] text-gray-400 font-medium">TE:</span>
+                                        {sm.isAbsent ? (
+                                          <span className="text-xs font-bold text-red-500">AB</span>
+                                        ) : (
+                                          <>
+                                            <span className={`text-xs font-mono font-semibold ${sm.isTeWarning ? 'text-red-600' : 'text-gray-900'}`}>{sm.theory}</span>
+                                            <span className={`text-[9px] font-bold px-1 rounded ${sm.teGradeInfo.color}`}>{sm.teGradeInfo.grade}</span>
+                                          </>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-1 border-t border-gray-100 pt-0.5 w-full justify-center">
+                                        <span className="text-[10px] text-gray-400 font-medium">Tot:</span>
+                                        <span className="text-xs font-mono font-bold text-gray-900">{sm.total}</span>
+                                        <span className={`text-[9px] font-bold px-1 rounded ${sm.totalGradeInfo.color}`}>{sm.totalGradeInfo.grade}</span>
+                                      </div>
                                     </div>
-                                    <div className="flex items-center gap-1 border-t border-gray-100 pt-0.5 w-full justify-center">
-                                      <span className="text-[10px] text-gray-400 font-medium">Tot:</span>
-                                      <span className="text-xs font-mono font-bold text-gray-900">{sm.total}</span>
-                                      <span className={`text-[9px] font-bold px-1 rounded ${sm.totalGradeInfo.color}`}>{sm.totalGradeInfo.grade}</span>
-                                    </div>
-                                  </div>
+                                  )
                                 ) : (
-                                  <div className="flex flex-col items-center justify-center gap-0.5">
-                                    <span className="text-xs font-mono font-semibold text-gray-900">
-                                      {sm.total}<span className="text-gray-400 font-normal">/{sm.max}</span>
-                                    </span>
-                                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${sm.totalGradeInfo.color}`}>
-                                      {sm.totalGradeInfo.grade}
-                                    </span>
-                                  </div>
+                                  sm.isAbsent && sm.total === 0 ? (
+                                    <span className="text-xs font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">AB</span>
+                                  ) : !sm.isEntered && !sm.isAbsent ? (
+                                    <span className="text-xs text-gray-300">—</span>
+                                  ) : (
+                                    <div className="flex flex-col items-center justify-center gap-0.5">
+                                      <span className="text-xs font-mono font-semibold text-gray-900">
+                                        {sm.total}<span className="text-gray-400 font-normal">/{sm.max}</span>
+                                      </span>
+                                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${sm.totalGradeInfo.color}`}>
+                                        {sm.totalGradeInfo.grade}
+                                      </span>
+                                    </div>
+                                  )
                                 )}
                               </td>
                             );

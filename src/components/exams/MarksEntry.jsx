@@ -169,7 +169,7 @@ const MarksEntry = () => {
         isAbsent: nowAbsent,
         theoryScore: nowAbsent ? 0 : curr.theoryScore,
         practicalScore: nowAbsent ? 0 : curr.practicalScore,
-        ceMarks: nowAbsent ? 0 : curr.ceMarks,
+        ceMarks: curr.ceMarks,
       };
       return { ...prev, [studentId]: sm };
     });
@@ -646,7 +646,10 @@ const MarksEntry = () => {
                             const practical = tm.practicalScore !== undefined ? tm.practicalScore : (subj.isEntered ? (subj.practicalScore ?? 0) : "");
                             const ce = tm.ceMarks !== undefined ? tm.ceMarks : (subj.isEntered ? (subj.ceScore ?? subj.ceMarks ?? 0) : "");
                             const absent = tm.isAbsent ?? false;
-                            const total = absent ? 0 : ((theory === "" ? 0 : theory) + (practical === "" ? 0 : practical) + (ce === "" ? 0 : ce));
+                            const ceNum = ce === "" ? 0 : Number(ce);
+                            const theoryNum = (absent || theory === "") ? 0 : Number(theory);
+                            const practicalNum = (absent || practical === "") ? 0 : Number(practical);
+                            const total = theoryNum + practicalNum + ceNum;
                             const maxM = subj.maxMarks || 100;
                             const gradeInfo = getGradeInfo(total, maxM);
                             const theoryMax = subj.theoryMaxMarks || subj.termMaxMarks || subj.maxMarks || 100;
@@ -733,7 +736,7 @@ const MarksEntry = () => {
 
                                 {/* Total */}
                                 <td className="px-2 py-1 text-center border-l border-gray-200 bg-gray-50/50">
-                                  {absent ? (
+                                  {absent && total === 0 ? (
                                     <span className="text-red-500 font-bold text-xs">AB</span>
                                   ) : (
                                     <div className="flex flex-col items-center">
@@ -745,7 +748,9 @@ const MarksEntry = () => {
                                 </td>
                                 {/* Grade */}
                                 <td className="px-2 py-1 text-center border-l border-r border-gray-200 bg-gray-50/50">
-                                  {!absent && (
+                                  {absent && total === 0 ? (
+                                    <span className="text-xs font-bold font-mono text-red-500">AB</span>
+                                  ) : (
                                     <span className={`text-xs font-bold font-mono px-1.5 py-0.5 rounded-md ${gradeInfo.color}`}>
                                       {gradeInfo.grade}
                                     </span>
