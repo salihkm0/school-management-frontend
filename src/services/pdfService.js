@@ -206,17 +206,19 @@ const pdfService = {
   },
 
   // Marklist
-  getMarklistPDF: async (studentId, examId = null) => {
+  getMarklistPDF: async (studentId, examId = null, mode = null) => {
     let url = `/pdf/marklist/view/${studentId}`;
     if (examId) url += `/${examId}`;
-    const response = await api.get(url, { responseType: 'blob' });
+    const params = mode ? { mode } : {};
+    const response = await api.get(url, { params, responseType: 'blob' });
     return response.data;
   },
 
-  downloadMarklistPDF: async (studentId, examId = null) => {
+  downloadMarklistPDF: async (studentId, examId = null, mode = null) => {
     let url = `/pdf/marklist/download/${studentId}`;
     if (examId) url += `/${examId}`;
-    const response = await api.get(url, { responseType: 'blob' });
+    const params = mode ? { mode } : {};
+    const response = await api.get(url, { params, responseType: 'blob' });
     return response.data;
   },
 

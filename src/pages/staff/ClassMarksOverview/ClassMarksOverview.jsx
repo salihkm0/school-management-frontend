@@ -88,9 +88,10 @@ const ClassMarksOverview = () => {
   const handleDownloadStudentPdf = async (student) => {
     setDownloadingStudentId(student.studentId)
     try {
-      const blob = await pdfService.downloadMarklistPDF(student.studentId, selectedExamId)
-      downloadPDF(blob, `Marklist_${student.name?.replace(/\s+/g, '_') || 'student'}.pdf`)
-      toast.success(`${student.name}'s marklist downloaded`)
+      const blob = await pdfService.downloadMarklistPDF(student.studentId, selectedExamId, marksMode)
+      const modeSuffix = marksMode === 'te' ? '_TE' : marksMode === 'both' ? '_Both' : ''
+      downloadPDF(blob, `Marklist_${student.name?.replace(/\s+/g, '_') || 'student'}${modeSuffix}.pdf`)
+      toast.success(`${student.name}'s marklist (${marksMode === 'te' ? 'TE' : marksMode === 'both' ? 'TE + Total' : 'Total'}) downloaded`)
     } catch (error) {
       console.error('Failed to download student marklist PDF:', error)
       toast.error('Failed to download student marklist')
