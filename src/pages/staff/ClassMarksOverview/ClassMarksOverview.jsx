@@ -259,7 +259,7 @@ const ClassMarksOverview = () => {
     try {
       toast.loading(`Generating PDF (${modeLabel})...`, { id: 'pdf-gen' })
       const resp = await api.get(`/pdf/report-card/class-marks/download/${selectedClassId}/${selectedExamId}`, {
-        params: { mode: marksMode },
+        params: { mode: marksMode, sortBy },
         responseType: 'blob'
       })
       
