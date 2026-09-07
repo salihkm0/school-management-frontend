@@ -14,11 +14,13 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   EyeIcon,
-  DocumentArrowDownIcon
+  DocumentArrowDownIcon,
+  CalendarDaysIcon
 } from '@heroicons/react/24/outline'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
 import { useAdminTeacherClasses } from '../../hooks/useAdminTeacherClasses'
+import AttendanceAnalyticsView from './AttendanceAnalyticsView'
 
 const AnalyticsDashboard = () => {
   const dispatch = useDispatch()
@@ -30,6 +32,7 @@ const AnalyticsDashboard = () => {
   
   const availableClasses = isStaff ? myClasses : classes
 
+  const [analyticsType, setAnalyticsType] = useState('exam') // 'exam' | 'attendance'
   const [selectedExam, setSelectedExam] = useState('')
   const [selectedClass, setSelectedClass] = useState('')
   const [gradeAnalysis, setGradeAnalysis] = useState(null)
@@ -314,8 +317,42 @@ const AnalyticsDashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Filters Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+      {/* Top Type Selector Tabs */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="inline-flex items-center bg-gray-100 p-1 rounded-xl shadow-inner border border-gray-200/70">
+          <button
+            type="button"
+            onClick={() => setAnalyticsType('exam')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+              analyticsType === 'exam'
+                ? 'bg-white text-emerald-700 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <AcademicCapIcon className="w-4 h-4" />
+            Exam Analytics
+          </button>
+          <button
+            type="button"
+            onClick={() => setAnalyticsType('attendance')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+              analyticsType === 'attendance'
+                ? 'bg-white text-emerald-700 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <CalendarDaysIcon className="w-4 h-4" />
+            Attendance Analytics
+          </button>
+        </div>
+      </div>
+
+      {analyticsType === 'attendance' ? (
+        <AttendanceAnalyticsView availableClasses={availableClasses} isStaff={isStaff} />
+      ) : (
+        <>
+          {/* Filters Section */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[200px]">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1141,6 +1178,8 @@ const AnalyticsDashboard = () => {
           )}
         </>
       ) : null}
+        </>
+      )}
     </div>
   )
 }

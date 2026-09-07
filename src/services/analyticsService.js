@@ -35,13 +35,21 @@ export const fetchPerformanceAnalytics = async (examId = null, classId = null, a
   }
 }
 
-export const fetchAttendanceAnalytics = async (classId = null, startDate = null, endDate = null, academicYearId = null) => {
+export const fetchAttendanceAnalytics = async (classIdOrParams = null, startDate = null, endDate = null, academicYearId = null) => {
   try {
     const params = new URLSearchParams()
-    if (classId) params.append('classId', classId)
-    if (startDate) params.append('startDate', startDate)
-    if (endDate) params.append('endDate', endDate)
-    if (academicYearId) params.append('academicYearId', academicYearId)
+    if (typeof classIdOrParams === 'object' && classIdOrParams !== null) {
+      Object.entries(classIdOrParams).forEach(([k, v]) => {
+        if (v !== null && v !== undefined && v !== '') {
+          params.append(k, v)
+        }
+      })
+    } else {
+      if (classIdOrParams) params.append('classId', classIdOrParams)
+      if (startDate) params.append('startDate', startDate)
+      if (endDate) params.append('endDate', endDate)
+      if (academicYearId) params.append('academicYearId', academicYearId)
+    }
     const response = await api.get(`/analytics/attendance?${params}`)
     return response.data
   } catch (error) {
