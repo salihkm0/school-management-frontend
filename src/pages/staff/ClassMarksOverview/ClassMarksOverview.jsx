@@ -49,6 +49,21 @@ const getPercentageBadge = (pct) => {
   return 'text-red-600 bg-red-50'
 }
 
+// ─── Subject Max helpers ──────────────────────────────────────────────────
+const getSubjectTeMax = (subj) => {
+  if (subj?.termMaxMarks && subj.termMaxMarks > 0) return subj.termMaxMarks
+  if (subj?.theoryMaxMarks && subj.theoryMaxMarks > 0) return subj.theoryMaxMarks
+  if (subj?.ceMaxMarks && subj?.maxMarks && subj.maxMarks > subj.ceMaxMarks) {
+    return subj.maxMarks - subj.ceMaxMarks
+  }
+  return subj?.maxMarks || 100
+}
+
+const getSubjectTotalMax = (subj) => {
+  if (subj?.maxMarks && subj.maxMarks > 0) return subj.maxMarks
+  return getSubjectTeMax(subj) + (subj?.ceMaxMarks || 0)
+}
+
 // ─── Main Component ─────────────────────────────────────────────────────────
 const ClassMarksOverview = () => {
   const { classId } = useParams()
@@ -64,6 +79,7 @@ const ClassMarksOverview = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [isExamsLoading, setIsExamsLoading] = useState(true)
   const [view, setView] = useState('table') // 'table' | 'card'
+  const [marksMode, setMarksMode] = useState('total') // 'total' | 'te' | 'both'
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState('rollNo') // 'rollNo' | 'rank' | 'name' | 'percentage'
   const [isInitializing, setIsInitializing] = useState(!isAdmin && !classId)
@@ -230,9 +246,11 @@ const ClassMarksOverview = () => {
       return
     }
     
+    const modeLabel = marksMode === 'te' ? 'TE' : (marksMode === 'both' ? 'Both' : 'Total')
     try {
-      toast.loading('Generating PDF...', { id: 'pdf-gen' })
+      toast.loading(`Generating PDF (${modeLabel})...`, { id: 'pdf-gen' })
       const resp = await api.get(`/pdf/report-card/class-marks/download/${selectedClassId}/${selectedExamId}`, {
+        params: { mode: marksMode },
         responseType: 'blob'
       })
       
@@ -250,7 +268,7 @@ const ClassMarksOverview = () => {
       } else {
         const classNameStr = data?.className || 'Class'
         const examNameStr = exams.find((e) => e._id === selectedExamId)?.name || 'Exam'
-        filename = `Class_Marks_${classNameStr}_${examNameStr}.pdf`.replace(/\s+/g, '_')
+        filename = `Class_Marks_${modeLabel}_${classNameStr}_${examNameStr}.pdf`.replace(/\s+/g, '_')
       }
       
       link.setAttribute('download', filename)
@@ -275,6 +293,9 @@ const ClassMarksOverview = () => {
     return data.students.map((student) => {
       let totalObtained = 0
       let totalMax = 0
+      let teTotalObtained = 0
+      let teTotalMax = 0
+
       const subjectMarks = subjects.map((subj) => {
         const key = subj.examSubjectId?.toString()
         const sm = student.subjects?.find(
@@ -297,23 +318,41 @@ const ClassMarksOverview = () => {
         const theory = sm?.theoryScore ?? 0
         const ce = sm?.ceMarks ?? sm?.ceScore ?? 0
         const total = sm?.isAbsent ? 0 : (isEntered ? (sm?.totalScore !== undefined ? sm.totalScore : theory + ce) : 0)
-        const max = subj.maxMarks || 100
-        if (!sm?.isAbsent && isEntered) {
+        const teMax = sm?.termMaxMarks || sm?.theoryMaxMarks || getSubjectTeMax(subj)
+        const max = sm?.maxMarks || getSubjectTotalMax(subj)
+        const isAbsent = sm?.isAbsent || false
+
+        if (!isAbsent && isEntered) {
           totalObtained += total
           totalMax += max
+          teTotalObtained += theory
+          teTotalMax += teMax
         }
+
+        const teGradeInfo = getGradeInfo(theory, teMax)
+        const totalGradeInfo = getGradeInfo(total, max)
+        const isTeWarning = teMax > 0 && ((theory / teMax) * 100 < 30)
+
         return {
           examSubjectId: key,
           name: subj.displayName || subj.subjectName,
           total,
           max,
-          isAbsent: sm?.isAbsent || false,
-          isEntered: isEntered,
+          isAbsent,
+          isEntered,
           theory,
+          teMax,
           ce,
+          ceMax: sm?.ceMaxMarks || subj.ceMaxMarks || 0,
+          teGradeInfo,
+          totalGradeInfo,
+          isTeWarning
         }
       })
+
       const percentage = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0
+      const tePercentage = teTotalMax > 0 ? (teTotalObtained / teTotalMax) * 100 : 0
+
       return {
         studentId: student.studentId,
         name: student.studentName,
@@ -324,15 +363,24 @@ const ClassMarksOverview = () => {
         totalMax,
         percentage,
         gradeInfo: getGradeInfo(totalObtained, totalMax),
+        teTotalObtained,
+        teTotalMax,
+        tePercentage,
+        teGradeInfo: getGradeInfo(teTotalObtained, teTotalMax)
       }
     })
   }, [data, subjects])
 
-  // Calculate ranks by % desc first, then sort display order by selected sortBy
+  // Calculate ranks by active mode % desc first, then sort display order by selected sortBy
   const sorted = useMemo(() => {
-    // 1. Calculate ranks based on percentage
+    // 1. Calculate ranks based on active mode percentage
     const ranked = [...studentRows]
-      .sort((a, b) => b.percentage - a.percentage)
+      .sort((a, b) => {
+        if (marksMode === 'te') {
+          return b.tePercentage - a.tePercentage
+        }
+        return b.percentage - a.percentage
+      })
       .map((s, idx) => ({ ...s, rank: idx + 1 }))
 
     // Helper for numerical roll number parsing
@@ -346,7 +394,9 @@ const ClassMarksOverview = () => {
     // 2. Sort for display order
     return ranked.sort((a, b) => {
       if (sortBy === 'name') return a.name.localeCompare(b.name)
-      if (sortBy === 'percentage') return b.percentage - a.percentage
+      if (sortBy === 'percentage') {
+        return marksMode === 'te' ? b.tePercentage - a.tePercentage : b.percentage - a.percentage
+      }
       if (sortBy === 'rank') return a.rank - b.rank
 
       // Default ('rollNo'): sort by numerical roll number ascending, fallback to name
@@ -358,7 +408,7 @@ const ClassMarksOverview = () => {
       }
       return a.name.localeCompare(b.name)
     })
-  }, [studentRows, sortBy])
+  }, [studentRows, sortBy, marksMode])
 
   const filtered = useMemo(() =>
     sorted.filter((s) =>
@@ -366,11 +416,12 @@ const ClassMarksOverview = () => {
       s.admissionNo.toLowerCase().includes(search.toLowerCase())
     ), [sorted, search])
 
-  // Summary stats
+  // Summary stats based on active mode
   const stats = useMemo(() => {
     if (!studentRows.length) return null
-    const avg = studentRows.reduce((s, r) => s + r.percentage, 0) / studentRows.length
-    const passCount = studentRows.filter((r) => r.percentage >= 40).length
+    const isTe = marksMode === 'te'
+    const avg = studentRows.reduce((s, r) => s + (isTe ? r.tePercentage : r.percentage), 0) / studentRows.length
+    const passCount = studentRows.filter((r) => (isTe ? r.tePercentage : r.percentage) >= 40).length
     const completedSubjects = subjects.filter((subj) => {
       const key = subj.examSubjectId?.toString()
       return studentRows.length > 0 && studentRows.every((s) =>
@@ -378,7 +429,7 @@ const ClassMarksOverview = () => {
       )
     }).length
     return { avg, passCount, total: studentRows.length, completedSubjects }
-  }, [studentRows, subjects])
+  }, [studentRows, subjects, marksMode])
 
   if (!isAdmin && !isInitializing && classes.length === 0) {
     return (
@@ -544,13 +595,56 @@ const ClassMarksOverview = () => {
                 )}
 
             {/* Controls bar */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 sm:px-4 sm:py-3 mb-4 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
-              <div className="flex items-center justify-between sm:justify-start gap-2">
-                <p className="text-sm font-semibold text-gray-700">
-                  {className} — <span className="text-emerald-600">{examName}</span>
-                </p>
-                <span className="text-xs text-gray-400">({filtered.length} students)</span>
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 sm:px-4 sm:py-3 mb-4 flex flex-col lg:flex-row gap-3 lg:items-center justify-between">
+              <div className="flex items-center justify-between sm:justify-start gap-3 flex-wrap">
+                <div>
+                  <p className="text-sm font-semibold text-gray-700">
+                    {className} — <span className="text-emerald-600">{examName}</span>
+                  </p>
+                  <span className="text-xs text-gray-400">({filtered.length} students)</span>
+                </div>
+
+                {/* View Mode Toggle: TE marks vs TE+CE (Total) */}
+                <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setMarksMode('te')}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                      marksMode === 'te'
+                        ? 'bg-white text-emerald-700 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                    title="Terminal Evaluation (TE) Marks and Grade only"
+                  >
+                    TE Marks & Grade
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMarksMode('total')}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                      marksMode === 'total'
+                        ? 'bg-white text-emerald-700 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                    title="Total Marks (TE + CE) and Grade"
+                  >
+                    TE + CE (Total)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMarksMode('both')}
+                    className={`px-2.5 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                      marksMode === 'both'
+                        ? 'bg-white text-emerald-700 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                    title="Show both TE and Total"
+                  >
+                    Both
+                  </button>
+                </div>
               </div>
+
               <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                 {/* Search */}
                 <div className="relative flex-1 sm:flex-none min-w-[130px]">
@@ -617,17 +711,30 @@ const ClassMarksOverview = () => {
                         <th className="sticky left-[60px] bg-gray-50 z-10 px-4 py-3 text-left text-xs font-semibold text-gray-600 whitespace-nowrap min-w-[160px] border-r border-gray-200">
                           Student
                         </th>
-                        {subjects.map((subj) => (
-                          <th key={subj.examSubjectId} className="px-3 py-3 text-center text-xs font-semibold text-gray-600 whitespace-nowrap border-r border-gray-100">
-                            <div>{subj.displayName || subj.subjectName}</div>
-                            <div className="text-[10px] font-normal text-gray-400">/{subj.maxMarks || 100}</div>
-                          </th>
-                        ))}
+                        {subjects.map((subj) => {
+                          const teMax = getSubjectTeMax(subj);
+                          const totalMax = getSubjectTotalMax(subj);
+                          return (
+                            <th key={subj.examSubjectId} className="px-3 py-3 text-center text-xs font-semibold text-gray-600 whitespace-nowrap border-r border-gray-100">
+                              <div>{subj.displayName || subj.subjectName}</div>
+                              {marksMode === 'te' ? (
+                                <div className="text-[10px] font-semibold text-emerald-600">TE /{teMax}</div>
+                              ) : marksMode === 'both' ? (
+                                <div className="text-[9px] font-normal text-gray-400">TE:/{teMax} | Tot:/{totalMax}</div>
+                              ) : (
+                                <div className="text-[10px] font-normal text-gray-400">/{totalMax}</div>
+                              )}
+                            </th>
+                          );
+                        })}
                         <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap border-l border-gray-200 bg-gray-100/60">
-                          Total
+                          {marksMode === 'te' ? 'TE Total' : marksMode === 'both' ? 'Total (TE/Tot)' : 'Total'}
                         </th>
                         <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap bg-gray-100/60">
-                          %
+                          {marksMode === 'te' ? 'TE %' : '%'}
+                        </th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap bg-gray-100/60">
+                          {marksMode === 'te' ? 'TE Grade' : 'Grade'}
                         </th>
                         <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap bg-gray-100/60">
                           Rank
@@ -654,20 +761,41 @@ const ClassMarksOverview = () => {
                             <p className="text-[10px] text-gray-400">{student.admissionNo}</p>
                           </td>
                           {student.subjectMarks.map((sm) => {
-                            const gradeObj = getGradeInfo(sm.total, sm.max);
                             return (
                               <td key={sm.examSubjectId} className="px-2 py-2 text-center border-r border-gray-100">
                                 {sm.isAbsent ? (
                                   <span className="text-xs font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">AB</span>
                                 ) : !sm.isEntered ? (
                                   <span className="text-xs text-gray-300">—</span>
+                                ) : marksMode === 'te' ? (
+                                  <div className="flex flex-col items-center justify-center gap-0.5">
+                                    <span className={`text-xs font-mono font-semibold ${sm.isTeWarning ? 'text-red-600 font-bold' : 'text-gray-900'}`}>
+                                      {sm.theory}<span className="text-gray-400 font-normal">/{sm.teMax}</span>
+                                    </span>
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${sm.teGradeInfo.color}`}>
+                                      {sm.teGradeInfo.grade}{sm.isTeWarning ? '*' : ''}
+                                    </span>
+                                  </div>
+                                ) : marksMode === 'both' ? (
+                                  <div className="flex flex-col items-center justify-center gap-0.5 py-0.5">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[10px] text-gray-400 font-medium">TE:</span>
+                                      <span className={`text-xs font-mono font-semibold ${sm.isTeWarning ? 'text-red-600' : 'text-gray-900'}`}>{sm.theory}</span>
+                                      <span className={`text-[9px] font-bold px-1 rounded ${sm.teGradeInfo.color}`}>{sm.teGradeInfo.grade}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 border-t border-gray-100 pt-0.5 w-full justify-center">
+                                      <span className="text-[10px] text-gray-400 font-medium">Tot:</span>
+                                      <span className="text-xs font-mono font-bold text-gray-900">{sm.total}</span>
+                                      <span className={`text-[9px] font-bold px-1 rounded ${sm.totalGradeInfo.color}`}>{sm.totalGradeInfo.grade}</span>
+                                    </div>
+                                  </div>
                                 ) : (
                                   <div className="flex flex-col items-center justify-center gap-0.5">
                                     <span className="text-xs font-mono font-semibold text-gray-900">
                                       {sm.total}<span className="text-gray-400 font-normal">/{sm.max}</span>
                                     </span>
-                                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${gradeObj.color}`}>
-                                      {gradeObj.grade}
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${sm.totalGradeInfo.color}`}>
+                                      {sm.totalGradeInfo.grade}
                                     </span>
                                   </div>
                                 )}
@@ -675,14 +803,50 @@ const ClassMarksOverview = () => {
                             );
                           })}
                           <td className="px-3 py-2 text-center border-l border-gray-200 bg-gray-50/60">
-                            <span className="text-xs font-bold font-mono text-gray-900">
-                              {student.totalObtained}<span className="text-gray-400 font-normal">/{student.totalMax}</span>
-                            </span>
+                            {marksMode === 'te' ? (
+                              <span className="text-xs font-bold font-mono text-gray-900">
+                                {student.teTotalObtained}<span className="text-gray-400 font-normal">/{student.teTotalMax}</span>
+                              </span>
+                            ) : marksMode === 'both' ? (
+                              <div className="flex flex-col items-center text-xs font-mono">
+                                <span className="text-gray-600 text-[11px]"><span className="text-[10px] text-gray-400 font-sans">TE:</span> {student.teTotalObtained}/{student.teTotalMax}</span>
+                                <span className="font-bold text-gray-900"><span className="text-[10px] text-gray-400 font-sans">Tot:</span> {student.totalObtained}/{student.totalMax}</span>
+                              </div>
+                            ) : (
+                              <span className="text-xs font-bold font-mono text-gray-900">
+                                {student.totalObtained}<span className="text-gray-400 font-normal">/{student.totalMax}</span>
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-2 text-center bg-gray-50/60">
-                            <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${getPercentageBadge(student.percentage)}`}>
-                              {student.percentage.toFixed(1)}%
-                            </span>
+                            {marksMode === 'both' ? (
+                              <div className="flex flex-col items-center">
+                                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${getPercentageBadge(student.percentage)}`}>
+                                  {student.percentage.toFixed(1)}%
+                                </span>
+                                <span className="text-[10px] text-gray-500 mt-0.5">TE: {student.tePercentage.toFixed(1)}%</span>
+                              </div>
+                            ) : (
+                              <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${getPercentageBadge(marksMode === 'te' ? student.tePercentage : student.percentage)}`}>
+                                {(marksMode === 'te' ? student.tePercentage : student.percentage).toFixed(1)}%
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-center bg-gray-50/60">
+                            {marksMode === 'both' ? (
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${student.gradeInfo.color}`}>
+                                  {student.gradeInfo.grade}
+                                </span>
+                                <span className={`text-[9px] font-bold px-1 rounded ${student.teGradeInfo.color}`}>
+                                  TE: {student.teGradeInfo.grade}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${(marksMode === 'te' ? student.teGradeInfo : student.gradeInfo).color}`}>
+                                {(marksMode === 'te' ? student.teGradeInfo : student.gradeInfo).grade}
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-2 text-center bg-gray-50/60">
                             {student.rank <= 3 ? (
@@ -731,90 +895,114 @@ const ClassMarksOverview = () => {
                   <div className="col-span-full py-10 text-center text-gray-400 text-sm bg-white rounded-xl border border-gray-200">
                     No students found
                   </div>
-                ) : filtered.map((student) => (
-                  <div key={student.studentId} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-                    {/* Card header */}
-                    <div className="px-4 pt-4 pb-3 bg-gradient-to-br from-emerald-50 to-teal-50 border-b border-gray-100">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-9 h-9 rounded-full bg-emerald-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                            {student.name.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-gray-900 leading-tight">{student.name}</p>
-                            <p className="text-[10px] text-gray-500">{student.admissionNo}</p>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${student.gradeInfo.color}`}>
-                            {student.gradeInfo.grade}
-                          </span>
-                          <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
-                            {student.rank <= 3 && <TrophyIcon className={`w-3 h-3 ${student.rank === 1 ? 'text-yellow-500' : student.rank === 2 ? 'text-gray-400' : 'text-amber-600'}`} />}
-                            #{student.rank}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-emerald-500 rounded-full transition-all"
-                            style={{ width: `${Math.min(student.percentage, 100)}%` }}
-                          />
-                        </div>
-                        <span className={`text-xs font-bold ${getPercentageBadge(student.percentage)} px-1.5 py-0.5 rounded`}>
-                          {student.percentage.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Subject chips */}
-                    <div className="p-3 space-y-1.5">
-                      {student.subjectMarks.map((sm) => (
-                        <div key={sm.examSubjectId} className="flex items-center justify-between text-xs">
-                          <span className="text-gray-600 truncate max-w-[60%]">{sm.name}</span>
-                          {sm.isAbsent ? (
-                            <span className="text-red-500 font-bold bg-red-50 px-1.5 py-0.5 rounded">AB</span>
-                          ) : !sm.isEntered ? (
-                            <span className="text-gray-300">—</span>
-                          ) : (
-                            <div className="flex items-center gap-1">
-                              <span className="font-mono font-semibold text-gray-900">{sm.total}/{sm.max}</span>
-                              <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${getGradeInfo(sm.total, sm.max).color}`}>
-                                {getGradeInfo(sm.total, sm.max).grade}
-                              </span>
+                ) : filtered.map((student) => {
+                  const activePercentage = marksMode === 'te' ? student.tePercentage : student.percentage;
+                  const activeGradeInfo = marksMode === 'te' ? student.teGradeInfo : student.gradeInfo;
+                  return (
+                    <div key={student.studentId} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                      {/* Card header */}
+                      <div className="px-4 pt-4 pb-3 bg-gradient-to-br from-emerald-50 to-teal-50 border-b border-gray-100">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-9 h-9 rounded-full bg-emerald-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                              {student.name.charAt(0)}
                             </div>
-                          )}
+                            <div>
+                              <p className="text-sm font-bold text-gray-900 leading-tight">{student.name}</p>
+                              <p className="text-[10px] text-gray-500">{student.admissionNo}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${activeGradeInfo.color}`}>
+                              {activeGradeInfo.grade}
+                            </span>
+                            <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                              {student.rank <= 3 && <TrophyIcon className={`w-3 h-3 ${student.rank === 1 ? 'text-yellow-500' : student.rank === 2 ? 'text-gray-400' : 'text-amber-600'}`} />}
+                              #{student.rank}
+                            </span>
+                          </div>
                         </div>
-                      ))}
-                    </div>
-
-                    {/* Card footer total */}
-                    <div className="px-3 py-2 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">Total</span>
-                        <span className="text-xs font-bold font-mono text-gray-900">
-                          {student.totalObtained}/{student.totalMax}
-                        </span>
+                        <div className="mt-2 flex items-center gap-2">
+                          <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-emerald-500 rounded-full transition-all"
+                              style={{ width: `${Math.min(activePercentage, 100)}%` }}
+                            />
+                          </div>
+                          <span className={`text-xs font-bold ${getPercentageBadge(activePercentage)} px-1.5 py-0.5 rounded`}>
+                            {activePercentage.toFixed(1)}%
+                          </span>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => handleDownloadStudentPdf(student)}
-                        disabled={downloadingStudentId === student.studentId}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-800 disabled:opacity-50 transition-colors"
-                        title="Download Marklist PDF"
-                      >
-                        {downloadingStudentId === student.studentId ? (
-                          <span className="text-[10px]">Loading...</span>
-                        ) : (
-                          <>
-                            <DocumentArrowDownIcon className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Marklist</span>
-                          </>
-                        )}
-                      </button>
+
+                      {/* Subject chips */}
+                      <div className="p-3 space-y-1.5">
+                        {student.subjectMarks.map((sm) => (
+                          <div key={sm.examSubjectId} className="flex items-center justify-between text-xs">
+                            <span className="text-gray-600 truncate max-w-[50%]">{sm.name}</span>
+                            {sm.isAbsent ? (
+                              <span className="text-red-500 font-bold bg-red-50 px-1.5 py-0.5 rounded">AB</span>
+                            ) : !sm.isEntered ? (
+                              <span className="text-gray-300">—</span>
+                            ) : marksMode === 'te' ? (
+                              <div className="flex items-center gap-1">
+                                <span className={`font-mono font-semibold ${sm.isTeWarning ? 'text-red-600' : 'text-gray-900'}`}>{sm.theory}/{sm.teMax}</span>
+                                <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${sm.teGradeInfo.color}`}>
+                                  {sm.teGradeInfo.grade}
+                                </span>
+                              </div>
+                            ) : marksMode === 'both' ? (
+                              <div className="flex items-center gap-1.5 text-[11px]">
+                                <span className="font-mono text-gray-600">{sm.theory} ({sm.teGradeInfo.grade})</span>
+                                <span className="text-gray-300">|</span>
+                                <span className="font-mono font-bold text-gray-900">{sm.total} ({sm.totalGradeInfo.grade})</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <span className="font-mono font-semibold text-gray-900">{sm.total}/{sm.max}</span>
+                                <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${sm.totalGradeInfo.color}`}>
+                                  {sm.totalGradeInfo.grade}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Card footer total */}
+                      <div className="px-3 py-2 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500">
+                            {marksMode === 'te' ? 'TE Total' : marksMode === 'both' ? 'Tot (TE|Tot)' : 'Total'}
+                          </span>
+                          <span className="text-xs font-bold font-mono text-gray-900">
+                            {marksMode === 'te'
+                              ? `${student.teTotalObtained}/${student.teTotalMax}`
+                              : marksMode === 'both'
+                              ? `${student.teTotalObtained}/${student.teTotalMax} | ${student.totalObtained}/${student.totalMax}`
+                              : `${student.totalObtained}/${student.totalMax}`
+                            }
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleDownloadStudentPdf(student)}
+                          disabled={downloadingStudentId === student.studentId}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-800 disabled:opacity-50 transition-colors"
+                          title="Download Marklist PDF"
+                        >
+                          {downloadingStudentId === student.studentId ? (
+                            <span className="text-[10px]">Loading...</span>
+                          ) : (
+                            <>
+                              <DocumentArrowDownIcon className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Marklist</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>
