@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 // src/pages/staff/ClassMarksOverview/ClassMarksOverview.jsx
 import React, { useEffect, useState, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import {
   ArrowLeftIcon,
@@ -68,8 +68,9 @@ const getSubjectTotalMax = (subj) => {
 const ClassMarksOverview = () => {
   const { classId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useSelector((s) => s.auth)
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = user?.role === 'admin' || location.pathname.startsWith('/admin')
 
   const [exams, setExams] = useState([])
   const [classes, setClasses] = useState([])
@@ -149,6 +150,10 @@ const ClassMarksOverview = () => {
       if (isAdmin) {
         resp = await examService.getExams({ limit: 100 })
       } else {
+        if (!user) {
+          setIsExamsLoading(false)
+          return
+        }
         const ayResp = await api.get('/academic-years', { params: { limit: 10 } })
         const ays = Array.isArray(ayResp.data?.data) 
           ? ayResp.data.data 
@@ -174,6 +179,7 @@ const ClassMarksOverview = () => {
         console.error('Failed to load classes', e)
       }
     } else {
+      if (!user) return
       try {
         // Staff logic: get current academic year
         const ayResp = await api.get('/academic-years', { params: { limit: 10 } })
@@ -230,11 +236,13 @@ const ClassMarksOverview = () => {
     }
   }
 
-  // Load exams + classes on mount
+  // Load exams + classes on mount or when auth is ready
   useEffect(() => {
-    loadExams()
-    loadClasses()
-  }, [])
+    if (isAdmin || user) {
+      loadExams()
+      loadClasses()
+    }
+  }, [isAdmin, user?._id])
 
   // Load marks when exam+class selected
   useEffect(() => {
