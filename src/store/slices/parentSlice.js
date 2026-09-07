@@ -59,7 +59,8 @@ export const registerParent = createAsyncThunk(
       toast.success('Parent registered successfully')
       return response
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to register parent')
+      const errorMsg = error.response?.data?.errors?.[0]?.msg || error.response?.data?.message || 'Failed to register parent'
+      toast.error(errorMsg)
       return rejectWithValue(error.response?.data)
     }
   }

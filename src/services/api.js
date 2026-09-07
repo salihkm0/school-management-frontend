@@ -56,6 +56,15 @@ api.interceptors.response.use(
       window.dispatchEvent(new Event('maintenance_mode_on'))
     }
     
+    // Extract specific validation error message if message is generic or errors array exists
+    if (error.response?.data) {
+      const data = error.response.data
+      const firstErrorMsg = data.errors?.[0]?.msg || data.errors?.[0]?.message
+      if (firstErrorMsg && (!data.message || data.message === 'Validation error')) {
+        data.message = firstErrorMsg
+      }
+    }
+
     return Promise.reject(error)
   }
 )

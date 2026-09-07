@@ -123,23 +123,34 @@ const LoginPage = () => {
 
     setIsRegistering(true)
     try {
-      const result = await dispatch(registerParent({
-        fullName: data.fullName,
-        phone: data.phone,
-        alternatePhone: data.alternatePhone,
-        email: data.email,
+      const payload = {
+        fullName: data.fullName ? data.fullName.trim() : '',
+        phone: data.phone ? data.phone.trim() : '',
         password: data.password,
-        confirmPassword: data.confirmPassword,
-        occupation: data.occupation,
-        address: data.address
-      })).unwrap()
+        confirmPassword: data.confirmPassword
+      }
+
+      if (data.email && typeof data.email === 'string' && data.email.trim()) {
+        payload.email = data.email.trim()
+      }
+      if (data.alternatePhone && typeof data.alternatePhone === 'string' && data.alternatePhone.trim()) {
+        payload.alternatePhone = data.alternatePhone.trim()
+      }
+      if (data.occupation && typeof data.occupation === 'string' && data.occupation.trim()) {
+        payload.occupation = data.occupation.trim()
+      }
+      if (data.address && typeof data.address === 'string' && data.address.trim()) {
+        payload.address = data.address.trim()
+      }
+
+      const result = await dispatch(registerParent(payload)).unwrap()
 
       if (result.success) {
         toast.success('Registration successful! Please login with your mobile number.')
         setShowRegisterModal(false)
         resetRegisterForm()
         setLoginMethod('phone')
-        setPhoneFormData({ phone: data.phone, password: data.password, rememberMe: false })
+        setPhoneFormData({ phone: payload.phone, password: payload.password, rememberMe: false })
       }
     } catch (error) {
       console.error('Registration error:', error)
@@ -566,14 +577,20 @@ const LoginPage = () => {
                   <input
                     type="tel"
                     {...registerForm('alternatePhone', {
-                      pattern: {
-                        value: /^[0-9]{10}$/,
-                        message: 'Enter a valid 10-digit phone number',
-                      }
+                      validate: (val) => {
+                        if (!val || !val.trim()) return true
+                        return /^[0-9]{10}$/.test(val.trim()) || 'Enter a valid 10-digit phone number'
+                      },
+                      setValueAs: v => (v === '' ? undefined : v)
                     })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none ${
+                      registerErrors.alternatePhone ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     placeholder="9876543210"
                   />
+                  {registerErrors.alternatePhone && (
+                    <p className="mt-1 text-xs text-red-500">{registerErrors.alternatePhone.message}</p>
+                  )}
                 </div>
 
                 {/* Email */}
@@ -584,14 +601,20 @@ const LoginPage = () => {
                   <input
                     type="email"
                     {...registerForm('email', {
-                      pattern: {
-                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                        message: 'Invalid email address',
-                      }
+                      validate: (val) => {
+                        if (!val || !val.trim()) return true
+                        return /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(val.trim()) || 'Invalid email address'
+                      },
+                      setValueAs: v => (v === '' ? undefined : v)
                     })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none ${
+                      registerErrors.email ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     placeholder="parent@example.com"
                   />
+                  {registerErrors.email && (
+                    <p className="mt-1 text-xs text-red-500">{registerErrors.email.message}</p>
+                  )}
                 </div>
 
                 {/* Password */}
