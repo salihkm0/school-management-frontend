@@ -64,6 +64,69 @@ const getSubjectTotalMax = (subj) => {
   return getSubjectTeMax(subj) + (subj?.ceMaxMarks || 0)
 }
 
+// ─── Non-TE Co-curricular Subject helper ────────────────────────────────────
+const isNonTeSubject = (subject) => {
+  if (!subject) return false
+  const name = (
+    subject.displayName ||
+    subject.subjectName ||
+    subject.name ||
+    subject.title ||
+    ''
+  ).toLowerCase().trim()
+  const code = (
+    subject.subjectCode ||
+    subject.code ||
+    ''
+  ).toLowerCase().trim()
+
+  // Physical Education
+  if (
+    name.includes('physical education') ||
+    name.includes('phys educ') ||
+    name.includes('physical ed') ||
+    name === 'pe' ||
+    name === 'pet' ||
+    name === 'ped' ||
+    code === 'pet' ||
+    code === 'pe' ||
+    code === 'ped'
+  ) {
+    return true
+  }
+
+  // Work Education / Work Experience
+  if (
+    name.includes('work education') ||
+    name.includes('work exp') ||
+    name.includes('work experience') ||
+    name === 'we' ||
+    name === 'wed' ||
+    code === 'we' ||
+    code === 'wed'
+  ) {
+    return true
+  }
+
+  // Drawing / Art Education
+  if (
+    name.includes('drawing') ||
+    name.includes('art education') ||
+    name.includes('art & culture') ||
+    name.includes('art and culture') ||
+    name === 'art' ||
+    name === 'ae' ||
+    name === 'draw' ||
+    code === 'draw' ||
+    code === 'ae' ||
+    code === 'art'
+  ) {
+    return true
+  }
+
+  return false
+}
+
 // ─── Main Component ─────────────────────────────────────────────────────────
 const ClassMarksOverview = () => {
   const { classId } = useParams()
@@ -294,7 +357,13 @@ const ClassMarksOverview = () => {
   }
 
   // Derive subjects list
-  const subjects = useMemo(() => data?.subjects || data?.examSubjects || [], [data])
+  const allSubjects = useMemo(() => data?.subjects || data?.examSubjects || [], [data])
+  const subjects = useMemo(() => {
+    if (marksMode === 'te') {
+      return allSubjects.filter((s) => !isNonTeSubject(s))
+    }
+    return allSubjects
+  }, [allSubjects, marksMode])
 
   // Build enriched student rows with totals, rank, percentage
   const studentRows = useMemo(() => {
@@ -332,12 +401,15 @@ const ClassMarksOverview = () => {
           : (isAbsent ? ce : 0)
         const teMax = sm?.termMaxMarks || sm?.theoryMaxMarks || getSubjectTeMax(subj)
         const max = sm?.maxMarks || getSubjectTotalMax(subj)
+        const isNonTe = isNonTeSubject(subj)
 
         if (isEntered || (isAbsent && ce > 0)) {
           totalObtained += total
           totalMax += max
-          teTotalObtained += theory
-          teTotalMax += teMax
+          if (!isNonTe) {
+            teTotalObtained += theory
+            teTotalMax += teMax
+          }
         }
 
         const teGradeInfo = getGradeInfo(theory, teMax)
