@@ -744,12 +744,6 @@ const ClassMarksOverview = () => {
                         <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap bg-gray-100/60">
                           {marksMode === 'te' ? 'TE %' : '%'}
                         </th>
-                        <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap bg-gray-100/60">
-                          {marksMode === 'te' ? 'TE Grade' : 'Grade'}
-                        </th>
-                        <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap bg-gray-100/60">
-                          Rank
-                        </th>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap bg-gray-100/80 border-l border-gray-200">
                           Actions
                         </th>
@@ -776,7 +770,7 @@ const ClassMarksOverview = () => {
                               <td key={sm.examSubjectId} className="px-2 py-2 text-center border-r border-gray-100">
                                 {marksMode === 'te' ? (
                                   sm.isAbsent ? (
-                                    <span className="text-xs font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">AB</span>
+                                    <span className="text-xs font-bold text-red-500">AB</span>
                                   ) : !sm.isEntered ? (
                                     <span className="text-xs text-gray-300">—</span>
                                   ) : (
@@ -784,7 +778,7 @@ const ClassMarksOverview = () => {
                                       <span className={`text-xs font-mono font-semibold ${sm.isTeWarning ? 'text-red-600 font-bold' : 'text-gray-900'}`}>
                                         {sm.theory}<span className="text-gray-400 font-normal">/{sm.teMax}</span>
                                       </span>
-                                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${sm.teGradeInfo.color}`}>
+                                      <span className="text-[10px] font-bold">
                                         {sm.teGradeInfo.grade}{sm.isTeWarning ? '*' : ''}
                                       </span>
                                     </div>
@@ -803,20 +797,20 @@ const ClassMarksOverview = () => {
                                         ) : (
                                           <>
                                             <span className={`text-xs font-mono font-semibold ${sm.isTeWarning ? 'text-red-600' : 'text-gray-900'}`}>{sm.theory}</span>
-                                            <span className={`text-[9px] font-bold px-1 rounded ${sm.teGradeInfo.color}`}>{sm.teGradeInfo.grade}</span>
+                                            <span className="text-[9px] font-bold">{sm.teGradeInfo.grade}</span>
                                           </>
                                         )}
                                       </div>
                                       <div className="flex items-center gap-1 border-t border-gray-100 pt-0.5 w-full justify-center">
                                         <span className="text-[10px] text-gray-400 font-medium">Tot:</span>
                                         <span className="text-xs font-mono font-bold text-gray-900">{sm.total}</span>
-                                        <span className={`text-[9px] font-bold px-1 rounded ${sm.totalGradeInfo.color}`}>{sm.totalGradeInfo.grade}</span>
+                                        <span className="text-[9px] font-bold">{sm.totalGradeInfo.grade}</span>
                                       </div>
                                     </div>
                                   )
                                 ) : (
                                   sm.isAbsent && sm.total === 0 ? (
-                                    <span className="text-xs font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">AB</span>
+                                    <span className="text-xs font-bold text-red-500">AB</span>
                                   ) : !sm.isEntered && !sm.isAbsent ? (
                                     <span className="text-xs text-gray-300">—</span>
                                   ) : (
@@ -824,7 +818,7 @@ const ClassMarksOverview = () => {
                                       <span className="text-xs font-mono font-semibold text-gray-900">
                                         {sm.total}<span className="text-gray-400 font-normal">/{sm.max}</span>
                                       </span>
-                                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${sm.totalGradeInfo.color}`}>
+                                      <span className="text-[10px] font-bold">
                                         {sm.totalGradeInfo.grade}
                                       </span>
                                     </div>
@@ -850,43 +844,9 @@ const ClassMarksOverview = () => {
                             )}
                           </td>
                           <td className="px-3 py-2 text-center bg-gray-50/60">
-                            {marksMode === 'both' ? (
-                              <div className="flex flex-col items-center">
-                                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${getPercentageBadge(student.percentage)}`}>
-                                  {student.percentage.toFixed(1)}%
-                                </span>
-                                <span className="text-[10px] text-gray-500 mt-0.5">TE: {student.tePercentage.toFixed(1)}%</span>
-                              </div>
-                            ) : (
-                              <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${getPercentageBadge(marksMode === 'te' ? student.tePercentage : student.percentage)}`}>
+                              <span className="text-xs font-bold text-gray-900">
                                 {(marksMode === 'te' ? student.tePercentage : student.percentage).toFixed(1)}%
                               </span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-center bg-gray-50/60">
-                            {marksMode === 'both' ? (
-                              <div className="flex flex-col items-center gap-0.5">
-                                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${student.gradeInfo.color}`}>
-                                  {student.gradeInfo.grade}
-                                </span>
-                                <span className={`text-[9px] font-bold px-1 rounded ${student.teGradeInfo.color}`}>
-                                  TE: {student.teGradeInfo.grade}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${(marksMode === 'te' ? student.teGradeInfo : student.gradeInfo).color}`}>
-                                {(marksMode === 'te' ? student.teGradeInfo : student.gradeInfo).grade}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-center bg-gray-50/60">
-                            {student.rank <= 3 ? (
-                              <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${student.rank === 1 ? 'bg-yellow-100 text-yellow-700' : student.rank === 2 ? 'bg-gray-100 text-gray-600' : 'bg-amber-50 text-amber-700'}`}>
-                                {student.rank}
-                              </span>
-                            ) : (
-                              <span className="text-xs font-medium text-gray-600">#{student.rank}</span>
-                            )}
                           </td>
                           <td className="px-4 py-2 text-center whitespace-nowrap bg-gray-50/60 border-l border-gray-100">
                             <button
