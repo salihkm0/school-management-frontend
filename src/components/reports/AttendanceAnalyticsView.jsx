@@ -1,5 +1,5 @@
 // src/components/reports/AttendanceAnalyticsView.jsx
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { useSelector } from 'react-redux'
 import { useAdminTeacherClasses } from '../../hooks/useAdminTeacherClasses'
 import { fetchAttendanceAnalytics } from '../../services/analyticsService'
@@ -43,6 +43,7 @@ const AttendanceAnalyticsView = ({ availableClasses: passedClasses, isStaff: pas
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('attention') // 'attention' | 'perfect' | 'all'
   const [searchTerm, setSearchTerm] = useState('')
+  const [entrySearch, setEntrySearch] = useState('')
 
   useEffect(() => {
     if (isStaff && availableClasses.length > 0 && !selectedClass) {
@@ -128,6 +129,21 @@ const AttendanceAnalyticsView = ({ availableClasses: passedClasses, isStaff: pas
       (s.className && s.className.toLowerCase().includes(q))
     )
   })
+
+  // Attendance Entry Progress (like Mark Entry Progress)
+  const entryProgress = attendanceData?.entryProgress || null
+  const progressClasses = entryProgress?.classes || []
+  const progressMonths = entryProgress?.months || []
+
+  const filteredEntryClasses = useMemo(() => {
+    if (!entrySearch.trim()) return progressClasses
+    const q = entrySearch.toLowerCase().trim()
+    return progressClasses.filter((c) =>
+      (c.className && c.className.toLowerCase().includes(q)) ||
+      (c.teacherShortName && c.teacherShortName.toLowerCase().includes(q)) ||
+      (c.classTeacherName && c.classTeacherName.toLowerCase().includes(q))
+    )
+  }, [progressClasses, entrySearch])
 
   const avgPct = summary.averagePercentage ?? 0
 
@@ -289,6 +305,176 @@ const AttendanceAnalyticsView = ({ availableClasses: passedClasses, isStaff: pas
             </div>
           </div>
 
+          {/* Attendance Entry Progress (like Mark Entry Progress) */}
+          {progressClasses && progressClasses.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h3 className="text-base font-bold text-gray-900">Attendance Entry Progress</h3>
+                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      {entryProgress?.overallStats?.completedClasses || 0} / {entryProgress?.overallStats?.totalClasses || progressClasses.length} Completed
+                    </span>
+                    {(entryProgress?.overallStats?.remainingClasses || 0) > 0 && (
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                        {entryProgress?.overallStats?.remainingClasses} Pending
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Class-wise monthly attendance submission progress with class teacher allocations
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {/* Quick Search */}
+                  <div className="relative min-w-[200px]">
+                    <MagnifyingGlassIcon className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Filter class or teacher..."
+                      value={entrySearch}
+                      onChange={(e) => setEntrySearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto max-h-[480px]">
+                <table className="min-w-full text-xs">
+                  <thead className="bg-gray-50 sticky top-0 z-20 border-b border-gray-200">
+                    <tr>
+                      <th className="px-3.5 py-3 text-left font-semibold text-gray-700 whitespace-nowrap sticky left-0 bg-gray-50 z-30 border-r border-gray-200 shadow-[1px_0_0_0_#e5e7eb]">
+                        Class
+                      </th>
+                      <th className="px-3.5 py-3 text-center font-semibold text-gray-700 whitespace-nowrap border-r border-gray-200">
+                        Class Teacher
+                      </th>
+                      <th className="px-4 py-3 text-center font-semibold text-gray-700 whitespace-nowrap border-r border-gray-200 min-w-[130px]">
+                        Overall Progress
+                      </th>
+                      {progressMonths.map((m) => (
+                        <th key={m.month} className="px-3 py-3 text-center font-semibold text-gray-700 whitespace-nowrap min-w-[84px]">
+                          {m.name}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredEntryClasses.length === 0 ? (
+                      <tr>
+                        <td colSpan={3 + progressMonths.length} className="py-8 text-center text-gray-400">
+                          No classes match your search filter.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredEntryClasses.map((cls, i) => (
+                        <tr key={cls.classId || i} className="hover:bg-gray-50/70 transition-colors">
+                          {/* Sticky Class */}
+                          <td className="px-3.5 py-2.5 font-bold text-gray-900 whitespace-nowrap sticky left-0 bg-white border-r border-gray-100 z-10 shadow-[1px_0_0_0_#f3f4f6]">
+                            <div className="flex items-center gap-1.5">
+                              <span>{cls.className}</span>
+                              {cls.section && <span className="text-gray-400 font-normal">({cls.section})</span>}
+                            </div>
+                          </td>
+
+                          {/* Class Teacher Short Form Pill */}
+                          <td className="px-3.5 py-2.5 text-center whitespace-nowrap border-r border-gray-100">
+                            <span
+                              className="inline-flex items-center justify-center font-bold px-2 py-0.5 rounded text-[11px] bg-purple-50 text-purple-700 border border-purple-200 shadow-xs cursor-default"
+                              title={cls.classTeacherName ? `Class Teacher: ${cls.classTeacherName}` : 'No class teacher assigned'}
+                            >
+                              {cls.teacherShortName || '—'}
+                            </span>
+                          </td>
+
+                          {/* Overall Progress */}
+                          <td className="px-4 py-2.5 text-center border-r border-gray-100 bg-gray-50/20">
+                            <div className="flex flex-col items-center gap-1">
+                              <span
+                                className={`text-xs font-bold ${
+                                  cls.completionPercentage === 100
+                                    ? 'text-emerald-600'
+                                    : cls.completionPercentage > 0
+                                    ? 'text-blue-600'
+                                    : 'text-gray-400'
+                                }`}
+                              >
+                                {cls.completionPercentage || 0}%
+                              </span>
+                              <div className="w-20 bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                                    cls.completionPercentage === 100 ? 'bg-emerald-500' : 'bg-blue-500'
+                                  }`}
+                                  style={{ width: `${cls.completionPercentage || 0}%` }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Month Columns */}
+                          {cls.monthsProgress?.map((m) => {
+                            const pct = m.percentage || 0;
+                            const isFuture = !m.isElapsed;
+
+                            if (isFuture) {
+                              return (
+                                <td key={m.month} className="px-2 py-2.5 text-center text-gray-300 text-xs">
+                                  —
+                                </td>
+                              );
+                            }
+
+                            return (
+                              <td key={m.month} className="px-2 py-2.5 text-center">
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <span
+                                    className={`text-xs font-bold ${
+                                      pct === 100
+                                        ? 'text-emerald-600'
+                                        : pct > 0
+                                        ? 'text-blue-600'
+                                        : 'text-amber-600 font-semibold'
+                                    }`}
+                                  >
+                                    {pct === 100 ? '100%' : pct > 0 ? `${pct}%` : 'Pending'}
+                                  </span>
+                                  <span className="text-[10px] text-gray-400">
+                                    {m.currentRecords}/{m.expectedRecords}
+                                  </span>
+                                  {m.teacherShortName && (
+                                    <div
+                                      className="flex flex-wrap items-center justify-center gap-1 mt-0.5"
+                                      title={cls.classTeacherName ? `Teacher: ${cls.classTeacherName}` : ''}
+                                    >
+                                      <span
+                                        className={`text-[9px] font-medium px-1.5 py-0.2 rounded ${
+                                          pct === 100
+                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                            : pct > 0
+                                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                            : 'bg-amber-50 text-amber-800 border border-amber-300 font-semibold'
+                                        }`}
+                                      >
+                                        {m.teacherShortName}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Attendance Standing Distribution & Monthly Trends Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Distribution Bars */}
@@ -439,6 +625,7 @@ const AttendanceAnalyticsView = ({ availableClasses: passedClasses, isStaff: pas
                     <tr>
                       <th className="px-4 py-3 text-left font-medium text-gray-500 text-xs">#</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-500 text-xs">Class</th>
+                      <th className="px-4 py-3 text-center font-medium text-gray-500 text-xs">Teacher</th>
                       <th className="px-4 py-3 text-center font-medium text-gray-500 text-xs">Average Rate</th>
                       <th className="px-4 py-3 text-center font-medium text-gray-500 text-xs">Total Students</th>
                       <th className="px-4 py-3 text-center font-medium text-gray-500 text-xs">Good Standing</th>
@@ -450,6 +637,18 @@ const AttendanceAnalyticsView = ({ availableClasses: passedClasses, isStaff: pas
                       <tr key={c.classId || idx} className="hover:bg-gray-50/80 transition-colors">
                         <td className="px-4 py-2.5 text-xs text-gray-400 font-medium">{idx + 1}</td>
                         <td className="px-4 py-2.5 font-semibold text-gray-800">{c.className}</td>
+                        <td className="px-4 py-2.5 text-center">
+                          {c.teacherShortName ? (
+                            <span
+                              className="inline-flex items-center justify-center font-bold px-2 py-0.5 rounded text-[11px] bg-purple-50 text-purple-700 border border-purple-200"
+                              title={c.classTeacherName ? `Class Teacher: ${c.classTeacherName}` : ''}
+                            >
+                              {c.teacherShortName}
+                            </span>
+                          ) : (
+                            <span className="text-gray-300 text-xs">—</span>
+                          )}
+                        </td>
                         <td className="px-4 py-2.5 text-center">
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
