@@ -32,9 +32,10 @@ export const bulkUpdateMarks = async (examId, classId, studentsData) => {
 }
 
 // Submit for review (subject-level or class-level)
-export const submitMarksForReview = async (examId, classId, subjectId = null) => {
+export const submitMarksForReview = async (examId, classId, subjectId = null, subjectName = null) => {
   const payload = { examId, classId }
   if (subjectId) payload.subjectId = subjectId
+  if (subjectName) payload.subjectName = subjectName
   const response = await api.post('/marks/submit', payload)
   return response.data
 }
@@ -46,9 +47,10 @@ export const reviewMarks = async (examId, classId, reviewData = {}) => {
 }
 
 // Revert marks status to draft (admin) (subject-level or class-level)
-export const revertMarksToDraft = async (examId, classId, subjectId = null) => {
+export const revertMarksToDraft = async (examId, classId, subjectId = null, subjectName = null) => {
   const payload = { examId, classId }
   if (subjectId) payload.subjectId = subjectId
+  if (subjectName) payload.subjectName = subjectName
   const response = await api.post('/marks/revert-draft', payload)
   return response.data
 }

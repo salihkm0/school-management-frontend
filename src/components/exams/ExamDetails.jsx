@@ -107,7 +107,7 @@ const ExamDetails = () => {
     }
     setIsReviewing(true)
     try {
-      await revertMarksToDraft(id, classId, subjectId)
+      await revertMarksToDraft(id, classId, subjectId, subjectName)
       toast.success(`Marks status for ${targetText} reverted to Draft. Editing unlocked!`)
       await dispatch(fetchExamById(id))
       await loadAnalytics()
@@ -126,7 +126,7 @@ const ExamDetails = () => {
     }
     setIsSubmittingMarks(true)
     try {
-      await submitMarksForReview(id, classId, subjectId)
+      await submitMarksForReview(id, classId, subjectId, subjectName)
       toast.success(`Marks for ${targetText} submitted for review successfully!`)
       await dispatch(fetchExamById(id))
       await loadAnalytics()
