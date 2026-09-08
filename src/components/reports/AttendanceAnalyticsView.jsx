@@ -83,7 +83,7 @@ const AttendanceAnalyticsView = ({ availableClasses: passedClasses, isStaff: pas
       headers.join(','),
       ...data.map((row) => [
         row.rollNumber || '',
-        `"${String(row.studentName || '').replace(/"/g, '""')}"`,
+        `"${String(row.studentName || row.fullName || row.name || '').replace(/"/g, '""')}"`,
         `"${String(row.className || '').replace(/"/g, '""')}"`,
         row.presentDays ?? '',
         row.totalWorkingDays ?? '',
@@ -149,8 +149,9 @@ const AttendanceAnalyticsView = ({ availableClasses: passedClasses, isStaff: pas
   const filteredList = currentList.filter((s) => {
     const q = searchTerm.toLowerCase().trim()
     if (!q) return true
+    const sName = (s.studentName || s.fullName || s.name || '').toLowerCase()
     return (
-      (s.studentName && s.studentName.toLowerCase().includes(q)) ||
+      sName.includes(q) ||
       (s.rollNumber && String(s.rollNumber).includes(q)) ||
       (s.className && s.className.toLowerCase().includes(q))
     )
@@ -815,7 +816,7 @@ const AttendanceAnalyticsView = ({ availableClasses: passedClasses, isStaff: pas
                         <tr key={student.studentId || idx} className="hover:bg-gray-50/80 transition-colors">
                           <td className="px-4 py-2.5 text-xs text-gray-400 font-medium">{idx + 1}</td>
                           <td className="px-4 py-2.5 text-xs font-semibold text-gray-700">{student.rollNumber || '-'}</td>
-                          <td className="px-4 py-2.5 font-medium text-gray-900">{student.studentName}</td>
+                          <td className="px-4 py-2.5 font-medium text-gray-900">{student.studentName || student.fullName || student.name || '—'}</td>
                           <td className="px-4 py-2.5 text-xs text-gray-600">{student.className || '-'}</td>
                           <td className="px-4 py-2.5 text-center text-emerald-700 font-medium">{student.presentDays ?? 0}</td>
                           <td className="px-4 py-2.5 text-center text-gray-600">{student.totalWorkingDays ?? 0}</td>
