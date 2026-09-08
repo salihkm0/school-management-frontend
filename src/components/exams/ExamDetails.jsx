@@ -25,9 +25,11 @@ import {
   EyeIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  PaperAirplaneIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
-import { reviewMarks, revertMarksToDraft } from '../../services/markService'
+import { reviewMarks, revertMarksToDraft, submitMarksForReview } from '../../services/markService'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
 
@@ -45,6 +47,7 @@ const ExamDetails = () => {
   const [expandedStudent, setExpandedStudent] = useState(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [isReviewing, setIsReviewing] = useState(false)
+  const [isSubmittingMarks, setIsSubmittingMarks] = useState(false)
   const [expandedClasses, setExpandedClasses] = useState({})
 
   const classSubmissionsList = useMemo(() => {
@@ -107,11 +110,31 @@ const ExamDetails = () => {
       await revertMarksToDraft(id, classId, subjectId)
       toast.success(`Marks status for ${targetText} reverted to Draft. Editing unlocked!`)
       await dispatch(fetchExamById(id))
+      await loadAnalytics()
     } catch (err) {
       console.error('Failed to revert status to draft:', err)
       toast.error(err.response?.data?.message || 'Failed to set status to draft')
     } finally {
       setIsReviewing(false)
+    }
+  }
+
+  const handleSubmitMarks = async (classId, className, subjectId = null, subjectName = null) => {
+    const targetText = subjectName ? `subject "${subjectName}" for ${className || 'class'}` : `all subjects for ${className || 'class'}`
+    if (!window.confirm(`Submit marks for ${targetText} on behalf of staff? This will lock editing and submit marks for review.`)) {
+      return
+    }
+    setIsSubmittingMarks(true)
+    try {
+      await submitMarksForReview(id, classId, subjectId)
+      toast.success(`Marks for ${targetText} submitted for review successfully!`)
+      await dispatch(fetchExamById(id))
+      await loadAnalytics()
+    } catch (err) {
+      console.error('Failed to submit marks:', err)
+      toast.error(err.response?.data?.message || 'Failed to submit marks for review')
+    } finally {
+      setIsSubmittingMarks(false)
     }
   }
 
@@ -129,6 +152,7 @@ const ExamDetails = () => {
       }
       toast.success(`All ${submittedClasses.length} submitted classes marked as Reviewed!`)
       await dispatch(fetchExamById(id))
+      await loadAnalytics()
       setShowReviewModal(false)
     } catch (err) {
       console.error('Failed to review all classes:', err)
@@ -152,7 +176,10 @@ const ExamDetails = () => {
   useEffect(() => {
     const loadData = async () => {
       setIsInitializing(true)
-      await dispatch(fetchExamById(id))
+      await Promise.all([
+        dispatch(fetchExamById(id)),
+        loadAnalytics()
+      ])
       setIsInitializing(false)
     }
     loadData()
@@ -543,6 +570,12 @@ const ExamDetails = () => {
                       ? new Date(cs.submittedAt).getTime()
                       : (subDates.length > 0 ? Math.max(...subDates) : null);
 
+                    const classAnalytics = analytics?.classWise?.find(cw => (cw.classId?._id || cw.classId || '').toString() === classIdStr);
+                    const classMarksExpected = cs.expectedMarks || (classAnalytics ? classAnalytics.subjectProgress?.reduce((s, p) => s + (p.expectedMarks || 0), 0) : ((cs.totalStudents || 0) * totalCount));
+                    const classMarksEntered = cs.enteredMarks || (classAnalytics ? classAnalytics.subjectProgress?.reduce((s, p) => s + (p.currentMarks || 0), 0) : 0);
+                    const isClassMarksComplete = cs.isAllMarksEntered ?? (classAnalytics ? classAnalytics.completionPercentage === 100 : (classMarksExpected > 0 && classMarksEntered >= classMarksExpected));
+                    const classPct = cs.markEntryPercentage ?? (classAnalytics ? classAnalytics.completionPercentage : (classMarksExpected > 0 ? Math.round((classMarksEntered / classMarksExpected) * 100) : 0));
+
                     return (
                       <React.Fragment key={cs._id || classIdStr}>
                         <tr className={`hover:bg-slate-50/70 transition-colors ${isExpanded ? 'bg-slate-50/40' : ''}`}>
@@ -581,17 +614,43 @@ const ExamDetails = () => {
                             {isSubmitted && (
                               <button
                                 onClick={() => handleReviewClass(classIdStr, className)}
-                                disabled={isReviewing}
+                                disabled={isReviewing || isSubmittingMarks}
                                 className="px-2.5 py-1 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors shadow-2xs text-xs inline-flex items-center gap-1 cursor-pointer"
                               >
                                 <CheckCircleIcon className="w-3.5 h-3.5" />
                                 Mark Reviewed
                               </button>
                             )}
+                            {(!isSubmitted && !isReviewed && !isPublished && submittedCount < totalCount) && (
+                              isClassMarksComplete ? (
+                                <button
+                                  onClick={() => handleSubmitMarks(classIdStr, className)}
+                                  disabled={isSubmittingMarks || isReviewing}
+                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg disabled:opacity-50 transition-colors shadow-2xs text-xs inline-flex items-center gap-1 cursor-pointer"
+                                  title={`All marks entered (${classMarksEntered}/${classMarksExpected}). Click to submit all marks for review.`}
+                                >
+                                  <PaperAirplaneIcon className="w-3.5 h-3.5" />
+                                  Submit Class Marks
+                                </button>
+                              ) : (
+                                <span
+                                  className="inline-flex items-center"
+                                  title={`Cannot submit: Staff has only entered ${classMarksEntered}/${classMarksExpected} marks (${classPct}%). All marks must be entered before submitting.`}
+                                >
+                                  <button
+                                    disabled={true}
+                                    className="px-2.5 py-1 bg-gray-100 text-gray-400 border border-gray-200 font-medium rounded-lg opacity-60 cursor-not-allowed text-xs inline-flex items-center gap-1"
+                                  >
+                                    <ExclamationTriangleIcon className="w-3.5 h-3.5 text-amber-500" />
+                                    Submit Class Marks
+                                  </button>
+                                </span>
+                              )
+                            )}
                             {(isSubmitted || isReviewed || hasSubmittedSubject) && (
                               <button
                                 onClick={() => handleRevertToDraft(classIdStr, className)}
-                                disabled={isReviewing}
+                                disabled={isReviewing || isSubmittingMarks}
                                 className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-300 font-medium rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-colors text-xs inline-flex items-center gap-1 cursor-pointer"
                                 title="Set all subjects in class to Draft"
                               >
@@ -599,7 +658,7 @@ const ExamDetails = () => {
                                 Set All to Draft
                               </button>
                             )}
-                            {isDraft && !hasSubmittedSubject && (
+                            {isDraft && !hasSubmittedSubject && !isClassMarksComplete && (
                               <span className="text-gray-400 text-xs italic">Draft (Teachers Can Edit)</span>
                             )}
                             {isPublished && (
@@ -637,6 +696,15 @@ const ExamDetails = () => {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5">
                                   {subjectSubs.map((sub) => {
                                     const subSubmitted = sub.status === 'submitted' || sub.status === 'reviewed' || sub.status === 'published';
+                                    const subjAnalytics = classAnalytics?.subjectProgress?.find(sp =>
+                                      (sp.subjectId?._id || sp.subjectId || '').toString() === (sub.subjectId?._id || sub.subjectId || '').toString() ||
+                                      sp.subjectName === sub.subjectName
+                                    );
+                                    const subjEntered = sub.enteredMarks ?? (subjAnalytics?.currentMarks ?? 0);
+                                    const subjExpected = sub.expectedMarks ?? (subjAnalytics?.expectedMarks ?? (cs.totalStudents || 0));
+                                    const isSubjMarksComplete = sub.isAllMarksEntered ?? (subjExpected > 0 && subjEntered >= subjExpected);
+                                    const subjPct = sub.markEntryPercentage ?? (subjAnalytics?.percentage ?? (subjExpected > 0 ? Math.round((subjEntered / subjExpected) * 100) : 0));
+
                                     return (
                                       <div
                                         key={sub.subjectId || sub.subjectName}
@@ -674,16 +742,46 @@ const ExamDetails = () => {
                                                </span>
                                              )}
                                            </div>
-                                           {subSubmitted && (
+                                           {subSubmitted ? (
                                              <button
                                                onClick={() => handleRevertToDraft(classIdStr, className, sub.subjectId, sub.subjectName)}
-                                               disabled={isReviewing}
+                                               disabled={isReviewing || isSubmittingMarks}
                                                className="text-[11px] text-amber-700 hover:text-amber-800 font-semibold hover:underline inline-flex items-center gap-0.5 cursor-pointer shrink-0 ml-1"
                                                title={`Revert ${sub.subjectName} to Draft`}
                                              >
                                                <ArrowPathIcon className="w-3 h-3 text-amber-600" />
                                                Draft
                                              </button>
+                                           ) : (
+                                             <div className="flex items-center gap-1 shrink-0 ml-1">
+                                               {isSubjMarksComplete ? (
+                                                 <button
+                                                   onClick={() => handleSubmitMarks(classIdStr, className, sub.subjectId, sub.subjectName)}
+                                                   disabled={isSubmittingMarks || isReviewing}
+                                                   className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded text-[11px] inline-flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                                                   title={`All ${subjExpected} marks entered! Click to submit ${sub.subjectName} for review.`}
+                                                 >
+                                                   <PaperAirplaneIcon className="w-3 h-3" />
+                                                   Submit
+                                                 </button>
+                                               ) : (
+                                                 <span
+                                                   className="inline-flex items-center gap-1"
+                                                   title={`Cannot submit: Staff has only entered ${subjEntered}/${subjExpected} marks (${subjPct}%). All marks must be entered before submitting.`}
+                                                 >
+                                                   <button
+                                                     disabled={true}
+                                                     className="px-2 py-0.5 bg-gray-100 text-gray-400 border border-gray-200 font-medium rounded text-[11px] inline-flex items-center gap-1 opacity-60 cursor-not-allowed"
+                                                   >
+                                                     <ExclamationTriangleIcon className="w-3 h-3 text-amber-500" />
+                                                     Submit
+                                                   </button>
+                                                   <span className="text-[10px] text-amber-700 font-semibold">
+                                                     ({subjEntered}/{subjExpected})
+                                                   </span>
+                                                 </span>
+                                               )}
+                                             </div>
                                            )}
                                          </div>
                                       </div>
