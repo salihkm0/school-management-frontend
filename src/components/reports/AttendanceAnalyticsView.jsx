@@ -1,5 +1,7 @@
 // src/components/reports/AttendanceAnalyticsView.jsx
 import React, { useEffect, useState } from 'react'
+import { useSelector } from 'react-redux'
+import { useAdminTeacherClasses } from '../../hooks/useAdminTeacherClasses'
 import { fetchAttendanceAnalytics } from '../../services/analyticsService'
 import {
   CalendarDaysIcon,
@@ -29,7 +31,12 @@ const ATTENDANCE_MONTHS = [
   { label: 'March', value: '3' },
 ]
 
-const AttendanceAnalyticsView = ({ availableClasses = [], isStaff = false }) => {
+const AttendanceAnalyticsView = ({ availableClasses: passedClasses, isStaff: passedIsStaff }) => {
+  const { user } = useSelector((state) => state.auth)
+  const isStaff = passedIsStaff !== undefined ? passedIsStaff : (user?.role === 'staff')
+  const { myClasses: hookClasses } = useAdminTeacherClasses('class-teacher')
+  const availableClasses = (passedClasses && passedClasses.length > 0) ? passedClasses : hookClasses
+
   const [selectedClass, setSelectedClass] = useState('')
   const [selectedMonth, setSelectedMonth] = useState('')
   const [attendanceData, setAttendanceData] = useState(null)

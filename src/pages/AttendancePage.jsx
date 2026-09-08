@@ -5,12 +5,14 @@ import AttendanceList from '../components/attendance/AttendanceList'
 import BulkAttendance from '../components/attendance/BulkAttendance'
 import AttendanceSummary from '../components/attendance/AttendanceSummary'
 import AttendanceTemplates from '../components/attendance/AttendanceTemplates'
+import AttendanceAnalyticsView from '../components/reports/AttendanceAnalyticsView'
 
 const AttendancePage = () => {
   const tabs = [
     { path: '/attendance', name: 'List View', end: true },
     { path: '/attendance/bulk', name: 'Bulk Entry' },
     { path: '/attendance/templates', name: 'Templates' },
+    { path: '/attendance/analytics', name: 'Analytics' },
   ]
 
   return (
@@ -48,6 +50,7 @@ const AttendancePage = () => {
         <Route path="bulk" element={<BulkAttendance />} />
         <Route path="summary" element={<AttendanceSummary />} />
         <Route path="templates" element={<AttendanceTemplates />} />
+        <Route path="analytics" element={<AttendanceAnalyticsView />} />
       </Routes>
     </div>
   )
