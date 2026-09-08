@@ -104,7 +104,33 @@ const AttendanceAnalyticsView = ({ availableClasses: passedClasses, isStaff: pas
   }
 
   const summary = attendanceData?.summary || {}
-  const distribution = attendanceData?.distribution || {}
+  const rawDistribution = attendanceData?.distribution
+  const distribution = useMemo(() => {
+    if (!rawDistribution) {
+      return {
+        excellent: { count: 0, percentage: 0 },
+        good: { count: 0, percentage: 0 },
+        average: { count: 0, percentage: 0 },
+        critical: { count: 0, percentage: 0 }
+      }
+    }
+    if (Array.isArray(rawDistribution)) {
+      const findCat = (name) =>
+        rawDistribution.find((d) => d.category?.toLowerCase() === name.toLowerCase()) || { count: 0, percentage: 0 }
+      return {
+        excellent: findCat('excellent'),
+        good: findCat('good'),
+        average: findCat('average'),
+        critical: findCat('critical')
+      }
+    }
+    return {
+      excellent: rawDistribution.excellent || { count: 0, percentage: 0 },
+      good: rawDistribution.good || { count: 0, percentage: 0 },
+      average: rawDistribution.average || { count: 0, percentage: 0 },
+      critical: rawDistribution.critical || { count: 0, percentage: 0 }
+    }
+  }, [rawDistribution])
   const monthlyTrends = attendanceData?.monthlyTrends || []
   const classWiseComparison = attendanceData?.classWiseComparison || []
   const breakdown = attendanceData?.breakdown || {}
@@ -588,7 +614,7 @@ const AttendanceAnalyticsView = ({ availableClasses: passedClasses, isStaff: pas
                     return (
                       <div key={trend.month}>
                         <div className="flex justify-between text-xs font-medium text-gray-700 mb-1">
-                          <span>{trend.monthName} ({trend.totalWorkingDays} days)</span>
+                          <span>{trend.monthName} ({trend.totalWorkingDays ?? trend.workingDays ?? 0} days)</span>
                           <span className={pct >= 85 ? 'text-emerald-600 font-bold' : pct >= 75 ? 'text-amber-600 font-bold' : 'text-red-600 font-bold'}>
                             {pct.toFixed(1)}%
                           </span>
