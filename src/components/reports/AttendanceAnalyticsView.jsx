@@ -12,8 +12,10 @@ import {
   DocumentArrowDownIcon,
   TrophyIcon,
   MagnifyingGlassIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  BellAlertIcon
 } from '@heroicons/react/24/outline'
+import attendanceService from '../../services/attendanceService'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
 
@@ -44,6 +46,7 @@ const AttendanceAnalyticsView = ({ availableClasses: passedClasses, isStaff: pas
   const [activeTab, setActiveTab] = useState('attention') // 'attention' | 'perfect' | 'all'
   const [searchTerm, setSearchTerm] = useState('')
   const [entrySearch, setEntrySearch] = useState('')
+  const [isNotifyingAttendance, setIsNotifyingAttendance] = useState(false)
 
   useEffect(() => {
     if (isStaff && availableClasses.length > 0 && !selectedClass) {
@@ -69,6 +72,53 @@ const AttendanceAnalyticsView = ({ availableClasses: passedClasses, isStaff: pas
       toast.error('Failed to load attendance analytics')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleNotifyClassTeacher = async (classId, className, month = null) => {
+    setIsNotifyingAttendance(true)
+    const toastId = toast.loading(`Sending reminder to Class Teacher of ${className}...`)
+    try {
+      const res = await attendanceService.notifyPendingAttendance({
+        classId,
+        className,
+        month: month || (selectedMonth ? ATTENDANCE_MONTHS.find(m => m.value === selectedMonth)?.label : null)
+      })
+      if (res.count > 0) {
+        const teacherName = res.notifiedTeachers?.[0]?.teacherName || 'Class Teacher'
+        toast.success(`Reminder sent to ${teacherName} (${className})!`, { id: toastId, duration: 4000 })
+      } else {
+        toast.info(res.message || 'No teacher found to notify.', { id: toastId })
+      }
+    } catch (err) {
+      console.error('Failed to notify class teacher:', err)
+      toast.error(err.response?.data?.message || 'Failed to send attendance reminder', { id: toastId })
+    } finally {
+      setIsNotifyingAttendance(false)
+    }
+  }
+
+  const handleNotifyAllPendingAttendance = async () => {
+    if (!window.confirm('Send attendance reminder notifications to all class teachers with pending records?')) {
+      return
+    }
+    setIsNotifyingAttendance(true)
+    const toastId = toast.loading('Sending reminders to pending class teachers...')
+    try {
+      const res = await attendanceService.notifyPendingAttendance({
+        allPending: true,
+        month: selectedMonth ? ATTENDANCE_MONTHS.find(m => m.value === selectedMonth)?.label : null
+      })
+      if (res.count > 0) {
+        toast.success(`Attendance reminders sent to ${res.count} class teacher(s)!`, { id: toastId, duration: 5000 })
+      } else {
+        toast.info(res.message || 'No pending class teachers to notify.', { id: toastId })
+      }
+    } catch (err) {
+      console.error('Failed to notify teachers:', err)
+      toast.error(err.response?.data?.message || 'Failed to send reminders', { id: toastId })
+    } finally {
+      setIsNotifyingAttendance(false)
     }
   }
 
@@ -347,6 +397,17 @@ const AttendanceAnalyticsView = ({ availableClasses: passedClasses, isStaff: pas
                         {entryProgress?.overallStats?.remainingClasses} Pending
                       </span>
                     )}
+                    {(entryProgress?.overallStats?.remainingClasses || 0) > 0 && !isStaff && (
+                      <button
+                        onClick={handleNotifyAllPendingAttendance}
+                        disabled={isNotifyingAttendance}
+                        className="px-2.5 py-1 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                        title="Send attendance reminder notifications to all class teachers with pending records"
+                      >
+                        <BellAlertIcon className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Notify Pending Teachers</span>
+                      </button>
+                    )}
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5">
                     Class-wise monthly attendance submission progress with class teacher allocations
@@ -408,12 +469,24 @@ const AttendanceAnalyticsView = ({ availableClasses: passedClasses, isStaff: pas
 
                           {/* Class Teacher Short Form Pill */}
                           <td className="px-3.5 py-2.5 text-center whitespace-nowrap border-r border-gray-100">
-                            <span
-                              className="inline-flex items-center justify-center font-bold px-2 py-0.5 rounded text-[11px] bg-purple-50 text-purple-700 border border-purple-200 shadow-xs cursor-default"
-                              title={cls.classTeacherName ? `Class Teacher: ${cls.classTeacherName}` : 'No class teacher assigned'}
-                            >
-                              {cls.teacherShortName || '—'}
-                            </span>
+                            <div className="inline-flex items-center justify-center gap-1.5">
+                              <span
+                                className="inline-flex items-center justify-center font-bold px-2 py-0.5 rounded text-[11px] bg-purple-50 text-purple-700 border border-purple-200 shadow-xs cursor-default"
+                                title={cls.classTeacherName ? `Class Teacher: ${cls.classTeacherName}` : 'No class teacher assigned'}
+                              >
+                                {cls.teacherShortName || '—'}
+                              </span>
+                              {cls.completionPercentage < 100 && cls.classTeacherName && !isStaff && (
+                                <button
+                                  onClick={() => handleNotifyClassTeacher(cls.classId, cls.className)}
+                                  disabled={isNotifyingAttendance}
+                                  className="p-1 hover:bg-amber-100 text-amber-700 rounded transition-colors cursor-pointer disabled:opacity-50"
+                                  title={`Send reminder to Class Teacher ${cls.classTeacherName} to complete attendance for ${cls.className}`}
+                                >
+                                  <BellAlertIcon className="w-3.5 h-3.5 text-amber-600" />
+                                </button>
+                              )}
+                            </div>
                           </td>
 
                           {/* Overall Progress */}
@@ -473,7 +546,7 @@ const AttendanceAnalyticsView = ({ availableClasses: passedClasses, isStaff: pas
                                   </span>
                                   {m.teacherShortName && (
                                     <div
-                                      className="flex flex-wrap items-center justify-center gap-1 mt-0.5"
+                                      className="flex items-center justify-center gap-1 mt-0.5"
                                       title={cls.classTeacherName ? `Teacher: ${cls.classTeacherName}` : ''}
                                     >
                                       <span
@@ -487,6 +560,16 @@ const AttendanceAnalyticsView = ({ availableClasses: passedClasses, isStaff: pas
                                       >
                                         {m.teacherShortName}
                                       </span>
+                                      {pct < 100 && !isStaff && (
+                                        <button
+                                          onClick={() => handleNotifyClassTeacher(cls.classId, cls.className, m.name)}
+                                          disabled={isNotifyingAttendance}
+                                          className="p-0.5 hover:bg-amber-100 text-amber-600 rounded transition-colors cursor-pointer disabled:opacity-50"
+                                          title={`Send reminder to ${cls.classTeacherName || 'Class Teacher'} for ${m.name} attendance`}
+                                        >
+                                          <BellAlertIcon className="w-2.5 h-2.5 text-amber-600" />
+                                        </button>
+                                      )}
                                     </div>
                                   )}
                                 </div>

@@ -236,6 +236,16 @@ const attendanceService = {
       console.error('Error sending attendance reminders:', error)
       throw error
     }
+  },
+
+  notifyPendingAttendance: async (payload = {}) => {
+    try {
+      const response = await api.post('/attendance/notify-pending', payload)
+      return response.data
+    } catch (error) {
+      console.error('Error notifying pending attendance:', error)
+      throw error
+    }
   }
 }
 

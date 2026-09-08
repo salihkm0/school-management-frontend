@@ -153,6 +153,11 @@ const examService = {
     );
     return response.data;
   },
+
+  notifyStaffForExamMarks: async (examId, payload) => {
+    const response = await api.post(`/exams/${examId}/notify-staff`, payload);
+    return response.data;
+  },
 };
 
 export default examService;

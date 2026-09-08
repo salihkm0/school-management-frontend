@@ -27,7 +27,8 @@ import {
   XCircleIcon,
   ArrowPathIcon,
   PaperAirplaneIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  BellAlertIcon
 } from '@heroicons/react/24/outline'
 import { reviewMarks, revertMarksToDraft, submitMarksForReview } from '../../services/markService'
 import LoadingSpinner from '../common/LoadingSpinner'
@@ -48,6 +49,7 @@ const ExamDetails = () => {
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [isReviewing, setIsReviewing] = useState(false)
   const [isSubmittingMarks, setIsSubmittingMarks] = useState(false)
+  const [isNotifying, setIsNotifying] = useState(false)
   const [expandedClasses, setExpandedClasses] = useState({})
 
   const classSubmissionsList = useMemo(() => {
@@ -135,6 +137,33 @@ const ExamDetails = () => {
       toast.error(err.response?.data?.message || 'Failed to submit marks for review')
     } finally {
       setIsSubmittingMarks(false)
+    }
+  }
+
+  const handleNotifyStaff = async (classId, className, subjectId = null, subjectName = null) => {
+    const targetDesc = subjectName ? `subject "${subjectName}" in ${className}` : `all pending subjects in ${className}`
+    setIsNotifying(true)
+    const toastId = toast.loading(`Sending reminder to ${targetDesc}...`)
+    try {
+      const res = await examService.notifyStaffForExamMarks(id, {
+        classId,
+        subjectId,
+        subjectName,
+        allPending: !subjectId && !subjectName
+      })
+      if (res.count > 0) {
+        const teachersSummary = res.notifiedTeachers
+          ?.map(t => `${t.teacherName} (${t.subjectName || ''}${t.action === 'submit' ? ' - Submit' : ' - Complete'})`.trim())
+          .join(', ')
+        toast.success(`Reminder sent to ${res.count} teacher(s): ${teachersSummary}!`, { id: toastId, duration: 5000 })
+      } else {
+        toast.info(res.message || 'No pending teachers to notify.', { id: toastId })
+      }
+    } catch (err) {
+      console.error('Failed to notify staff:', err)
+      toast.error(err.response?.data?.message || 'Failed to send notification', { id: toastId })
+    } finally {
+      setIsNotifying(false)
     }
   }
 
@@ -660,6 +689,17 @@ const ExamDetails = () => {
                                   </span>
                                 )
                               )}
+                              {submittedCount < totalCount && (
+                                <button
+                                  onClick={() => handleNotifyStaff(classIdStr, className)}
+                                  disabled={isNotifying || isSubmittingMarks || isReviewing}
+                                  className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-medium rounded-lg text-xs inline-flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+                                  title={`Send reminder to all teachers with pending subjects in ${className}`}
+                                >
+                                  <BellAlertIcon className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>Notify</span>
+                                </button>
+                              )}
                               {(isSubmitted || isReviewed || hasSubmittedSubject) && (
                                 <button
                                   onClick={() => handleRevertToDraft(classIdStr, className)}
@@ -708,9 +748,22 @@ const ExamDetails = () => {
                                     <BookOpenIcon className="w-4 h-4 text-purple-600" />
                                     Subject Submissions for {className}
                                   </div>
-                                  <span className="text-xs font-medium text-slate-500">
-                                    {submittedCount} of {totalCount} subjects submitted
-                                  </span>
+                                  <div className="flex items-center gap-2.5">
+                                    <span className="text-xs font-medium text-slate-500">
+                                      {submittedCount} of {totalCount} subjects submitted
+                                    </span>
+                                    {submittedCount < totalCount && (
+                                      <button
+                                        onClick={() => handleNotifyStaff(classIdStr, className)}
+                                        disabled={isNotifying || isSubmittingMarks || isReviewing}
+                                        className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-semibold rounded text-[11px] inline-flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs"
+                                        title={`Send reminder to all teachers with unsubmitted or incomplete marks in ${className}`}
+                                      >
+                                        <BellAlertIcon className="w-3.5 h-3.5 text-amber-600" />
+                                        <span>Notify Pending Staff</span>
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5">
                                   {subjectSubs.map((sub) => {
@@ -788,7 +841,7 @@ const ExamDetails = () => {
                                         </div>
 
                                         <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-100">
-                                           <div className="flex flex-col truncate max-w-[130px]">
+                                           <div className="flex flex-col truncate max-w-[110px]">
                                              <span className="text-slate-700 font-medium truncate" title={subSubmitted && (sub.submittedByName || sub.submittedBy?.name) ? `Submitted by: ${sub.submittedByName || sub.submittedBy?.name}` : 'Not submitted yet'}>
                                                {subSubmitted && (sub.submittedByName || sub.submittedBy?.name) ? (sub.submittedByName || sub.submittedBy?.name) : 'Draft'}
                                              </span>
@@ -810,6 +863,15 @@ const ExamDetails = () => {
                                              </button>
                                            ) : (
                                              <div className="flex items-center gap-1 shrink-0 ml-1">
+                                               <button
+                                                 onClick={() => handleNotifyStaff(classIdStr, className, sub.subjectId, sub.subjectName)}
+                                                 disabled={isNotifying || isSubmittingMarks || isReviewing}
+                                                 className="px-1.5 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-medium rounded text-[10px] inline-flex items-center gap-1 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                                                 title={isSubjMarksComplete ? `Notify teacher to review and submit marks for ${sub.subjectName}` : `Notify teacher to complete entering marks for ${sub.subjectName}`}
+                                               >
+                                                 <BellAlertIcon className="w-2.5 h-2.5 text-amber-600" />
+                                                 <span>{isSubjMarksComplete ? 'Remind' : 'Notify'}</span>
+                                               </button>
                                                {isSubjMarksComplete ? (
                                                  <button
                                                    onClick={() => handleSubmitMarks(classIdStr, className, sub.subjectId, sub.subjectName)}
