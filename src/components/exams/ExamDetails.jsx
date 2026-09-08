@@ -516,11 +516,11 @@ const ExamDetails = () => {
               <table className="min-w-full text-xs">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50/50">
-                    <th className="px-5 py-3 text-left font-semibold text-gray-600">Class</th>
-                    <th className="px-4 py-3 text-center font-semibold text-gray-600">Status</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Submitted By</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Submitted Date</th>
-                    <th className="px-5 py-3 text-right font-semibold text-gray-600">Actions</th>
+                    <th className="px-5 py-3 text-left font-semibold text-gray-600 whitespace-nowrap">Class</th>
+                    <th className="px-4 py-3 text-center font-semibold text-gray-600 whitespace-nowrap">Status</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-600 whitespace-nowrap">Submitted By</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-600 whitespace-nowrap">Submitted Date</th>
+                    <th className="px-5 py-3 text-right font-semibold text-gray-600 whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -579,37 +579,37 @@ const ExamDetails = () => {
                     return (
                       <React.Fragment key={cs._id || classIdStr}>
                         <tr className={`hover:bg-slate-50/70 transition-colors ${isExpanded ? 'bg-slate-50/40' : ''}`}>
-                          <td className="px-5 py-3 font-semibold text-gray-900">
+                          <td className="px-5 py-3 font-semibold text-gray-900 whitespace-nowrap">
                             <div className="flex items-center gap-2">
-                              <span>{className}</span>
+                              <span className="font-bold text-slate-900 text-sm shrink-0">{className}</span>
                               {totalCount > 0 && (
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border shrink-0 ${
                                   submittedCount === totalCount && totalCount > 0
                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                     : submittedCount > 0
                                     ? 'bg-purple-50 text-purple-700 border-purple-200'
                                     : 'bg-slate-100 text-slate-600 border-slate-200'
                                 }`}>
-                                  {submittedCount}/{totalCount} Subjects Submitted
+                                  {submittedCount}/{totalCount} Submitted
                                 </span>
                               )}
                               {classMarksExpected > 0 && (
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border shrink-0 ${
                                   classPct === 100
                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                     : classPct > 0
                                     ? 'bg-amber-50 text-amber-700 border-amber-200'
                                     : 'bg-slate-100 text-slate-600 border-slate-200'
                                 }`}>
-                                  {classPct}% Marks Entered
+                                  {classPct}% Entered
                                 </span>
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-center">
+                          <td className="px-4 py-3 text-center whitespace-nowrap">
                             {getStatusBadge(cs.status || 'draft')}
                           </td>
-                          <td className="px-4 py-3 text-gray-600">
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                             {uniqueSubmittedTeachers.length > 1 && !cs.submittedByName ? (
                               <span className="cursor-help underline decoration-dotted text-purple-700 font-medium" title={`Submitted by: ${uniqueSubmittedTeachers.join(', ')}`}>
                                 {displaySubmittedBy}
@@ -618,76 +618,84 @@ const ExamDetails = () => {
                               <span>{displaySubmittedBy}</span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-gray-600">
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                             {latestSubTime ? new Date(latestSubTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
                           </td>
-                          <td className="px-5 py-3 text-right space-x-2">
-                            {isSubmitted && (
-                              <button
-                                onClick={() => handleReviewClass(classIdStr, className)}
-                                disabled={isReviewing || isSubmittingMarks}
-                                className="px-2.5 py-1 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors shadow-2xs text-xs inline-flex items-center gap-1 cursor-pointer"
-                              >
-                                <CheckCircleIcon className="w-3.5 h-3.5" />
-                                Mark Reviewed
-                              </button>
-                            )}
-                            {(!isSubmitted && !isReviewed && !isPublished && submittedCount < totalCount) && (
-                              isClassMarksComplete ? (
+                          <td className="px-5 py-3 text-right whitespace-nowrap">
+                            <div className="inline-flex items-center justify-end gap-1.5">
+                              {isSubmitted && (
                                 <button
-                                  onClick={() => handleSubmitMarks(classIdStr, className)}
-                                  disabled={isSubmittingMarks || isReviewing}
-                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg disabled:opacity-50 transition-colors shadow-2xs text-xs inline-flex items-center gap-1 cursor-pointer"
-                                  title={`All marks entered (${classMarksEntered}/${classMarksExpected}). Click to submit all marks for review.`}
+                                  onClick={() => handleReviewClass(classIdStr, className)}
+                                  disabled={isReviewing || isSubmittingMarks}
+                                  className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg text-xs inline-flex items-center gap-1 shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+                                  title="Review all submitted marks for this class"
                                 >
-                                  <PaperAirplaneIcon className="w-3.5 h-3.5" />
-                                  Submit Class Marks
+                                  <CheckCircleIcon className="w-3.5 h-3.5" />
+                                  <span>Mark Reviewed</span>
                                 </button>
-                              ) : (
-                                <span
-                                  className="inline-flex items-center"
-                                  title={`Cannot submit: Staff has only entered ${classMarksEntered}/${classMarksExpected} marks (${classPct}%). All marks must be entered before submitting.`}
-                                >
+                              )}
+                              {(!isSubmitted && !isReviewed && !isPublished && submittedCount < totalCount) && (
+                                isClassMarksComplete ? (
                                   <button
-                                    disabled={true}
-                                    className="px-2.5 py-1 bg-gray-100 text-gray-400 border border-gray-200 font-medium rounded-lg opacity-60 cursor-not-allowed text-xs inline-flex items-center gap-1"
+                                    onClick={() => handleSubmitMarks(classIdStr, className)}
+                                    disabled={isSubmittingMarks || isReviewing}
+                                    className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg text-xs inline-flex items-center gap-1 shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+                                    title={`All marks entered (${classMarksEntered}/${classMarksExpected}). Click to submit all marks for review.`}
                                   >
-                                    <ExclamationTriangleIcon className="w-3.5 h-3.5 text-amber-500" />
-                                    Submit Class Marks
+                                    <PaperAirplaneIcon className="w-3.5 h-3.5" />
+                                    <span>Submit Class</span>
                                   </button>
-                                </span>
-                              )
-                            )}
-                            {(isSubmitted || isReviewed || hasSubmittedSubject) && (
-                              <button
-                                onClick={() => handleRevertToDraft(classIdStr, className)}
-                                disabled={isReviewing || isSubmittingMarks}
-                                className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-300 font-medium rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-colors text-xs inline-flex items-center gap-1 cursor-pointer"
-                                title="Set all subjects in class to Draft"
-                              >
-                                <ArrowPathIcon className="w-3.5 h-3.5" />
-                                Set All to Draft
-                              </button>
-                            )}
-                            {isDraft && !hasSubmittedSubject && !isClassMarksComplete && (
-                              <span className="text-gray-400 text-xs italic">Draft (Teachers Can Edit)</span>
-                            )}
-                            {isPublished && (
-                              <span className="text-emerald-600 text-xs font-medium">Published</span>
-                            )}
-                            {subjectSubs.length > 0 && (
-                              <button
-                                onClick={() => toggleClassExpand(classIdStr)}
-                                className="ml-2 px-2 py-1 text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 font-medium rounded-lg transition-colors text-xs inline-flex items-center gap-1 cursor-pointer"
-                              >
-                                <span>Subjects</span>
-                                {isExpanded ? (
-                                  <ChevronUpIcon className="w-3.5 h-3.5 text-slate-500" />
                                 ) : (
-                                  <ChevronDownIcon className="w-3.5 h-3.5 text-slate-500" />
-                                )}
-                              </button>
-                            )}
+                                  <span
+                                    className="inline-flex items-center"
+                                    title={`Cannot submit: Staff has only entered ${classMarksEntered}/${classMarksExpected} marks (${classPct}%). All marks must be entered before submitting.`}
+                                  >
+                                    <button
+                                      disabled={true}
+                                      className="px-2.5 py-1.5 bg-slate-100 text-slate-400 border border-slate-200 font-medium rounded-lg text-xs inline-flex items-center gap-1 opacity-70 cursor-not-allowed"
+                                    >
+                                      <ExclamationTriangleIcon className="w-3.5 h-3.5 text-amber-500" />
+                                      <span>Submit Class</span>
+                                    </button>
+                                  </span>
+                                )
+                              )}
+                              {(isSubmitted || isReviewed || hasSubmittedSubject) && (
+                                <button
+                                  onClick={() => handleRevertToDraft(classIdStr, className)}
+                                  disabled={isReviewing || isSubmittingMarks}
+                                  className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-medium rounded-lg text-xs inline-flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+                                  title="Set all subjects in class back to Draft"
+                                >
+                                  <ArrowPathIcon className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>All to Draft</span>
+                                </button>
+                              )}
+                              {isDraft && !hasSubmittedSubject && !isClassMarksComplete && (
+                                <span className="text-gray-400 text-xs italic px-2">Draft (Editable)</span>
+                              )}
+                              {isPublished && (
+                                <span className="text-emerald-600 text-xs font-semibold px-2">Published</span>
+                              )}
+                              {subjectSubs.length > 0 && (
+                                <button
+                                  onClick={() => toggleClassExpand(classIdStr)}
+                                  className={`px-2.5 py-1.5 font-medium rounded-lg text-xs inline-flex items-center gap-1 border transition-all cursor-pointer ${
+                                    isExpanded
+                                      ? 'bg-purple-100 text-purple-900 border-purple-300 shadow-2xs font-semibold'
+                                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                                  }`}
+                                  title={isExpanded ? "Collapse subjects" : "Expand subjects to view individual subject status"}
+                                >
+                                  <span>Subjects</span>
+                                  {isExpanded ? (
+                                    <ChevronUpIcon className="w-3.5 h-3.5 text-purple-600" />
+                                  ) : (
+                                    <ChevronDownIcon className="w-3.5 h-3.5 text-slate-500" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
 
