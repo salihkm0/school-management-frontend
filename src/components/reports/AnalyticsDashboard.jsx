@@ -1,5 +1,5 @@
 // src/components/reports/AnalyticsDashboard.jsx
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchGradeAnalysis, fetchFullAPlusStudents, fetchNearFullAPlusStudents, fetchTopPerformingClasses } from '../../services/analyticsService'
 import { fetchExams } from '../../store/slices/examSlice'
@@ -15,8 +15,16 @@ import {
   ChevronUpIcon,
   EyeIcon,
   DocumentArrowDownIcon,
-  CalendarDaysIcon
+  CalendarDaysIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  PrinterIcon,
+  ArrowDownTrayIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
 import { useAdminTeacherClasses } from '../../hooks/useAdminTeacherClasses'
@@ -41,6 +49,16 @@ const AnalyticsDashboard = () => {
   const [nearFullAPlusDetail, setNearFullAPlusDetail] = useState(null)
   const [topClasses, setTopClasses] = useState([])
   const [isLoading, setIsLoading] = useState(false)
+
+  // Rank-Wise Student List States
+  const [rankMode, setRankMode] = useState('TE') // 'TE' (Default: Theory Only) | 'TE_CE' (Theory + CE)
+  const [studentSearch, setStudentSearch] = useState('')
+  const [studentGradeFilter, setStudentGradeFilter] = useState('ALL')
+  const [studentPage, setStudentPage] = useState(1)
+  const [studentPageSize, setStudentPageSize] = useState(25)
+  const [exportLimit, setExportLimit] = useState('100')
+  const [isRankListExpanded, setIsRankListExpanded] = useState(true)
+
   const [expandedSections, setExpandedSections] = useState({
     fullAPlus: true,
     nearAPlus: true,
@@ -131,6 +149,270 @@ const AnalyticsDashboard = () => {
     a.click()
     URL.revokeObjectURL(url)
     toast.success(`Exported ${data.length} records`)
+  }
+
+  // Reset pagination when filter criteria change
+  useEffect(() => {
+    setStudentPage(1)
+  }, [selectedExam, selectedClass, rankMode, studentSearch, studentGradeFilter, studentPageSize])
+
+  const rawStudentResults = gradeAnalysis?.studentResults || []
+
+  // Rank-wise sorted student list
+  const sortedStudents = useMemo(() => {
+    if (!rawStudentResults || rawStudentResults.length === 0) return []
+    const list = [...rawStudentResults]
+
+    if (rankMode === 'TE') {
+      // TE Only: Theory examination marks first, tie-breaker percentage, then total marks
+      return list.sort((a, b) => {
+        const teDiff = (b.totalTheoryMarks || 0) - (a.totalTheoryMarks || 0)
+        if (teDiff !== 0) return teDiff
+        const pctDiff = (b.percentage || 0) - (a.percentage || 0)
+        if (pctDiff !== 0) return pctDiff
+        return (b.totalMarks || 0) - (a.totalMarks || 0)
+      })
+    } else {
+      // TE + CE: Total marks first, tie-breaker percentage, then theory marks
+      return list.sort((a, b) => {
+        const totalDiff = (b.totalMarks || 0) - (a.totalMarks || 0)
+        if (totalDiff !== 0) return totalDiff
+        const pctDiff = (b.percentage || 0) - (a.percentage || 0)
+        if (pctDiff !== 0) return pctDiff
+        return (b.totalTheoryMarks || 0) - (a.totalTheoryMarks || 0)
+      })
+    }
+  }, [rawStudentResults, rankMode])
+
+  // Filtered students by search & grade
+  const filteredStudents = useMemo(() => {
+    return sortedStudents.filter(student => {
+      if (studentGradeFilter !== 'ALL' && student.grade !== studentGradeFilter) {
+        return false
+      }
+      if (studentSearch.trim()) {
+        const q = studentSearch.toLowerCase().trim()
+        const nameMatch = (student.studentName || '').toLowerCase().includes(q)
+        const rollMatch = String(student.rollNumber || '').toLowerCase().includes(q)
+        const admMatch = String(student.admissionNumber || student.studentCode || '').toLowerCase().includes(q)
+        const classMatch = (student.className || '').toLowerCase().includes(q)
+        if (!nameMatch && !rollMatch && !admMatch && !classMatch) {
+          return false
+        }
+      }
+      return true
+    })
+  }, [sortedStudents, studentGradeFilter, studentSearch])
+
+  // Pagination calculations
+  const totalStudentsCount = filteredStudents.length
+  const effectivePageSize = studentPageSize === 'All' ? Math.max(1, totalStudentsCount) : Number(studentPageSize)
+  const totalPages = Math.max(1, Math.ceil(totalStudentsCount / effectivePageSize))
+  const currentPageSafe = Math.min(Math.max(1, studentPage), totalPages)
+  const startIndex = (currentPageSafe - 1) * effectivePageSize
+  const endIndex = Math.min(startIndex + effectivePageSize, totalStudentsCount)
+  const paginatedStudents = studentPageSize === 'All'
+    ? filteredStudents
+    : filteredStudents.slice(startIndex, endIndex)
+
+  const getExportCountNumber = () => {
+    if (!exportLimit || exportLimit === 'all' || isNaN(Number(exportLimit))) {
+      return filteredStudents.length
+    }
+    return Math.min(Math.max(1, parseInt(exportLimit, 10)), filteredStudents.length)
+  }
+
+  // Export Rank List to CSV
+  const exportRankListCSV = (customCount = null) => {
+    const targetCount = customCount !== null ? customCount : getExportCountNumber()
+    const dataToExport = filteredStudents.slice(0, targetCount)
+
+    if (dataToExport.length === 0) {
+      toast.error('No student records to export')
+      return
+    }
+
+    const isTE = rankMode === 'TE'
+    const examObj = exams.find(e => e._id === selectedExam)
+    const examName = examObj?.displayName || examObj?.name || 'Examination'
+    const classObj = availableClasses.find(c => (c._id || c.id) === selectedClass)
+    const className = classObj?.displayName || classObj?.name || (selectedClass ? 'Class' : 'All Classes')
+
+    const csvData = dataToExport.map((s, idx) => ({
+      'Rank': isTE ? (s.teRank || idx + 1) : (s.teCeRank || idx + 1),
+      'Ranking Type': isTE ? 'TE Only' : 'TE + CE',
+      'Roll No': s.rollNumber || '',
+      'Student Name': s.studentName || '',
+      'Admission No': s.admissionNumber || s.studentCode || '',
+      'Class': s.className || '',
+      'Theory Marks (TE)': s.totalTheoryMarks ?? 0,
+      'Continuous Evaluation (CE)': s.totalCeMarks ?? 0,
+      'Total Marks': s.totalMarks ?? 0,
+      'Max Marks': s.totalMaxMarks ?? '',
+      'Percentage (%)': s.percentage ?? '',
+      'Grade': s.grade || '',
+      'A+ Subjects': s.aplusCount ?? 0,
+      'Total Subjects': s.totalSubjects ?? '',
+      'Status': s.status || (s.percentage >= 40 ? 'Passed' : 'Failed')
+    }))
+
+    const filename = `Student_Rank_List_${examName.replace(/[^a-zA-Z0-9]/g, '_')}_${isTE ? 'TE' : 'TE_CE'}_Top_${dataToExport.length}`
+    exportToCSV(csvData, filename)
+  }
+
+  // Export Rank List to PDF
+  const exportRankListPDF = (customCount = null) => {
+    try {
+      const targetCount = customCount !== null ? customCount : getExportCountNumber()
+      const dataToExport = filteredStudents.slice(0, targetCount)
+
+      if (dataToExport.length === 0) {
+        toast.error('No student records to export')
+        return
+      }
+
+      const isTE = rankMode === 'TE'
+      const examObj = exams.find(e => e._id === selectedExam)
+      const examName = examObj?.displayName || examObj?.name || 'Examination'
+      const classObj = availableClasses.find(c => (c._id || c.id) === selectedClass)
+      const className = classObj?.displayName || classObj?.name || (selectedClass ? 'Class' : 'All Classes')
+
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'pt',
+        format: 'a4'
+      })
+
+      // Header Banner
+      doc.setFillColor(isTE ? 37 : 13, isTE ? 99 : 148, isTE ? 235 : 136)
+      doc.rect(0, 0, doc.internal.pageSize.width, 48, 'F')
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(15)
+      doc.setTextColor(255, 255, 255)
+      doc.text('PPM HSS KOTUKKARA - EXAMINATION PERFORMANCE & RANK LIST', 40, 30)
+
+      doc.setFontSize(12)
+      doc.setTextColor(30, 41, 59)
+      const titleMode = isTE
+        ? 'Theory Examination Only (TE) Official Student Rank List'
+        : 'Combined Theory & Continuous Evaluation (TE + CE) Official Student Rank List'
+      doc.text(titleMode, 40, 70)
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(9)
+      doc.setTextColor(100, 116, 139)
+      doc.text(
+        `Exam: ${examName}   |   Class: ${className}   |   Export Scope: Top ${dataToExport.length} Students   |   Generated: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        40,
+        86
+      )
+
+      const headers = [
+        'Rank',
+        'Roll No',
+        'Student Name',
+        'Adm No',
+        'Class',
+        isTE ? 'TE Marks (Rank Score)' : 'TE Marks',
+        'CE Marks',
+        !isTE ? 'Total (Rank Score)' : 'Total Marks',
+        'Percentage',
+        'Grade',
+        'A+ Subjects',
+        'Status'
+      ]
+
+      const rows = dataToExport.map((s, idx) => [
+        isTE ? (s.teRank || idx + 1) : (s.teCeRank || idx + 1),
+        s.rollNumber || '-',
+        s.studentName || '-',
+        s.admissionNumber || s.studentCode || '-',
+        s.className || '-',
+        s.totalTheoryMarks ?? 0,
+        s.totalCeMarks ?? 0,
+        `${s.totalMarks ?? 0}${s.totalMaxMarks ? `/${s.totalMaxMarks}` : ''}`,
+        `${s.percentage ? s.percentage.toFixed(1) + '%' : '0%'}`,
+        s.grade || '-',
+        `${s.aplusCount || 0}/${s.totalSubjects || '-'}`,
+        s.status || (s.percentage >= 40 ? 'Passed' : 'Failed')
+      ])
+
+      autoTable(doc, {
+        head: [headers],
+        body: rows,
+        startY: 96,
+        theme: 'striped',
+        styles: {
+          fontSize: 8,
+          cellPadding: 4,
+          valign: 'middle'
+        },
+        headStyles: {
+          fillColor: isTE ? [37, 99, 235] : [13, 148, 136],
+          textColor: 255,
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        columnStyles: {
+          0: { halign: 'center', fontStyle: 'bold', cellWidth: 40 },
+          1: { halign: 'center', cellWidth: 45 },
+          2: { fontStyle: 'bold', cellWidth: 120 },
+          3: { halign: 'center', cellWidth: 55 },
+          4: { halign: 'center', cellWidth: 55 },
+          5: { halign: 'center', fontStyle: isTE ? 'bold' : 'normal', cellWidth: 65 },
+          6: { halign: 'center', cellWidth: 50 },
+          7: { halign: 'center', fontStyle: !isTE ? 'bold' : 'normal', cellWidth: 70 },
+          8: { halign: 'center', fontStyle: 'bold', cellWidth: 55 },
+          9: { halign: 'center', fontStyle: 'bold', cellWidth: 40 },
+          10: { halign: 'center', cellWidth: 55 },
+          11: { halign: 'center', cellWidth: 50 }
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252]
+        },
+        didDrawPage: () => {
+          const pageCount = doc.internal.getNumberOfPages()
+          doc.setFontSize(8)
+          doc.setTextColor(148, 163, 184)
+          doc.text(
+            `KlassDesk Examination Analytics   •   Page ${doc.internal.getCurrentPageInfo().pageNumber} of ${pageCount}`,
+            40,
+            doc.internal.pageSize.height - 15
+          )
+        }
+      })
+
+      const filename = `Student_Rank_List_${examName.replace(/[^a-zA-Z0-9]/g, '_')}_${isTE ? 'TE' : 'TE_CE'}_Top_${dataToExport.length}.pdf`
+      doc.save(filename)
+      toast.success(`PDF exported successfully (${dataToExport.length} students)`)
+    } catch (err) {
+      console.error('PDF export error:', err)
+      toast.error('Failed to generate PDF')
+    }
+  }
+
+  const getGradeBadgeClass = (grade) => {
+    switch (grade) {
+      case 'A+':
+        return 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+      case 'A':
+        return 'bg-green-100 text-green-800 border border-green-200'
+      case 'B+':
+        return 'bg-teal-100 text-teal-800 border border-teal-200'
+      case 'B':
+        return 'bg-blue-100 text-blue-800 border border-blue-200'
+      case 'C+':
+        return 'bg-cyan-100 text-cyan-800 border border-cyan-200'
+      case 'C':
+        return 'bg-amber-100 text-amber-800 border border-amber-200'
+      case 'D+':
+        return 'bg-orange-100 text-orange-800 border border-orange-200'
+      case 'D':
+        return 'bg-rose-100 text-rose-800 border border-rose-200'
+      default:
+        return 'bg-gray-100 text-gray-700 border border-gray-200'
+    }
   }
 
   if (isLoading) return <LoadingSpinner />
@@ -717,7 +999,446 @@ const AnalyticsDashboard = () => {
             </div>
           </div>
 
-          {/* Full A+ Students Section */}
+          {/* ==================== RANK-WISE STUDENTS LIST ==================== */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Card Header & Controls */}
+            <div className="p-5 sm:p-6 bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-white border-b border-gray-100">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="flex items-start sm:items-center gap-3.5">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm shrink-0 transition-all ${
+                    rankMode === 'TE' ? 'bg-blue-600 text-white' : 'bg-teal-600 text-white'
+                  }`}>
+                    <TrophyIcon className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-xl font-bold text-gray-900">Student Rank List</h2>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                        {totalStudentsCount} {totalStudentsCount === 1 ? 'Student' : 'Students'}
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                      {rankMode === 'TE' 
+                        ? 'Sorted by Theory Examination (TE) score (Default Ranking)' 
+                        : 'Sorted by Combined Theory + Continuous Evaluation (TE + CE) Total Score'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Rank Mode Selector (TE Only [Default] vs TE + CE) */}
+                <div className="flex items-center gap-1.5 p-1 bg-gray-100/90 rounded-xl border border-gray-200 self-start lg:self-center">
+                  <button
+                    type="button"
+                    onClick={() => setRankMode('TE')}
+                    className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
+                      rankMode === 'TE'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-white/60'
+                    }`}
+                  >
+                    <span>🎯 TE Only Rank (Default)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setRankMode('TE_CE')}
+                    className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
+                      rankMode === 'TE_CE'
+                        ? 'bg-teal-600 text-white shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-white/60'
+                    }`}
+                  >
+                    <span>🏅 TE + CE Rank</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Search, Grade Filter & Export Bar */}
+              <div className="mt-5 pt-4 border-t border-gray-200/70 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                {/* Search & Filter */}
+                <div className="flex flex-wrap items-center gap-2.5 flex-1">
+                  <div className="relative flex-1 min-w-[220px] max-w-md">
+                    <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search student name, roll no, admission no..."
+                      value={studentSearch}
+                      onChange={(e) => setStudentSearch(e.target.value)}
+                      className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    {studentSearch && (
+                      <button
+                        onClick={() => setStudentSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <XMarkIcon className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
+                    <FunnelIcon className="w-4 h-4 text-gray-400" />
+                    <select
+                      value={studentGradeFilter}
+                      onChange={(e) => setStudentGradeFilter(e.target.value)}
+                      className="text-xs sm:text-sm text-gray-700 bg-transparent border-none outline-none cursor-pointer pr-2"
+                    >
+                      <option value="ALL">All Grades</option>
+                      <option value="A+">A+ Only</option>
+                      <option value="A">A Only</option>
+                      <option value="B+">B+ Only</option>
+                      <option value="B">B Only</option>
+                      <option value="C+">C+ Only</option>
+                      <option value="C">C Only</option>
+                      <option value="D+">D+ Only</option>
+                      <option value="D">D Only</option>
+                      <option value="E">E Only</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Export Controls with Custom Limit */}
+                <div className="flex flex-wrap items-center gap-2 bg-white/90 p-1.5 rounded-xl border border-gray-200">
+                  <div className="flex items-center gap-1.5 pl-1.5 pr-1">
+                    <span className="text-xs font-semibold text-gray-500 whitespace-nowrap">Export Top:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max={totalStudentsCount || 100}
+                      value={exportLimit}
+                      onChange={(e) => setExportLimit(e.target.value)}
+                      placeholder="100"
+                      className="w-16 px-2 py-1 text-xs sm:text-sm font-semibold text-gray-800 border border-gray-200 rounded-md text-center focus:ring-2 focus:ring-primary-500 outline-none"
+                    />
+                  </div>
+
+                  {/* Preset quick buttons */}
+                  <div className="hidden sm:flex items-center gap-1 border-l border-gray-200 pl-1.5 pr-1">
+                    {[10, 50, 100].map(cnt => (
+                      <button
+                        key={cnt}
+                        type="button"
+                        onClick={() => setExportLimit(String(cnt))}
+                        className={`px-2 py-1 text-xs rounded font-medium transition-colors ${
+                          String(exportLimit) === String(cnt)
+                            ? 'bg-primary-100 text-primary-800 font-bold'
+                            : 'text-gray-500 hover:bg-gray-100'
+                        }`}
+                      >
+                        {cnt}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setExportLimit(String(totalStudentsCount || 'all'))}
+                      className={`px-2 py-1 text-xs rounded font-medium transition-colors ${
+                        String(exportLimit) === String(totalStudentsCount) || exportLimit === 'all'
+                          ? 'bg-primary-100 text-primary-800 font-bold'
+                          : 'text-gray-500 hover:bg-gray-100'
+                      }`}
+                    >
+                      All
+                    </button>
+                  </div>
+
+                  {/* Export CSV & PDF action buttons */}
+                  <div className="flex items-center gap-1.5 border-l border-gray-200 pl-2">
+                    <button
+                      type="button"
+                      onClick={() => exportRankListCSV()}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                      title={`Export top ${getExportCountNumber()} students to CSV`}
+                    >
+                      <DocumentArrowDownIcon className="w-3.5 h-3.5" />
+                      <span>CSV</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => exportRankListPDF()}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                      title={`Export top ${getExportCountNumber()} students to PDF`}
+                    >
+                      <PrinterIcon className="w-3.5 h-3.5" />
+                      <span>PDF</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Table Content */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left">
+                <thead className="bg-gray-50/90 text-gray-600 text-xs font-semibold uppercase tracking-wider border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3.5 text-center">Rank</th>
+                    <th className="px-3 py-3.5 text-center">Roll No</th>
+                    <th className="px-4 py-3.5">Student</th>
+                    <th className="px-3 py-3.5 text-center">Class</th>
+                    <th className={`px-4 py-3.5 text-center ${rankMode === 'TE' ? 'bg-blue-100/60 text-blue-900 font-bold' : ''}`}>
+                      TE Marks {rankMode === 'TE' && '(Rank Score)'}
+                    </th>
+                    <th className="px-3 py-3.5 text-center">CE Marks</th>
+                    <th className={`px-4 py-3.5 text-center ${rankMode === 'TE_CE' ? 'bg-teal-100/60 text-teal-900 font-bold' : ''}`}>
+                      Total (TE+CE) {rankMode === 'TE_CE' && '(Rank Score)'}
+                    </th>
+                    <th className="px-3 py-3.5 text-center">Percentage</th>
+                    <th className="px-3 py-3.5 text-center">Grade</th>
+                    <th className="px-3 py-3.5 text-center">A+ Count</th>
+                    <th className="px-4 py-3.5 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 text-sm">
+                  {paginatedStudents.length === 0 ? (
+                    <tr>
+                      <td colSpan="11" className="px-6 py-12 text-center">
+                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-400">
+                          <UserGroupIcon className="w-6 h-6" />
+                        </div>
+                        <p className="text-gray-700 font-medium">No students match the criteria</p>
+                        <p className="text-xs text-gray-500 mt-1">Try clearing your search query or grade filter</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedStudents.map((student, idx) => {
+                      const displayRank = rankMode === 'TE' 
+                        ? (student.teRank || startIndex + idx + 1)
+                        : (student.teCeRank || startIndex + idx + 1)
+                      
+                      return (
+                        <tr key={student.studentId || idx} className="hover:bg-blue-50/30 transition-colors">
+                          {/* Rank column with Top 3 Medals */}
+                          <td className="px-4 py-3 text-center">
+                            {displayRank === 1 ? (
+                              <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-sm">
+                                🥇 #1
+                              </span>
+                            ) : displayRank === 2 ? (
+                              <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-800 border border-slate-300 shadow-sm">
+                                🥈 #2
+                              </span>
+                            ) : displayRank === 3 ? (
+                              <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-900 border border-orange-300 shadow-sm">
+                                🥉 #3
+                              </span>
+                            ) : displayRank <= 10 ? (
+                              <span className="inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                #{displayRank}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center justify-center min-w-[28px] px-1.5 py-0.5 rounded-full text-xs font-semibold text-gray-600 bg-gray-100">
+                                #{displayRank}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Roll No */}
+                          <td className="px-3 py-3 text-center text-xs font-mono font-medium text-gray-700">
+                            {student.rollNumber || '-'}
+                          </td>
+
+                          {/* Student Details */}
+                          <td className="px-4 py-3">
+                            <div className="font-semibold text-gray-900 leading-tight">
+                              {student.studentName}
+                            </div>
+                            <div className="text-xs text-gray-400 font-mono mt-0.5">
+                              {student.admissionNumber || student.studentCode || ''}
+                            </div>
+                          </td>
+
+                          {/* Class */}
+                          <td className="px-3 py-3 text-center">
+                            <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                              {student.className || '-'}
+                            </span>
+                          </td>
+
+                          {/* Theory Marks (TE) */}
+                          <td className={`px-4 py-3 text-center ${rankMode === 'TE' ? 'bg-blue-50/70 font-bold text-blue-900' : 'text-gray-700 font-medium'}`}>
+                            <span className={rankMode === 'TE' ? 'text-blue-700 font-bold text-base' : ''}>
+                              {student.totalTheoryMarks ?? 0}
+                            </span>
+                          </td>
+
+                          {/* CE Marks */}
+                          <td className="px-3 py-3 text-center text-gray-600 text-xs font-medium">
+                            +{student.totalCeMarks ?? 0}
+                          </td>
+
+                          {/* Total Score (TE + CE) */}
+                          <td className={`px-4 py-3 text-center ${rankMode === 'TE_CE' ? 'bg-teal-50/70 font-bold text-teal-900' : 'text-gray-800 font-semibold'}`}>
+                            <span className={rankMode === 'TE_CE' ? 'text-teal-800 font-bold text-base' : ''}>
+                              {student.totalMarks ?? 0}
+                            </span>
+                            {student.totalMaxMarks > 0 && (
+                              <span className="text-xs text-gray-400 ml-1">/{student.totalMaxMarks}</span>
+                            )}
+                          </td>
+
+                          {/* Percentage */}
+                          <td className="px-3 py-3 text-center">
+                            <div className="font-semibold text-xs text-gray-900">
+                              {student.percentage?.toFixed(1) || 0}%
+                            </div>
+                            <div className="w-16 bg-gray-100 rounded-full h-1 mx-auto mt-1 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${
+                                  student.percentage >= 90 ? 'bg-emerald-500' : student.percentage >= 60 ? 'bg-blue-500' : student.percentage >= 40 ? 'bg-amber-500' : 'bg-rose-500'
+                                }`}
+                                style={{ width: `${Math.min(student.percentage || 0, 100)}%` }}
+                              />
+                            </div>
+                          </td>
+
+                          {/* Grade */}
+                          <td className="px-3 py-3 text-center">
+                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${getGradeBadgeClass(student.grade)}`}>
+                              {student.grade || '-'}
+                            </span>
+                          </td>
+
+                          {/* A+ Count */}
+                          <td className="px-3 py-3 text-center">
+                            {student.aplusCount > 0 ? (
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                                student.aplusCount === student.totalSubjects && student.totalSubjects > 0
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                  : student.aplusCount >= 8
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : 'bg-gray-100 text-gray-700'
+                              }`}>
+                                ⭐ {student.aplusCount}/{student.totalSubjects || '-'}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400">0</span>
+                            )}
+                          </td>
+
+                          {/* Status */}
+                          <td className="px-4 py-3 text-center">
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${
+                              (student.status === 'Passed' || student.percentage >= 40)
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-rose-50 text-rose-700'
+                            }`}>
+                              {student.status || (student.percentage >= 40 ? 'Passed' : 'Failed')}
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {totalStudentsCount > 0 && (
+              <div className="px-5 py-4 bg-gray-50/80 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="text-xs text-gray-500 text-center sm:text-left">
+                  Showing <span className="font-semibold text-gray-800">{startIndex + 1}</span> to{' '}
+                  <span className="font-semibold text-gray-800">{endIndex}</span> of{' '}
+                  <span className="font-semibold text-gray-800">{totalStudentsCount}</span> students
+                  <span className="hidden md:inline ml-2 text-gray-400">
+                    • Rank mode: {rankMode === 'TE' ? 'Theory Examination (TE Only)' : 'Combined TE + CE'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {/* Rows per page */}
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <span>Rows:</span>
+                    <select
+                      value={studentPageSize}
+                      onChange={(e) => {
+                        setStudentPageSize(e.target.value === 'All' ? 'All' : Number(e.target.value))
+                        setStudentPage(1)
+                      }}
+                      className="px-2 py-1 bg-white border border-gray-200 rounded text-xs text-gray-700 outline-none"
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value="All">All</option>
+                    </select>
+                  </div>
+
+                  {/* Page Navigation */}
+                  {studentPageSize !== 'All' && totalPages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setStudentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPageSafe <= 1}
+                        className="p-1 rounded border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        title="Previous page"
+                      >
+                        <ChevronLeftIcon className="w-4 h-4" />
+                      </button>
+
+                      {/* Display up to 5 page number buttons */}
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum
+                        if (totalPages <= 5) {
+                          pageNum = i + 1
+                        } else if (currentPageSafe <= 3) {
+                          pageNum = i + 1
+                        } else if (currentPageSafe >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i
+                        } else {
+                          pageNum = currentPageSafe - 2 + i
+                        }
+
+                        return (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            onClick={() => setStudentPage(pageNum)}
+                            className={`min-w-[28px] h-7 px-1.5 rounded text-xs font-semibold transition-colors ${
+                              currentPageSafe === pageNum
+                                ? 'bg-primary-600 text-white'
+                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        )
+                      })}
+
+                      <button
+                        type="button"
+                        onClick={() => setStudentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPageSafe >= totalPages}
+                        className="p-1 rounded border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        title="Next page"
+                      >
+                        <ChevronRightIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ==================== A+ STUDENTS ANALYSIS (BOTTOM) ==================== */}
+          <div className="mt-8 pt-6 border-t border-gray-200 space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <TrophyIcon className="w-6 h-6 text-amber-500" />
+                  A+ Students Detailed Analysis
+                </h2>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Full A+ achievers, near-miss students (9 A+, 8 A+, 7 A+), and subject opportunity breakdowns
+                </p>
+              </div>
+            </div>
+
+            {/* Full A+ Students Section */}
           {fullAPlusList && fullAPlusList.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-6 py-4 bg-gradient-to-r from-emerald-50 to-white border-b border-gray-100 flex items-center justify-between">
@@ -1176,6 +1897,7 @@ const AnalyticsDashboard = () => {
           {!hasNearFullData && nearFullAPlusList && nearFullAPlusList.length > 0 && (
             renderStudentTable(nearFullAPlusList, 'Near A+ Students (9 A+ out of 10 subjects)', true)
           )}
+          </div>
         </>
       ) : null}
         </>
