@@ -30,6 +30,19 @@ import toast from 'react-hot-toast'
 import { useAdminTeacherClasses } from '../../hooks/useAdminTeacherClasses'
 import AttendanceAnalyticsView from './AttendanceAnalyticsView'
 
+// Helper: compute grade from percentage (mirrors backend logic)
+const getGradeFromPercentage = (percentage) => {
+  if (percentage >= 90) return 'A+'
+  if (percentage >= 80) return 'A'
+  if (percentage >= 70) return 'B+'
+  if (percentage >= 60) return 'B'
+  if (percentage >= 50) return 'C+'
+  if (percentage >= 40) return 'C'
+  if (percentage >= 30) return 'D+'
+  if (percentage >= 20) return 'D'
+  return 'E'
+}
+
 const AnalyticsDashboard = () => {
   const dispatch = useDispatch()
   const { user } = useSelector((state) => state.auth)
@@ -164,30 +177,51 @@ const AnalyticsDashboard = () => {
     const list = [...rawStudentResults]
 
     if (rankMode === 'TE') {
-      // TE Only: Theory examination marks first, tie-breaker percentage, then total marks
+      // TE Only: Use rankTeTotal (which excludes PE/WE/Drawing), tie-break by TE%
       return list.sort((a, b) => {
-        const teDiff = (b.totalTheoryMarks || 0) - (a.totalTheoryMarks || 0)
+        const teDiff = (b.rankTeTotal || 0) - (a.rankTeTotal || 0)
         if (teDiff !== 0) return teDiff
-        const pctDiff = (b.percentage || 0) - (a.percentage || 0)
+        const pctDiff = (b.rankTePercentage || 0) - (a.rankTePercentage || 0)
         if (pctDiff !== 0) return pctDiff
-        return (b.totalMarks || 0) - (a.totalMarks || 0)
+        return (b.rankTotalObtained || 0) - (a.rankTotalObtained || 0)
       })
     } else {
-      // TE + CE: Total marks first, tie-breaker percentage, then theory marks
+      // TE + CE: Use rankTotalObtained (which excludes PE/WE/Drawing), tie-break by Total%
       return list.sort((a, b) => {
-        const totalDiff = (b.totalMarks || 0) - (a.totalMarks || 0)
+        const totalDiff = (b.rankTotalObtained || 0) - (a.rankTotalObtained || 0)
         if (totalDiff !== 0) return totalDiff
-        const pctDiff = (b.percentage || 0) - (a.percentage || 0)
+        const pctDiff = (b.rankTotalPercentage || 0) - (a.rankTotalPercentage || 0)
         if (pctDiff !== 0) return pctDiff
-        return (b.totalTheoryMarks || 0) - (a.totalTheoryMarks || 0)
+        return (b.rankTeTotal || 0) - (a.rankTeTotal || 0)
       })
     }
   }, [rawStudentResults, rankMode])
 
-  // Filtered students by search & grade
+  // Helper to get rank-specific values for a student
+  const getStudentRankData = (student) => {
+    const isTE = rankMode === 'TE'
+    return {
+      teMarks: student.rankTeTotal ?? student.totalTheoryMarks ?? 0,
+      teMax: student.rankTeMax ?? 0,
+      ceMarks: student.totalCeMarks ?? 0,
+      totalMarks: student.rankTotalObtained ?? student.totalMarks ?? 0,
+      totalMax: student.rankTotalMax ?? student.totalMaxMarks ?? 0,
+      percentage: isTE
+        ? (student.rankTePercentage ?? student.percentage ?? 0)
+        : (student.rankTotalPercentage ?? student.percentage ?? 0),
+      grade: getGradeFromPercentage(
+        isTE
+          ? (student.rankTePercentage ?? student.percentage ?? 0)
+          : (student.rankTotalPercentage ?? student.percentage ?? 0)
+      ),
+    }
+  }
+
+  // Filtered students by search & grade (filter uses rank-based grade)
   const filteredStudents = useMemo(() => {
     return sortedStudents.filter(student => {
-      if (studentGradeFilter !== 'ALL' && student.grade !== studentGradeFilter) {
+      const rankData = getStudentRankData(student)
+      if (studentGradeFilter !== 'ALL' && rankData.grade !== studentGradeFilter) {
         return false
       }
       if (studentSearch.trim()) {
@@ -202,7 +236,7 @@ const AnalyticsDashboard = () => {
       }
       return true
     })
-  }, [sortedStudents, studentGradeFilter, studentSearch])
+  }, [sortedStudents, studentGradeFilter, studentSearch, rankMode])
 
   // Pagination calculations
   const totalStudentsCount = filteredStudents.length
@@ -235,33 +269,36 @@ const AnalyticsDashboard = () => {
     const isTE = rankMode === 'TE'
     const examObj = exams.find(e => e._id === selectedExam)
     const examName = examObj?.displayName || examObj?.name || 'Examination'
-    const classObj = availableClasses.find(c => (c._id || c.id) === selectedClass)
-    const className = classObj?.displayName || classObj?.name || (selectedClass ? 'Class' : 'All Classes')
 
-    const csvData = dataToExport.map((s, idx) => ({
-      'Rank': isTE ? (s.teRank || idx + 1) : (s.teCeRank || idx + 1),
-      'Ranking Type': isTE ? 'TE Only' : 'TE + CE',
-      'Roll No': s.rollNumber || '',
-      'Student Name': s.studentName || '',
-      'Admission No': s.admissionNumber || s.studentCode || '',
-      'Class': s.className || '',
-      'Theory Marks (TE)': s.totalTheoryMarks ?? 0,
-      'Continuous Evaluation (CE)': s.totalCeMarks ?? 0,
-      'Total Marks': s.totalMarks ?? 0,
-      'Max Marks': s.totalMaxMarks ?? '',
-      'Percentage (%)': s.percentage ?? '',
-      'Grade': s.grade || '',
-      'A+ Subjects': s.aplusCount ?? 0,
-      'Total Subjects': s.totalSubjects ?? '',
-      'Status': s.status || (s.percentage >= 40 ? 'Passed' : 'Failed')
-    }))
+    const csvData = dataToExport.map((s, idx) => {
+      const rd = getStudentRankData(s)
+      return {
+        'Rank': isTE ? (s.teRank || idx + 1) : (s.teCeRank || idx + 1),
+        'Ranking Type': isTE ? 'TE Only (Excl. PE/WE/Drawing)' : 'TE + CE (Excl. PE/WE/Drawing)',
+        'Roll No': s.rollNumber || '',
+        'Student Name': s.studentName || '',
+        'Admission No': s.admissionNumber || s.studentCode || '',
+        'Class': s.className || '',
+        'Theory Marks (TE)': rd.teMarks,
+        'Theory Max': rd.teMax,
+        'Continuous Evaluation (CE)': rd.ceMarks,
+        'Total Marks': rd.totalMarks,
+        'Total Max': rd.totalMax,
+        'Percentage (%)': Number(rd.percentage.toFixed(2)),
+        'Grade': rd.grade,
+        'A+ Subjects': s.aplusCount ?? 0,
+        'Total Subjects': s.totalSubjects ?? '',
+        'Status': rd.percentage >= 40 ? 'Passed' : 'Failed'
+      }
+    })
 
     const filename = `Student_Rank_List_${examName.replace(/[^a-zA-Z0-9]/g, '_')}_${isTE ? 'TE' : 'TE_CE'}_Top_${dataToExport.length}`
     exportToCSV(csvData, filename)
   }
 
   // Export Rank List to PDF
-  const exportRankListPDF = (customCount = null) => {
+  // Export Rank List to PDF matching standard school template
+  const exportRankListPDF = async (customCount = null) => {
     try {
       const targetCount = customCount !== null ? customCount : getExportCountNumber()
       const dataToExport = filteredStudents.slice(0, targetCount)
@@ -283,30 +320,121 @@ const AnalyticsDashboard = () => {
         format: 'a4'
       })
 
-      // Header Banner
-      doc.setFillColor(isTE ? 37 : 13, isTE ? 99 : 148, isTE ? 235 : 136)
-      doc.rect(0, 0, doc.internal.pageSize.width, 48, 'F')
+      const pageWidth = doc.internal.pageSize.width
+      const pageHeight = doc.internal.pageSize.height
+      const schoolLogoUrl = 'https://res.cloudinary.com/dmjqgjcut/image/upload/v1769946977/school-logo_uugskb.jpg'
 
-      doc.setFont('helvetica', 'bold')
+      // Helper to load image as base64
+      const loadImage = (url) => {
+        return new Promise((resolve) => {
+          const img = new Image()
+          img.crossOrigin = 'Anonymous'
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = img.width
+              canvas.height = img.height
+              const ctx = canvas.getContext('2d')
+              ctx.drawImage(img, 0, 0)
+              resolve(canvas.toDataURL('image/jpeg'))
+            } catch {
+              resolve(null)
+            }
+          }
+          img.onerror = () => resolve(null)
+          img.src = url
+        })
+      }
+
+      const logoBase64 = await loadImage(schoolLogoUrl)
+
+      // Function to draw formal school border and watermark on each page
+      const drawSchoolPageDecorations = (data) => {
+        // Double black border matching school reports
+        doc.setDrawColor(0, 0, 0)
+        doc.setLineWidth(2)
+        doc.rect(20, 20, pageWidth - 40, pageHeight - 40)
+        doc.setLineWidth(0.75)
+        doc.rect(23, 23, pageWidth - 46, pageHeight - 46)
+
+        // Watermark in the center
+        if (logoBase64 && doc.GState) {
+          try {
+            doc.saveGraphicsState()
+            doc.setGState(new doc.GState({ opacity: 0.05 }))
+            const wmSize = 220
+            doc.addImage(logoBase64, 'JPEG', (pageWidth - wmSize) / 2, (pageHeight - wmSize) / 2, wmSize, wmSize)
+            doc.restoreGraphicsState()
+          } catch (e) {
+            // Ignore if graphics state is not supported
+          }
+        }
+
+        // Footer
+        const pageCount = doc.internal.getNumberOfPages()
+        doc.setFont('times', 'normal')
+        doc.setFontSize(8)
+        doc.setTextColor(80, 80, 80)
+        doc.text(
+          `P.P.M.H.S.S. KOTTUKKARA  •  OFFICIAL EXAMINATION REPORT  •  Page ${data.pageNumber} of ${pageCount}`,
+          pageWidth / 2,
+          pageHeight - 28,
+          { align: 'center' }
+        )
+      }
+
+      // Draw Top Header on First Page
+      let currentY = 36
+      if (logoBase64) {
+        const logoW = 38
+        const logoH = 38
+        doc.addImage(logoBase64, 'JPEG', pageWidth / 2 - logoW / 2, currentY, logoW, logoH)
+        currentY += 44
+      } else {
+        currentY += 10
+      }
+
+      // School Name
+      doc.setFont('times', 'bold')
       doc.setFontSize(15)
-      doc.setTextColor(255, 255, 255)
-      doc.text('PPM HSS KOTUKKARA - EXAMINATION PERFORMANCE & RANK LIST', 40, 30)
+      doc.setTextColor(0, 0, 0)
+      doc.text('P.P.M.H.S.S. KOTTUKKARA', pageWidth / 2, currentY, { align: 'center' })
+      currentY += 13
 
-      doc.setFontSize(12)
-      doc.setTextColor(30, 41, 59)
+      // Address
+      doc.setFont('times', 'normal')
+      doc.setFontSize(8.5)
+      doc.setTextColor(50, 50, 50)
+      doc.text('KOTTUKKARA, KONDOTTY, MALAPPURAM, KERALA - 673638', pageWidth / 2, currentY, { align: 'center' })
+      currentY += 15
+
+      // Document Title
+      doc.setFont('times', 'bold')
+      doc.setFontSize(11)
+      doc.setTextColor(0, 0, 0)
       const titleMode = isTE
-        ? 'Theory Examination Only (TE) Official Student Rank List'
-        : 'Combined Theory & Continuous Evaluation (TE + CE) Official Student Rank List'
-      doc.text(titleMode, 40, 70)
+        ? 'STUDENT RANK LIST - THEORY EVALUATION ONLY (TE)'
+        : 'STUDENT RANK LIST - COMBINED THEORY + CE'
+      doc.text(titleMode, pageWidth / 2, currentY, { align: 'center' })
+      currentY += 13
 
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(9)
-      doc.setTextColor(100, 116, 139)
+      // Meta information strip
+      doc.setFont('times', 'italic')
+      doc.setFontSize(8.5)
+      doc.setTextColor(60, 60, 60)
       doc.text(
-        `Exam: ${examName}   |   Class: ${className}   |   Export Scope: Top ${dataToExport.length} Students   |   Generated: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-        40,
-        86
+        `Exam: ${examName}   |   Class: ${className}   |   Scope: Top ${dataToExport.length} Students   |   Generated: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        pageWidth / 2,
+        currentY,
+        { align: 'center' }
       )
+      currentY += 12
+
+      // Thin separator line
+      doc.setDrawColor(0, 0, 0)
+      doc.setLineWidth(1)
+      doc.line(35, currentY, pageWidth - 35, currentY)
+      currentY += 8
 
       const headers = [
         'Rank',
@@ -314,78 +442,78 @@ const AnalyticsDashboard = () => {
         'Student Name',
         'Adm No',
         'Class',
-        isTE ? 'TE Marks (Rank Score)' : 'TE Marks',
+        isTE ? 'TE Marks (Score)' : 'TE Marks',
         'CE Marks',
-        !isTE ? 'Total (Rank Score)' : 'Total Marks',
+        !isTE ? 'Total (Score)' : 'Total Marks',
         'Percentage',
         'Grade',
         'A+ Subjects',
         'Status'
       ]
 
-      const rows = dataToExport.map((s, idx) => [
-        isTE ? (s.teRank || idx + 1) : (s.teCeRank || idx + 1),
-        s.rollNumber || '-',
-        s.studentName || '-',
-        s.admissionNumber || s.studentCode || '-',
-        s.className || '-',
-        s.totalTheoryMarks ?? 0,
-        s.totalCeMarks ?? 0,
-        `${s.totalMarks ?? 0}${s.totalMaxMarks ? `/${s.totalMaxMarks}` : ''}`,
-        `${s.percentage ? s.percentage.toFixed(1) + '%' : '0%'}`,
-        s.grade || '-',
-        `${s.aplusCount || 0}/${s.totalSubjects || '-'}`,
-        s.status || (s.percentage >= 40 ? 'Passed' : 'Failed')
-      ])
+      const rows = dataToExport.map((s, idx) => {
+        const rd = getStudentRankData(s)
+        return [
+          isTE ? (s.teRank || idx + 1) : (s.teCeRank || idx + 1),
+          s.rollNumber || '-',
+          s.studentName || '-',
+          s.admissionNumber || s.studentCode || '-',
+          s.className || '-',
+          rd.teMarks,
+          rd.ceMarks,
+          `${rd.totalMarks}${rd.totalMax ? `/${rd.totalMax}` : ''}`,
+          `${rd.percentage ? rd.percentage.toFixed(1) + '%' : '0%'}`,
+          rd.grade || '-',
+          `${s.aplusCount || 0}/${s.totalSubjects || '-'}`,
+          rd.percentage >= 40 ? 'Passed' : 'Failed'
+        ]
+      })
 
       autoTable(doc, {
         head: [headers],
         body: rows,
-        startY: 96,
-        theme: 'striped',
+        startY: currentY,
+        margin: { top: 35, bottom: 40, left: 35, right: 35 },
+        theme: 'plain',
         styles: {
+          font: 'times',
           fontSize: 8,
-          cellPadding: 4,
-          valign: 'middle'
+          cellPadding: 3.5,
+          valign: 'middle',
+          textColor: [0, 0, 0],
+          lineColor: [180, 180, 180],
+          lineWidth: 0.5
         },
         headStyles: {
-          fillColor: isTE ? [37, 99, 235] : [13, 148, 136],
-          textColor: 255,
+          fillColor: [240, 240, 240],
+          textColor: [0, 0, 0],
           fontStyle: 'bold',
-          halign: 'center'
+          halign: 'center',
+          lineColor: [0, 0, 0],
+          lineWidth: 1
         },
         columnStyles: {
-          0: { halign: 'center', fontStyle: 'bold', cellWidth: 40 },
+          0: { halign: 'center', fontStyle: 'bold', cellWidth: 35 },
           1: { halign: 'center', cellWidth: 45 },
-          2: { fontStyle: 'bold', cellWidth: 120 },
+          2: { fontStyle: 'bold', cellWidth: 130 },
           3: { halign: 'center', cellWidth: 55 },
           4: { halign: 'center', cellWidth: 55 },
-          5: { halign: 'center', fontStyle: isTE ? 'bold' : 'normal', cellWidth: 65 },
-          6: { halign: 'center', cellWidth: 50 },
+          5: { halign: 'center', fontStyle: isTE ? 'bold' : 'normal', cellWidth: 70 },
+          6: { halign: 'center', cellWidth: 55 },
           7: { halign: 'center', fontStyle: !isTE ? 'bold' : 'normal', cellWidth: 70 },
           8: { halign: 'center', fontStyle: 'bold', cellWidth: 55 },
           9: { halign: 'center', fontStyle: 'bold', cellWidth: 40 },
           10: { halign: 'center', cellWidth: 55 },
           11: { halign: 'center', cellWidth: 50 }
         },
-        alternateRowStyles: {
-          fillColor: [248, 250, 252]
-        },
-        didDrawPage: () => {
-          const pageCount = doc.internal.getNumberOfPages()
-          doc.setFontSize(8)
-          doc.setTextColor(148, 163, 184)
-          doc.text(
-            `KlassDesk Examination Analytics   •   Page ${doc.internal.getCurrentPageInfo().pageNumber} of ${pageCount}`,
-            40,
-            doc.internal.pageSize.height - 15
-          )
+        didDrawPage: (data) => {
+          drawSchoolPageDecorations(data)
         }
       })
 
-      const filename = `Student_Rank_List_${examName.replace(/[^a-zA-Z0-9]/g, '_')}_${isTE ? 'TE' : 'TE_CE'}_Top_${dataToExport.length}.pdf`
+      const filename = `PPMHSS_Rank_List_${examName.replace(/[^a-zA-Z0-9]/g, '_')}_${isTE ? 'TE' : 'TE_CE'}_Top_${dataToExport.length}.pdf`
       doc.save(filename)
-      toast.success(`PDF exported successfully (${dataToExport.length} students)`)
+      toast.success(`Official PDF exported successfully (${dataToExport.length} students)`)
     } catch (err) {
       console.error('PDF export error:', err)
       toast.error('Failed to generate PDF')
@@ -675,7 +803,7 @@ const AnalyticsDashboard = () => {
                   <option key={cls._id || cls.id} value={cls._id || cls.id}>
                     {label}
                   </option>
-                );
+                )
               })}
             </select>
           </div>
@@ -1019,8 +1147,8 @@ const AnalyticsDashboard = () => {
                     </div>
                     <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
                       {rankMode === 'TE' 
-                        ? 'Sorted by Theory Examination (TE) score (Default Ranking)' 
-                        : 'Sorted by Combined Theory + Continuous Evaluation (TE + CE) Total Score'}
+                        ? 'Sorted by Theory Examination (TE) score — excludes PE / WE / Drawing (Default Ranking)' 
+                        : 'Sorted by Combined TE + CE Total Score — excludes PE / WE / Drawing'}
                     </p>
                   </div>
                 </div>
@@ -1205,7 +1333,10 @@ const AnalyticsDashboard = () => {
                       const displayRank = rankMode === 'TE' 
                         ? (student.teRank || startIndex + idx + 1)
                         : (student.teCeRank || startIndex + idx + 1)
-                      
+
+                      const rd = getStudentRankData(student)
+                      const isNonTeExcluded = (student.rankTeMax || 0) > 0 && (student.rankTeMax || 0) < (student.totalMaxMarks || 0)
+
                       return (
                         <tr key={student.studentId || idx} className="hover:bg-blue-50/30 transition-colors">
                           {/* Rank column with Top 3 Medals */}
@@ -1255,47 +1386,55 @@ const AnalyticsDashboard = () => {
                             </span>
                           </td>
 
-                          {/* Theory Marks (TE) */}
+                          {/* Theory Marks (TE) — rank-based (excludes PE/WE/Drawing) */}
                           <td className={`px-4 py-3 text-center ${rankMode === 'TE' ? 'bg-blue-50/70 font-bold text-blue-900' : 'text-gray-700 font-medium'}`}>
                             <span className={rankMode === 'TE' ? 'text-blue-700 font-bold text-base' : ''}>
-                              {student.totalTheoryMarks ?? 0}
+                              {rd.teMarks}
                             </span>
+                            {rd.teMax > 0 && (
+                              <span className="text-xs text-gray-400 ml-1">/{rd.teMax}</span>
+                            )}
                           </td>
 
                           {/* CE Marks */}
                           <td className="px-3 py-3 text-center text-gray-600 text-xs font-medium">
-                            +{student.totalCeMarks ?? 0}
+                            +{rd.ceMarks}
                           </td>
 
-                          {/* Total Score (TE + CE) */}
+                          {/* Total Score (TE + CE) — rank-based (excludes PE/WE/Drawing) */}
                           <td className={`px-4 py-3 text-center ${rankMode === 'TE_CE' ? 'bg-teal-50/70 font-bold text-teal-900' : 'text-gray-800 font-semibold'}`}>
                             <span className={rankMode === 'TE_CE' ? 'text-teal-800 font-bold text-base' : ''}>
-                              {student.totalMarks ?? 0}
+                              {rd.totalMarks}
                             </span>
-                            {student.totalMaxMarks > 0 && (
-                              <span className="text-xs text-gray-400 ml-1">/{student.totalMaxMarks}</span>
+                            {rd.totalMax > 0 && (
+                              <span className="text-xs text-gray-400 ml-1">/{rd.totalMax}</span>
                             )}
                           </td>
 
-                          {/* Percentage */}
+                          {/* Percentage — rank-based */}
                           <td className="px-3 py-3 text-center">
                             <div className="font-semibold text-xs text-gray-900">
-                              {student.percentage?.toFixed(1) || 0}%
+                              {rd.percentage?.toFixed(1) || 0}%
                             </div>
                             <div className="w-16 bg-gray-100 rounded-full h-1 mx-auto mt-1 overflow-hidden">
                               <div
                                 className={`h-full rounded-full ${
-                                  student.percentage >= 90 ? 'bg-emerald-500' : student.percentage >= 60 ? 'bg-blue-500' : student.percentage >= 40 ? 'bg-amber-500' : 'bg-rose-500'
+                                  rd.percentage >= 90 ? 'bg-emerald-500' : rd.percentage >= 60 ? 'bg-blue-500' : rd.percentage >= 40 ? 'bg-amber-500' : 'bg-rose-500'
                                 }`}
-                                style={{ width: `${Math.min(student.percentage || 0, 100)}%` }}
+                                style={{ width: `${Math.min(rd.percentage || 0, 100)}%` }}
                               />
                             </div>
+                            {isNonTeExcluded && (
+                              <div className="text-[10px] text-gray-400 mt-0.5" title="Percentage excludes PE / WE / Drawing">
+                                excl. PE/WE/Draw
+                              </div>
+                            )}
                           </td>
 
-                          {/* Grade */}
+                          {/* Grade — rank-based */}
                           <td className="px-3 py-3 text-center">
-                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${getGradeBadgeClass(student.grade)}`}>
-                              {student.grade || '-'}
+                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${getGradeBadgeClass(rd.grade)}`}>
+                              {rd.grade || '-'}
                             </span>
                           </td>
 
@@ -1319,11 +1458,11 @@ const AnalyticsDashboard = () => {
                           {/* Status */}
                           <td className="px-4 py-3 text-center">
                             <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${
-                              (student.status === 'Passed' || student.percentage >= 40)
+                              rd.percentage >= 40
                                 ? 'bg-emerald-50 text-emerald-700'
                                 : 'bg-rose-50 text-rose-700'
                             }`}>
-                              {student.status || (student.percentage >= 40 ? 'Passed' : 'Failed')}
+                              {rd.percentage >= 40 ? 'Passed' : 'Failed'}
                             </span>
                           </td>
                         </tr>
@@ -1342,7 +1481,7 @@ const AnalyticsDashboard = () => {
                   <span className="font-semibold text-gray-800">{endIndex}</span> of{' '}
                   <span className="font-semibold text-gray-800">{totalStudentsCount}</span> students
                   <span className="hidden md:inline ml-2 text-gray-400">
-                    • Rank mode: {rankMode === 'TE' ? 'Theory Examination (TE Only)' : 'Combined TE + CE'}
+                    • Rank mode: {rankMode === 'TE' ? 'Theory Examination (TE Only, excl. PE/WE/Drawing)' : 'Combined TE + CE (excl. PE/WE/Drawing)'}
                   </span>
                 </div>
 
