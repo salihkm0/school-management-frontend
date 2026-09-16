@@ -67,30 +67,29 @@ const getSubjectTotalMax = (subj) => {
 // ─── Non-TE Co-curricular Subject helper ────────────────────────────────────
 const isNonTeSubject = (subject) => {
   if (!subject) return false
-  const name = (
+  const rawName = (
     subject.displayName ||
     subject.subjectName ||
     subject.name ||
     subject.title ||
     ''
   ).toLowerCase().trim()
-  const code = (
+  const rawCode = (
     subject.subjectCode ||
     subject.code ||
     ''
   ).toLowerCase().trim()
+
+  const name = rawName.replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim()
+  const code = rawCode.replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim()
 
   // Physical Education
   if (
     name.includes('physical education') ||
     name.includes('phys educ') ||
     name.includes('physical ed') ||
-    name === 'pe' ||
-    name === 'pet' ||
-    name === 'ped' ||
-    code === 'pet' ||
-    code === 'pe' ||
-    code === 'ped'
+    name === 'pe' || name === 'pet' || name === 'ped' || name === 'phe' ||
+    code === 'pet' || code === 'pe' || code === 'ped' || code === 'phe'
   ) {
     return true
   }
@@ -100,10 +99,8 @@ const isNonTeSubject = (subject) => {
     name.includes('work education') ||
     name.includes('work exp') ||
     name.includes('work experience') ||
-    name === 'we' ||
-    name === 'wed' ||
-    code === 'we' ||
-    code === 'wed'
+    name === 'we' || name === 'wed' ||
+    code === 'we' || code === 'wed'
   ) {
     return true
   }
@@ -112,14 +109,10 @@ const isNonTeSubject = (subject) => {
   if (
     name.includes('drawing') ||
     name.includes('art education') ||
-    name.includes('art & culture') ||
+    name.includes('art culture') ||
     name.includes('art and culture') ||
-    name === 'art' ||
-    name === 'ae' ||
-    name === 'draw' ||
-    code === 'draw' ||
-    code === 'ae' ||
-    code === 'art'
+    name === 'art' || name === 'ae' || name === 'draw' ||
+    code === 'draw' || code === 'ae' || code === 'art'
   ) {
     return true
   }
@@ -356,6 +349,51 @@ const ClassMarksOverview = () => {
     }
   }
 
+  const handleDownloadExcel = async () => {
+    if (!selectedExamId || !selectedClassId) {
+      toast.error('Please select both exam and class')
+      return
+    }
+    
+    // Default to 'both' (which includes both CE & TE for all subjects) unless user explicitly selected 'te'
+    const effectiveMode = marksMode === 'te' ? 'te' : 'both'
+    const modeLabel = effectiveMode === 'te' ? 'TE' : 'CE & TE'
+    try {
+      toast.loading(`Generating Excel (${modeLabel})...`, { id: 'excel-gen' })
+      const resp = await api.get(`/pdf/report-card/class-marks/excel/${selectedClassId}/${selectedExamId}`, {
+        params: { mode: effectiveMode, sortBy },
+        responseType: 'blob'
+      })
+      
+      const url = window.URL.createObjectURL(new Blob([resp.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+      const link = document.createElement('a')
+      link.href = url
+      
+      let filename = 'Class_Marks.xlsx'
+      const disposition = resp.headers['content-disposition'] || resp.headers['Content-Disposition']
+      if (disposition && disposition.indexOf('filename=') !== -1) {
+        const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition)
+        if (matches != null && matches[1]) {
+          filename = matches[1].replace(/['"]/g, '')
+        }
+      } else {
+        const classNameStr = data?.className || 'Class'
+        const examNameStr = exams.find((e) => e._id === selectedExamId)?.name || 'Exam'
+        filename = `Class_Marks_${modeLabel}_${classNameStr}_${examNameStr}.xlsx`.replace(/\s+/g, '_')
+      }
+      
+      link.setAttribute('download', filename)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      toast.success('Excel downloaded successfully', { id: 'excel-gen' })
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to download Excel', { id: 'excel-gen' })
+    }
+  }
+
   // Derive subjects list
   const allSubjects = useMemo(() => data?.subjects || data?.examSubjects || [], [data])
   const subjects = useMemo(() => {
@@ -454,17 +492,29 @@ const ClassMarksOverview = () => {
     })
   }, [data, subjects])
 
-  // Calculate ranks by active mode % desc first, then sort display order by selected sortBy
+  // Calculate TE rank (strictly excluding non-TE subjects) and sort display order by selected sortBy
   const sorted = useMemo(() => {
-    // 1. Calculate ranks based on active mode percentage
-    const ranked = [...studentRows]
-      .sort((a, b) => {
-        if (marksMode === 'te') {
-          return b.tePercentage - a.tePercentage
-        }
-        return b.percentage - a.percentage
-      })
-      .map((s, idx) => ({ ...s, rank: idx + 1 }))
+    // 1. Calculate TE rank (without WE/PE/Drawing)
+    const sortedByTe = [...studentRows].sort((a, b) => {
+      const teDiff = (b.tePercentage || 0) - (a.tePercentage || 0)
+      if (teDiff !== 0) return teDiff
+      return (b.teTotalObtained || 0) - (a.teTotalObtained || 0)
+    })
+
+    let currentTeRank = 1
+    for (let i = 0; i < sortedByTe.length; i++) {
+      if (
+        i > 0 &&
+        ((sortedByTe[i].tePercentage || 0) < (sortedByTe[i - 1].tePercentage || 0) ||
+         (sortedByTe[i].teTotalObtained || 0) < (sortedByTe[i - 1].teTotalObtained || 0))
+      ) {
+        currentTeRank = i + 1
+      }
+      sortedByTe[i].teRank = currentTeRank
+      sortedByTe[i].rank = currentTeRank
+    }
+
+    const ranked = sortedByTe
 
     // Helper for numerical roll number parsing
     const getRollNum = (s) => {
@@ -478,9 +528,9 @@ const ClassMarksOverview = () => {
     return ranked.sort((a, b) => {
       if (sortBy === 'name') return a.name.localeCompare(b.name)
       if (sortBy === 'percentage') {
-        return marksMode === 'te' ? b.tePercentage - a.tePercentage : b.percentage - a.percentage
+        return (b.tePercentage || 0) - (a.tePercentage || 0)
       }
-      if (sortBy === 'rank') return a.rank - b.rank
+      if (sortBy === 'rank') return (a.teRank || a.rank || 0) - (b.teRank || b.rank || 0)
 
       // Default ('rollNo'): sort by numerical roll number ascending, fallback to name
       const rA = getRollNum(a)
@@ -491,7 +541,7 @@ const ClassMarksOverview = () => {
       }
       return a.name.localeCompare(b.name)
     })
-  }, [studentRows, sortBy, marksMode])
+  }, [studentRows, sortBy])
 
   const filtered = useMemo(() =>
     sorted.filter((s) =>
@@ -609,21 +659,31 @@ const ClassMarksOverview = () => {
               </div>
             )}
 
-            {/* Reload */}
+            {/* Reload and Download buttons */}
             {selectedExamId && selectedClassId && (
-              <div className="flex items-end">
+              <div className="flex items-end gap-2">
                 <button
                   onClick={handleDownloadPDF}
                   disabled={isLoading || !data}
-                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 border border-gray-200 disabled:opacity-50 transition-all"
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-semibold bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 border border-gray-200 disabled:opacity-50 transition-all cursor-pointer"
+                  title="Download Class Marks Table as PDF"
                 >
-                  <DocumentArrowDownIcon className="w-4 h-4" />
+                  <DocumentArrowDownIcon className="w-4 h-4 text-rose-600" />
                   <span className="hidden sm:inline">PDF</span>
+                </button>
+                <button
+                  onClick={handleDownloadExcel}
+                  disabled={isLoading || !data}
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-semibold bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 border border-emerald-200 disabled:opacity-50 transition-all cursor-pointer"
+                  title="Download Class Marks Table as Excel (.xlsx) with CE & TE"
+                >
+                  <TableCellsIcon className="w-4 h-4 text-emerald-600" />
+                  <span className="hidden sm:inline">Excel</span>
                 </button>
                 <button
                   onClick={loadMarks}
                   disabled={isLoading}
-                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 transition-all"
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                   Refresh
@@ -755,7 +815,7 @@ const ClassMarksOverview = () => {
                     className="text-xs text-gray-700 focus:outline-none bg-transparent"
                   >
                     <option value="rollNo">Sort by Roll No</option>
-                    <option value="rank">Sort by Rank</option>
+                    <option value="rank">Sort by TE Rank</option>
                     <option value="name">Sort by Name</option>
                     <option value="percentage">Sort by %</option>
                   </select>
@@ -816,6 +876,9 @@ const ClassMarksOverview = () => {
                         <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap bg-gray-100/60">
                           {marksMode === 'te' ? 'TE %' : '%'}
                         </th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap bg-blue-50/70 border-l border-gray-200">
+                          TE Rank
+                        </th>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 whitespace-nowrap bg-gray-100/80 border-l border-gray-200">
                           Actions
                         </th>
@@ -824,7 +887,7 @@ const ClassMarksOverview = () => {
                     <tbody className="divide-y divide-gray-100">
                       {filtered.length === 0 ? (
                         <tr>
-                          <td colSpan={4 + subjects.length} className="py-10 text-center text-gray-400 text-sm">
+                          <td colSpan={5 + subjects.length} className="py-10 text-center text-gray-400 text-sm">
                             No students found
                           </td>
                         </tr>
@@ -920,6 +983,15 @@ const ClassMarksOverview = () => {
                                 {(marksMode === 'te' ? student.tePercentage : student.percentage).toFixed(1)}%
                               </span>
                           </td>
+                          <td className="px-3 py-2 text-center bg-blue-50/30 border-l border-gray-200 font-bold text-xs text-blue-900">
+                            {student.teRank <= 3 ? (
+                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-black bg-blue-100 text-blue-900">
+                                {student.teRank === 1 ? '🥇 #1' : student.teRank === 2 ? '🥈 #2' : '🥉 #3'}
+                              </span>
+                            ) : (
+                              `#${student.teRank}`
+                            )}
+                          </td>
                           <td className="px-4 py-2 text-center whitespace-nowrap bg-gray-50/60 border-l border-gray-100">
                             <button
                               onClick={() => handleDownloadStudentPdf(student)}
@@ -979,9 +1051,9 @@ const ClassMarksOverview = () => {
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${activeGradeInfo.color}`}>
                               {activeGradeInfo.grade}
                             </span>
-                            <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
-                              {student.rank <= 3 && <TrophyIcon className={`w-3 h-3 ${student.rank === 1 ? 'text-yellow-500' : student.rank === 2 ? 'text-gray-400' : 'text-amber-600'}`} />}
-                              #{student.rank}
+                            <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                              {student.teRank <= 3 && <TrophyIcon className={`w-3 h-3 ${student.teRank === 1 ? 'text-yellow-500' : student.teRank === 2 ? 'text-gray-400' : 'text-amber-600'}`} />}
+                              TE Rank: #{student.teRank}
                             </span>
                           </div>
                         </div>

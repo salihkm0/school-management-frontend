@@ -21,8 +21,10 @@ import {
   PrinterIcon,
   ArrowDownTrayIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  TableCellsIcon
 } from '@heroicons/react/24/outline'
+import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import LoadingSpinner from '../common/LoadingSpinner'
@@ -177,8 +179,11 @@ const AnalyticsDashboard = () => {
     const list = [...rawStudentResults]
 
     if (rankMode === 'TE') {
-      // TE Only: Use rankTeTotal (which excludes PE/WE/Drawing), tie-break by TE%
+      // TE Only: Use teRank (primary) / rankTeTotal (which excludes PE/WE/Drawing), tie-break by TE%
       return list.sort((a, b) => {
+        if (a.teRank != null && b.teRank != null && a.teRank !== b.teRank) {
+          return a.teRank - b.teRank
+        }
         const teDiff = (b.rankTeTotal || 0) - (a.rankTeTotal || 0)
         if (teDiff !== 0) return teDiff
         const pctDiff = (b.rankTePercentage || 0) - (a.rankTePercentage || 0)
@@ -186,8 +191,11 @@ const AnalyticsDashboard = () => {
         return (b.rankTotalObtained || 0) - (a.rankTotalObtained || 0)
       })
     } else {
-      // TE + CE: Use rankTotalObtained (which excludes PE/WE/Drawing), tie-break by Total%
+      // TE + CE: Use teCeRank (primary) / rankTotalObtained (which excludes PE/WE/Drawing), tie-break by Total%
       return list.sort((a, b) => {
+        if (a.teCeRank != null && b.teCeRank != null && a.teCeRank !== b.teCeRank) {
+          return a.teCeRank - b.teCeRank
+        }
         const totalDiff = (b.rankTotalObtained || 0) - (a.rankTotalObtained || 0)
         if (totalDiff !== 0) return totalDiff
         const pctDiff = (b.rankTotalPercentage || 0) - (a.rankTotalPercentage || 0)
@@ -200,10 +208,15 @@ const AnalyticsDashboard = () => {
   // Helper to get rank-specific values for a student
   const getStudentRankData = (student) => {
     const isTE = rankMode === 'TE'
+    const academicCe = student.rankCeTotal ?? (
+      student.rankTotalObtained != null && student.rankTeTotal != null
+        ? student.rankTotalObtained - student.rankTeTotal
+        : (student.totalCeMarks ?? 0)
+    )
     return {
       teMarks: student.rankTeTotal ?? student.totalTheoryMarks ?? 0,
       teMax: student.rankTeMax ?? 0,
-      ceMarks: student.totalCeMarks ?? 0,
+      ceMarks: academicCe,
       totalMarks: student.rankTotalObtained ?? student.totalMarks ?? 0,
       totalMax: student.rankTotalMax ?? student.totalMaxMarks ?? 0,
       percentage: isTE
@@ -256,6 +269,114 @@ const AnalyticsDashboard = () => {
     return Math.min(Math.max(1, parseInt(exportLimit, 10)), filteredStudents.length)
   }
 
+  // Export Rank List to Excel (.xlsx) with all subjects CE & TE
+  const exportRankListExcel = (customCount = null) => {
+    const targetCount = customCount !== null ? customCount : getExportCountNumber()
+    const dataToExport = filteredStudents.slice(0, targetCount)
+
+    if (dataToExport.length === 0) {
+      toast.error('No student records to export')
+      return
+    }
+
+    const isTE = rankMode === 'TE'
+    const examObj = exams.find(e => e._id === selectedExam)
+    const examName = examObj?.displayName || examObj?.name || 'Examination'
+    const classObj = availableClasses.find(c => (c._id || c.id) === selectedClass)
+    const className = classObj?.displayName || classObj?.name || (selectedClass ? 'Class' : 'All Classes')
+
+    // Collect all unique subjects across the exported students, preserving appearance order
+    const subjectMap = new Map()
+    dataToExport.forEach(s => {
+      (s.subjectResults || []).forEach(sr => {
+        const key = sr.subjectCode || sr.subjectName
+        if (key && !subjectMap.has(key)) {
+          subjectMap.set(key, {
+            name: sr.subjectName || key,
+            code: sr.subjectCode || '',
+            isNonTe: sr.isNonTe || false
+          })
+        }
+      })
+    })
+
+    const allSubs = Array.from(subjectMap.values())
+
+    const excelData = dataToExport.map((s, idx) => {
+      const rd = getStudentRankData(s)
+      const aplusAcademic = s.academicAplusCount ?? s.aplusCount ?? 0
+      const totalSubsAcademic = s.academicTotalSubjects ?? s.totalSubjects ?? ''
+
+      const row = {
+        'TE Rank': isTE ? (s.teRank || idx + 1) : (s.teCeRank || idx + 1),
+        'Roll No': s.rollNumber || '',
+        'Student Name': s.studentName || '',
+        'Admission No': s.admissionNumber || s.studentCode || '',
+        'Class': s.className || '',
+      }
+
+      // Add each subject's TE, CE, Total, Grade
+      allSubs.forEach(sub => {
+        const sr = (s.subjectResults || []).find(r => 
+          (sub.code && r.subjectCode === sub.code) || 
+          (r.subjectName && r.subjectName.toLowerCase() === sub.name.toLowerCase())
+        )
+        const subLabel = sub.name || sub.code
+        if (!sr) {
+          row[`${subLabel} TE`] = '-'
+          row[`${subLabel} CE`] = '-'
+          row[`${subLabel} Total`] = '-'
+          row[`${subLabel} Grade`] = '-'
+        } else if (sr.isAbsent) {
+          row[`${subLabel} TE`] = 'AB'
+          row[`${subLabel} CE`] = sr.ceScore ?? 0
+          row[`${subLabel} Total`] = sr.obtainedMarks ?? 0
+          row[`${subLabel} Grade`] = 'AB'
+        } else {
+          row[`${subLabel} TE`] = sr.theoryScore ?? 0
+          row[`${subLabel} CE`] = sr.ceScore ?? 0
+          row[`${subLabel} Total`] = sr.obtainedMarks ?? ((sr.theoryScore ?? 0) + (sr.ceScore ?? 0))
+          row[`${subLabel} Grade`] = sr.grade || '-'
+        }
+      })
+
+      // Overall totals
+      row['Academic TE Total'] = rd.teMarks
+      row['Academic TE Max'] = rd.teMax
+      row['Academic CE Total'] = rd.ceMarks
+      row['Academic Total Marks'] = rd.totalMarks
+      row['Academic Total Max'] = rd.totalMax
+      row['TE Percentage (%)'] = Number((s.rankTePercentage ?? rd.percentage).toFixed(2))
+      row['Total Percentage (%)'] = Number((s.rankTotalPercentage ?? s.percentage ?? rd.percentage).toFixed(2))
+      row['TE Grade'] = s.rankTePercentage != null ? getGradeFromPercentage(s.rankTePercentage) : rd.grade
+      row['Overall Grade'] = s.rankTotalPercentage != null ? getGradeFromPercentage(s.rankTotalPercentage) : rd.grade
+      row['Academic A+ Subjects'] = aplusAcademic
+      row['Total Academic Subjects'] = totalSubsAcademic
+      row['Status'] = (s.rankTePercentage ?? rd.percentage) >= 40 ? 'Passed' : 'Failed'
+
+      return row
+    })
+
+    const ws = XLSX.utils.json_to_sheet(excelData)
+
+    // Calculate column widths
+    const colWidths = Object.keys(excelData[0] || {}).map(k => {
+      let maxLen = Math.max(k.length, 8)
+      if (k === 'Student Name') maxLen = 22
+      if (k === 'Admission No') maxLen = 14
+      if (k.endsWith('TE') || k.endsWith('CE')) maxLen = Math.max(k.length, 11)
+      return { wch: maxLen + 2 }
+    })
+    ws['!cols'] = colWidths
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Marks_Rank_List')
+
+    const filename = `Marks_All_Subjects_TE_CE_${examName.replace(/[^a-zA-Z0-9]/g, '_')}_${className.replace(/[^a-zA-Z0-9]/g, '_')}_Top_${dataToExport.length}.xlsx`
+    XLSX.writeFile(wb, filename)
+    toast.success(`Exported ${excelData.length} students with all subjects CE & TE to Excel (.xlsx)`)
+  }
+
   // Export Rank List to CSV
   const exportRankListCSV = (customCount = null) => {
     const targetCount = customCount !== null ? customCount : getExportCountNumber()
@@ -270,26 +391,61 @@ const AnalyticsDashboard = () => {
     const examObj = exams.find(e => e._id === selectedExam)
     const examName = examObj?.displayName || examObj?.name || 'Examination'
 
+    // Collect all unique subjects across the exported students
+    const subjectMap = new Map()
+    dataToExport.forEach(s => {
+      (s.subjectResults || []).forEach(sr => {
+        const key = sr.subjectCode || sr.subjectName
+        if (key && !subjectMap.has(key)) {
+          subjectMap.set(key, {
+            name: sr.subjectName || key,
+            code: sr.subjectCode || '',
+          })
+        }
+      })
+    })
+    const allSubs = Array.from(subjectMap.values())
+
     const csvData = dataToExport.map((s, idx) => {
       const rd = getStudentRankData(s)
-      return {
+      const aplus = s.academicAplusCount ?? s.aplusCount ?? 0
+      const totalSubs = s.academicTotalSubjects ?? s.totalSubjects ?? ''
+
+      const row = {
         'Rank': isTE ? (s.teRank || idx + 1) : (s.teCeRank || idx + 1),
-        'Ranking Type': isTE ? 'TE Only (Excl. PE/WE/Drawing)' : 'TE + CE (Excl. PE/WE/Drawing)',
+        'TE Rank': s.teRank || idx + 1,
+        'Ranking Type': isTE ? 'TE Only (Excl. WE/PE/Drawing)' : 'TE + CE (Excl. WE/PE/Drawing)',
         'Roll No': s.rollNumber || '',
         'Student Name': s.studentName || '',
         'Admission No': s.admissionNumber || s.studentCode || '',
         'Class': s.className || '',
-        'Theory Marks (TE)': rd.teMarks,
-        'Theory Max': rd.teMax,
-        'Continuous Evaluation (CE)': rd.ceMarks,
-        'Total Marks': rd.totalMarks,
-        'Total Max': rd.totalMax,
-        'Percentage (%)': Number(rd.percentage.toFixed(2)),
-        'Grade': rd.grade,
-        'A+ Subjects': s.aplusCount ?? 0,
-        'Total Subjects': s.totalSubjects ?? '',
-        'Status': rd.percentage >= 40 ? 'Passed' : 'Failed'
       }
+
+      // Add each subject's TE, CE, Total, Grade
+      allSubs.forEach(sub => {
+        const sr = (s.subjectResults || []).find(r => 
+          (sub.code && r.subjectCode === sub.code) || 
+          (r.subjectName && r.subjectName.toLowerCase() === sub.name.toLowerCase())
+        )
+        const subLabel = sub.name || sub.code
+        row[`${subLabel} TE`] = sr ? (sr.isAbsent ? 'AB' : (sr.theoryScore ?? 0)) : '-'
+        row[`${subLabel} CE`] = sr ? (sr.ceScore ?? 0) : '-'
+        row[`${subLabel} Total`] = sr ? (sr.obtainedMarks ?? 0) : '-'
+        row[`${subLabel} Grade`] = sr ? (sr.isAbsent ? 'AB' : (sr.grade || '-')) : '-'
+      })
+
+      row['Theory Marks (TE)'] = rd.teMarks
+      row['Theory Max'] = rd.teMax
+      row['Continuous Evaluation (CE)'] = rd.ceMarks
+      row['Total Marks'] = rd.totalMarks
+      row['Total Max'] = rd.totalMax
+      row['Percentage (%)'] = Number(rd.percentage.toFixed(2))
+      row['Grade'] = rd.grade
+      row['A+ Subjects (Academic)'] = aplus
+      row['Total Subjects (Academic)'] = totalSubs
+      row['Status'] = rd.percentage >= 40 ? 'Passed' : 'Failed'
+
+      return row
     })
 
     const filename = `Student_Rank_List_${examName.replace(/[^a-zA-Z0-9]/g, '_')}_${isTE ? 'TE' : 'TE_CE'}_Top_${dataToExport.length}`
@@ -413,8 +569,8 @@ const AnalyticsDashboard = () => {
       doc.setFontSize(11)
       doc.setTextColor(0, 0, 0)
       const titleMode = isTE
-        ? 'STUDENT RANK LIST - THEORY EVALUATION ONLY (TE)'
-        : 'STUDENT RANK LIST - COMBINED THEORY + CE'
+        ? 'STUDENT RANK LIST - THEORY EVALUATION (TE) (EXCL. WE/PE/DRAWING)'
+        : 'STUDENT RANK LIST - COMBINED THEORY + CE (EXCL. WE/PE/DRAWING)'
       doc.text(titleMode, pageWidth / 2, currentY, { align: 'center' })
       currentY += 13
 
@@ -437,7 +593,7 @@ const AnalyticsDashboard = () => {
       currentY += 8
 
       const headers = [
-        'Rank',
+        isTE ? 'TE Rank' : 'Rank',
         'Roll No',
         'Student Name',
         'Adm No',
@@ -453,6 +609,8 @@ const AnalyticsDashboard = () => {
 
       const rows = dataToExport.map((s, idx) => {
         const rd = getStudentRankData(s)
+        const aplus = s.academicAplusCount ?? s.aplusCount ?? 0
+        const totalSubs = s.academicTotalSubjects ?? s.totalSubjects ?? '-'
         return [
           isTE ? (s.teRank || idx + 1) : (s.teCeRank || idx + 1),
           s.rollNumber || '-',
@@ -464,7 +622,7 @@ const AnalyticsDashboard = () => {
           `${rd.totalMarks}${rd.totalMax ? `/${rd.totalMax}` : ''}`,
           `${rd.percentage ? rd.percentage.toFixed(1) + '%' : '0%'}`,
           rd.grade || '-',
-          `${s.aplusCount || 0}/${s.totalSubjects || '-'}`,
+          `${aplus}/${totalSubs}`,
           rd.percentage >= 40 ? 'Passed' : 'Failed'
         ]
       })
@@ -1141,14 +1299,17 @@ const AnalyticsDashboard = () => {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-xl font-bold text-gray-900">Student Rank List</h2>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                        {rankMode === 'TE' ? 'TE Rank (Excl. WE / PE / Drawing)' : 'TE + CE Rank (Excl. WE / PE / Drawing)'}
+                      </span>
                       <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
                         {totalStudentsCount} {totalStudentsCount === 1 ? 'Student' : 'Students'}
                       </span>
                     </div>
                     <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
                       {rankMode === 'TE' 
-                        ? 'Sorted by Theory Examination (TE) score — excludes PE / WE / Drawing (Default Ranking)' 
-                        : 'Sorted by Combined TE + CE Total Score — excludes PE / WE / Drawing'}
+                        ? 'Sorted by Theory Examination (TE) score — excludes non-scholastic subjects (WE / PE / Drawing)' 
+                        : 'Sorted by Combined TE + CE Total Score — excludes non-scholastic subjects (WE / PE / Drawing)'}
                     </p>
                   </div>
                 </div>
@@ -1269,12 +1430,22 @@ const AnalyticsDashboard = () => {
                     </button>
                   </div>
 
-                  {/* Export CSV & PDF action buttons */}
+                  {/* Export Excel, CSV & PDF action buttons */}
                   <div className="flex items-center gap-1.5 border-l border-gray-200 pl-2">
                     <button
                       type="button"
-                      onClick={() => exportRankListCSV()}
+                      onClick={() => exportRankListExcel()}
                       className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                      title={`Export top ${getExportCountNumber()} students with all subjects CE & TE to Excel (.xlsx)`}
+                    >
+                      <TableCellsIcon className="w-3.5 h-3.5" />
+                      <span>Excel</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => exportRankListCSV()}
+                      className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                       title={`Export top ${getExportCountNumber()} students to CSV`}
                     >
                       <DocumentArrowDownIcon className="w-3.5 h-3.5" />
@@ -1300,7 +1471,7 @@ const AnalyticsDashboard = () => {
               <table className="min-w-full text-left">
                 <thead className="bg-gray-50/90 text-gray-600 text-xs font-semibold uppercase tracking-wider border-b border-gray-200">
                   <tr>
-                    <th className="px-4 py-3.5 text-center">Rank</th>
+                    <th className="px-4 py-3.5 text-center">{rankMode === 'TE' ? 'TE Rank' : 'Rank'}</th>
                     <th className="px-3 py-3.5 text-center">Roll No</th>
                     <th className="px-4 py-3.5">Student</th>
                     <th className="px-3 py-3.5 text-center">Class</th>
@@ -1440,15 +1611,15 @@ const AnalyticsDashboard = () => {
 
                           {/* A+ Count */}
                           <td className="px-3 py-3 text-center">
-                            {student.aplusCount > 0 ? (
+                            {((student.academicAplusCount ?? student.aplusCount) > 0) ? (
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                                student.aplusCount === student.totalSubjects && student.totalSubjects > 0
+                                (student.academicAplusCount ?? student.aplusCount) === (student.academicTotalSubjects ?? student.totalSubjects) && (student.academicTotalSubjects ?? student.totalSubjects) > 0
                                   ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                                  : student.aplusCount >= 8
+                                  : (student.academicAplusCount ?? student.aplusCount) >= 8
                                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                   : 'bg-gray-100 text-gray-700'
                               }`}>
-                                ⭐ {student.aplusCount}/{student.totalSubjects || '-'}
+                                ⭐ {student.academicAplusCount ?? student.aplusCount}/{(student.academicTotalSubjects ?? student.totalSubjects) || '-'}
                               </span>
                             ) : (
                               <span className="text-xs text-gray-400">0</span>
