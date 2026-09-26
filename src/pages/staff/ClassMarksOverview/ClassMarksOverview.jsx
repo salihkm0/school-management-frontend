@@ -139,7 +139,9 @@ const ClassMarksOverview = () => {
   const [view, setView] = useState('table') // 'table' | 'card'
   const [marksMode, setMarksMode] = useState('total') // 'total' | 'te' | 'both'
   const [search, setSearch] = useState('')
-  const [markRangeFilter, setMarkRangeFilter] = useState('all') // 'all' | '<=150' | '100-500' | '150-300' | '300-450' | '>=450'
+  const [markRangeFilter, setMarkRangeFilter] = useState('all') // 'all' | '<=150' | '100-500' | '150-300' | '300-450' | '>=450' | 'custom'
+  const [customMinMark, setCustomMinMark] = useState('')
+  const [customMaxMark, setCustomMaxMark] = useState('')
   const [sortBy, setSortBy] = useState('rollNo') // 'rollNo' | 'rank' | 'name' | 'percentage'
   const [isInitializing, setIsInitializing] = useState(!isAdmin && !classId)
   const [downloadingStudentId, setDownloadingStudentId] = useState(null)
@@ -559,9 +561,13 @@ const ClassMarksOverview = () => {
       if (markRangeFilter === '150-300' && (activeMarks < 150 || activeMarks > 300)) return false
       if (markRangeFilter === '300-450' && (activeMarks < 300 || activeMarks > 450)) return false
       if (markRangeFilter === '>=450' && activeMarks < 450) return false
+      if (markRangeFilter === 'custom') {
+        if (customMinMark !== '' && !isNaN(Number(customMinMark)) && activeMarks < Number(customMinMark)) return false
+        if (customMaxMark !== '' && !isNaN(Number(customMaxMark)) && activeMarks > Number(customMaxMark)) return false
+      }
 
       return true
-    }), [sorted, search, markRangeFilter, marksMode])
+    }), [sorted, search, markRangeFilter, customMinMark, customMaxMark, marksMode])
 
   // Summary stats based on active mode
   const stats = useMemo(() => {
@@ -849,6 +855,7 @@ const ClassMarksOverview = () => {
                     <option value="150-300">150 - 300 Marks</option>
                     <option value="300-450">300 - 450 Marks</option>
                     <option value=">=450">&ge; 450 Marks</option>
+                    <option value="custom">Custom Range...</option>
                   </select>
                 </div>
 
@@ -869,6 +876,69 @@ const ClassMarksOverview = () => {
                     <Squares2X2Icon className="w-4 h-4" />
                   </button>
                 </div>
+              </div>
+
+              {/* Mark Range Preset Filter Chips directly below the search bar */}
+              <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-gray-100 mt-2">
+                <span className="text-xs font-semibold text-gray-500 mr-1 flex items-center gap-1">
+                  <FunnelIcon className="w-3 h-3 text-gray-400" />
+                  Marks Range:
+                </span>
+                {[
+                  { label: 'All', value: 'all' },
+                  { label: '≤ 150', value: '<=150' },
+                  { label: '100 - 500', value: '100-500' },
+                  { label: '150 - 300', value: '150-300' },
+                  { label: '300 - 450', value: '300-450' },
+                  { label: '≥ 450', value: '>=450' },
+                  { label: 'Custom...', value: 'custom' },
+                ].map((chip) => {
+                  const isSel = markRangeFilter === chip.value
+                  return (
+                    <button
+                      key={chip.value}
+                      type="button"
+                      onClick={() => setMarkRangeFilter(chip.value)}
+                      className={`px-2.5 py-1 text-xs rounded-lg font-medium transition-all ${
+                        isSel
+                          ? 'bg-emerald-600 text-white shadow-sm font-semibold'
+                          : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100'
+                      }`}
+                    >
+                      {chip.label}
+                    </button>
+                  )
+                })}
+
+                {markRangeFilter === 'custom' && (
+                  <div className="flex items-center gap-1.5 bg-white border border-emerald-300 rounded-lg px-2 py-0.5 ml-1 shadow-sm">
+                    <input
+                      type="number"
+                      placeholder="Min Mark"
+                      value={customMinMark}
+                      onChange={(e) => setCustomMinMark(e.target.value)}
+                      className="w-16 px-1.5 py-0.5 text-xs border border-gray-200 rounded text-center outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                    <span className="text-xs text-gray-400 font-medium">to</span>
+                    <input
+                      type="number"
+                      placeholder="Max Mark"
+                      value={customMaxMark}
+                      onChange={(e) => setCustomMaxMark(e.target.value)}
+                      className="w-16 px-1.5 py-0.5 text-xs border border-gray-200 rounded text-center outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                    {(customMinMark || customMaxMark) && (
+                      <button
+                        type="button"
+                        onClick={() => { setCustomMinMark(''); setCustomMaxMark('') }}
+                        className="text-gray-400 hover:text-gray-600 ml-0.5"
+                        title="Clear custom marks"
+                      >
+                        <XMarkIcon className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
