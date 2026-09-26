@@ -15,6 +15,7 @@ import api from '../../services/api';
 
 const FILTER_TYPES = [
   { value: 'percentage_range', label: 'Percentage Range' },
+  { value: 'total_marks_range', label: 'Total Marks Range' },
   { value: 'rank_range', label: 'Rank Range' },
   { value: 'all_subjects_grade', label: 'All Subjects Grade' },
   { value: 'any_subject_grade', label: 'Any Subject Grade' },
@@ -141,6 +142,32 @@ const StudentFilter = () => {
                 onChange={(e) => setConditions({ ...conditions, maxPercentage: parseFloat(e.target.value) || 100 })}
                 className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md"
                 placeholder="100"
+              />
+            </div>
+          </div>
+        );
+
+      case 'total_marks_range':
+        return (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Min Total Marks</label>
+              <input
+                type="number" onWheel={(e) => e.target.blur()}
+                value={conditions.minTotalMarks ?? ''}
+                onChange={(e) => setConditions({ ...conditions, minTotalMarks: e.target.value === '' ? '' : parseInt(e.target.value) })}
+                className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md"
+                placeholder="e.g. 100 (or leave empty)"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Max Total Marks</label>
+              <input
+                type="number" onWheel={(e) => e.target.blur()}
+                value={conditions.maxTotalMarks ?? ''}
+                onChange={(e) => setConditions({ ...conditions, maxTotalMarks: e.target.value === '' ? '' : parseInt(e.target.value) })}
+                className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md"
+                placeholder="e.g. 150 or 500"
               />
             </div>
           </div>

@@ -18,6 +18,7 @@ import {
   ClockIcon,
   ExclamationCircleIcon,
   DocumentArrowDownIcon,
+  FunnelIcon,
 } from '@heroicons/react/24/outline'
 import { TrophyIcon } from '@heroicons/react/24/solid'
 import api from '../../../services/api'
@@ -138,6 +139,7 @@ const ClassMarksOverview = () => {
   const [view, setView] = useState('table') // 'table' | 'card'
   const [marksMode, setMarksMode] = useState('total') // 'total' | 'te' | 'both'
   const [search, setSearch] = useState('')
+  const [markRangeFilter, setMarkRangeFilter] = useState('all') // 'all' | '<=150' | '100-500' | '150-300' | '300-450' | '>=450'
   const [sortBy, setSortBy] = useState('rollNo') // 'rollNo' | 'rank' | 'name' | 'percentage'
   const [isInitializing, setIsInitializing] = useState(!isAdmin && !classId)
   const [downloadingStudentId, setDownloadingStudentId] = useState(null)
@@ -544,10 +546,22 @@ const ClassMarksOverview = () => {
   }, [studentRows, sortBy])
 
   const filtered = useMemo(() =>
-    sorted.filter((s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.admissionNo.toLowerCase().includes(search.toLowerCase())
-    ), [sorted, search])
+    sorted.filter((s) => {
+      const matchSearch = search
+        ? s.name.toLowerCase().includes(search.toLowerCase()) ||
+          s.admissionNo.toLowerCase().includes(search.toLowerCase())
+        : true
+      if (!matchSearch) return false
+
+      const activeMarks = marksMode === 'te' ? s.teTotalObtained : s.totalObtained
+      if (markRangeFilter === '<=150' && activeMarks > 150) return false
+      if (markRangeFilter === '100-500' && (activeMarks < 100 || activeMarks > 500)) return false
+      if (markRangeFilter === '150-300' && (activeMarks < 150 || activeMarks > 300)) return false
+      if (markRangeFilter === '300-450' && (activeMarks < 300 || activeMarks > 450)) return false
+      if (markRangeFilter === '>=450' && activeMarks < 450) return false
+
+      return true
+    }), [sorted, search, markRangeFilter, marksMode])
 
   // Summary stats based on active mode
   const stats = useMemo(() => {
@@ -818,6 +832,23 @@ const ClassMarksOverview = () => {
                     <option value="rank">Sort by TE Rank</option>
                     <option value="name">Sort by Name</option>
                     <option value="percentage">Sort by %</option>
+                  </select>
+                </div>
+
+                {/* Mark Range Filter */}
+                <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-1.5 bg-white">
+                  <FunnelIcon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                  <select
+                    value={markRangeFilter}
+                    onChange={(e) => setMarkRangeFilter(e.target.value)}
+                    className="text-xs text-gray-700 focus:outline-none bg-transparent cursor-pointer"
+                  >
+                    <option value="all">All Marks</option>
+                    <option value="<=150">&le; 150 Marks</option>
+                    <option value="100-500">100 - 500 Marks</option>
+                    <option value="150-300">150 - 300 Marks</option>
+                    <option value="300-450">300 - 450 Marks</option>
+                    <option value=">=450">&ge; 450 Marks</option>
                   </select>
                 </div>
 

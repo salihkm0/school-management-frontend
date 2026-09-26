@@ -69,6 +69,9 @@ const AnalyticsDashboard = () => {
   const [rankMode, setRankMode] = useState('TE') // 'TE' (Default: Theory Only) | 'TE_CE' (Theory + CE)
   const [studentSearch, setStudentSearch] = useState('')
   const [studentGradeFilter, setStudentGradeFilter] = useState('ALL')
+  const [markRangePreset, setMarkRangePreset] = useState('ALL')
+  const [customMinMark, setCustomMinMark] = useState('')
+  const [customMaxMark, setCustomMaxMark] = useState('')
   const [studentPage, setStudentPage] = useState(1)
   const [studentPageSize, setStudentPageSize] = useState(25)
   const [exportLimit, setExportLimit] = useState('100')
@@ -169,7 +172,7 @@ const AnalyticsDashboard = () => {
   // Reset pagination when filter criteria change
   useEffect(() => {
     setStudentPage(1)
-  }, [selectedExam, selectedClass, rankMode, studentSearch, studentGradeFilter, studentPageSize])
+  }, [selectedExam, selectedClass, rankMode, studentSearch, studentGradeFilter, markRangePreset, customMinMark, customMaxMark, studentPageSize])
 
   const rawStudentResults = gradeAnalysis?.studentResults || []
 
@@ -230,13 +233,26 @@ const AnalyticsDashboard = () => {
     }
   }
 
-  // Filtered students by search & grade (filter uses rank-based grade)
+  // Filtered students by search, grade, and mark range
   const filteredStudents = useMemo(() => {
     return sortedStudents.filter(student => {
       const rankData = getStudentRankData(student)
       if (studentGradeFilter !== 'ALL' && rankData.grade !== studentGradeFilter) {
         return false
       }
+
+      // Total Marks Range filter (respects active rank mode)
+      const activeMarks = rankMode === 'TE' ? rankData.teMarks : rankData.totalMarks
+      if (markRangePreset === '<=150' && activeMarks > 150) return false
+      if (markRangePreset === '100-500' && (activeMarks < 100 || activeMarks > 500)) return false
+      if (markRangePreset === '150-300' && (activeMarks < 150 || activeMarks > 300)) return false
+      if (markRangePreset === '300-450' && (activeMarks < 300 || activeMarks > 450)) return false
+      if (markRangePreset === '>=450' && activeMarks < 450) return false
+      if (markRangePreset === 'CUSTOM') {
+        if (customMinMark !== '' && !isNaN(Number(customMinMark)) && activeMarks < Number(customMinMark)) return false
+        if (customMaxMark !== '' && !isNaN(Number(customMaxMark)) && activeMarks > Number(customMaxMark)) return false
+      }
+
       if (studentSearch.trim()) {
         const q = studentSearch.toLowerCase().trim()
         const nameMatch = (student.studentName || '').toLowerCase().includes(q)
@@ -249,7 +265,7 @@ const AnalyticsDashboard = () => {
       }
       return true
     })
-  }, [sortedStudents, studentGradeFilter, studentSearch, rankMode])
+  }, [sortedStudents, studentGradeFilter, markRangePreset, customMinMark, customMaxMark, studentSearch, rankMode])
 
   // Pagination calculations
   const totalStudentsCount = filteredStudents.length
@@ -1384,6 +1400,44 @@ const AnalyticsDashboard = () => {
                       <option value="E">E Only</option>
                     </select>
                   </div>
+
+                  {/* Mark Range Filter */}
+                  <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
+                    <span className="text-xs font-semibold text-gray-500 whitespace-nowrap">Marks:</span>
+                    <select
+                      value={markRangePreset}
+                      onChange={(e) => setMarkRangePreset(e.target.value)}
+                      className="text-xs sm:text-sm text-gray-700 bg-transparent border-none outline-none cursor-pointer pr-2"
+                    >
+                      <option value="ALL">All Marks</option>
+                      <option value="<=150">&le; 150</option>
+                      <option value="100-500">100 - 500</option>
+                      <option value="150-300">150 - 300</option>
+                      <option value="300-450">300 - 450</option>
+                      <option value=">=450">&ge; 450</option>
+                      <option value="CUSTOM">Custom...</option>
+                    </select>
+                  </div>
+
+                  {markRangePreset === 'CUSTOM' && (
+                    <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-2 py-1">
+                      <input
+                        type="number"
+                        placeholder="Min"
+                        value={customMinMark}
+                        onChange={(e) => setCustomMinMark(e.target.value)}
+                        className="w-14 px-1.5 py-1 text-xs border border-gray-200 rounded text-center outline-none focus:ring-1 focus:ring-primary-500"
+                      />
+                      <span className="text-xs text-gray-400">to</span>
+                      <input
+                        type="number"
+                        placeholder="Max"
+                        value={customMaxMark}
+                        onChange={(e) => setCustomMaxMark(e.target.value)}
+                        className="w-14 px-1.5 py-1 text-xs border border-gray-200 rounded text-center outline-none focus:ring-1 focus:ring-primary-500"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Export Controls with Custom Limit */}
