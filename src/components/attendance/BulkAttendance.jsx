@@ -91,7 +91,14 @@ const BulkAttendance = () => {
               absentDays: record.absentDays || 0,
               presentDays: record.presentDays || 0,
               totalWorkingDays: record.totalWorkingDays || workingDaysVal,
-              isNewRecord: record.isNewRecord || false
+              isNewRecord: record.isNewRecord || false,
+              previousAttendance: record.previousAttendance || {
+                totalWorkingDays: 0,
+                presentDays: 0,
+                absentDays: 0,
+                percentage: 0,
+                monthsCount: 0
+              }
             }
           }
         })
@@ -105,7 +112,14 @@ const BulkAttendance = () => {
           completeData[student._id] = {
             absentDays: "",
             presentDays: workingDaysVal,
-            totalWorkingDays: workingDaysVal
+            totalWorkingDays: workingDaysVal,
+            previousAttendance: {
+              totalWorkingDays: 0,
+              presentDays: 0,
+              absentDays: 0,
+              percentage: 0,
+              monthsCount: 0
+            }
           }
         }
       })
@@ -118,7 +132,14 @@ const BulkAttendance = () => {
         defaultData[student._id] = {
           absentDays: "",
           presentDays: totalWorkingDays,
-          totalWorkingDays: totalWorkingDays
+          totalWorkingDays: totalWorkingDays,
+          previousAttendance: {
+            totalWorkingDays: 0,
+            presentDays: 0,
+            absentDays: 0,
+            percentage: 0,
+            monthsCount: 0
+          }
         }
       })
       setAttendanceData(defaultData)
@@ -137,6 +158,7 @@ const BulkAttendance = () => {
     setAttendanceData(prev => ({ 
       ...prev, 
       [studentId]: { 
+        ...prev[studentId],
         absentDays,
         presentDays,
         totalWorkingDays
@@ -149,7 +171,12 @@ const BulkAttendance = () => {
     const presentDays = totalWorkingDays - validAbsent
     const newData = {}
     students.forEach(student => {
-      newData[student._id] = { absentDays: validAbsent, presentDays: presentDays, totalWorkingDays }
+      newData[student._id] = { 
+        ...attendanceData[student._id],
+        absentDays: validAbsent, 
+        presentDays: presentDays, 
+        totalWorkingDays 
+      }
     })
     setAttendanceData(newData)
     toast.success(`Set all students to ${validAbsent} absent days, ${presentDays} present days`)
@@ -208,8 +235,19 @@ const BulkAttendance = () => {
   }
 
   const downloadTemplate = () => {
-    const headers = ['Student Code', 'Student Name', 'Roll Number', 'Absent Days']
-    const rows = students.map(s => [s.studentCode || '', s.fullName || '', s.rollNumber || '', attendanceData[s._id]?.absentDays || 0])
+    const headers = ['Student Code', 'Student Name', 'Roll Number', 'Prev Working Days', 'Prev Present Days', 'Prev Attendance %', 'Absent Days']
+    const rows = students.map(s => {
+      const prev = attendanceData[s._id]?.previousAttendance
+      return [
+        s.studentCode || '',
+        s.fullName || '',
+        s.rollNumber || '',
+        prev?.totalWorkingDays || 0,
+        prev?.presentDays || 0,
+        prev?.totalWorkingDays > 0 ? `${prev.percentage.toFixed(1)}%` : '0%',
+        attendanceData[s._id]?.absentDays || 0
+      ]
+    })
     const csvContent = [headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\n')
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
@@ -394,6 +432,7 @@ const BulkAttendance = () => {
                 <tr className="border-b border-gray-200">
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
+                  <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Prev Total Attendance</th>
                   <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Absent Days</th>
                   <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Present Days</th>
                   <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">%</th>
@@ -405,6 +444,8 @@ const BulkAttendance = () => {
                   const present = totalWorkingDays - (absent === "" ? 0 : absent)
                   const percentage = totalWorkingDays > 0 ? (present / totalWorkingDays) * 100 : 0
                   const percentageColor = percentage >= 75 ? 'text-emerald-600' : percentage >= 60 ? 'text-amber-600' : 'text-rose-600'
+                  const prevAtt = attendanceData[student._id]?.previousAttendance
+                  const hasPrev = prevAtt && prevAtt.totalWorkingDays > 0
                   
                   return (
                     <tr key={student._id} className="hover:bg-gray-50/50 transition-colors">
@@ -412,6 +453,20 @@ const BulkAttendance = () => {
                       <td className="px-3 py-2">
                         <div className="text-sm font-medium text-gray-900">{student.fullName}</div>
                         <div className="text-xs text-gray-500">{student.studentCode}</div>
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        {hasPrev ? (
+                          <div className="inline-flex flex-col items-center">
+                            <span className="text-xs font-semibold text-gray-800">
+                              {prevAtt.presentDays} / {prevAtt.totalWorkingDays}
+                            </span>
+                            <span className={`text-[11px] font-medium ${prevAtt.percentage >= 75 ? 'text-emerald-600' : prevAtt.percentage >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
+                              ({prevAtt.percentage.toFixed(1)}%)
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400 font-medium">—</span>
+                        )}
                       </td>
                       <td className="px-3 py-2 text-center">
                         <input

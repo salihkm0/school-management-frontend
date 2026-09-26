@@ -170,7 +170,8 @@ const StaffAttendancePage = () => {
             existingData[studentId] = {
               absentDays: record.absentDays || 0,
               presentDays: record.presentDays || workingDaysVal - (record.absentDays || 0),
-              totalWorkingDays: record.totalWorkingDays || workingDaysVal
+              totalWorkingDays: record.totalWorkingDays || workingDaysVal,
+              previousAttendance: record.previousAttendance || null
             }
           }
         })
@@ -193,6 +194,7 @@ const StaffAttendancePage = () => {
     setAttendanceData(prev => ({
       ...prev,
       [studentId]: {
+        ...prev[studentId],
         absentDays,
         presentDays,
         totalWorkingDays: workingDays
@@ -280,11 +282,15 @@ const StaffAttendancePage = () => {
       const workingDaysVal = summary.workingDays || summary.template?.totalWorkingDays || 25
       const presentDays = attendanceData[student.studentId]?.presentDays || student.presentDays || 0
       const percentage = (presentDays / workingDaysVal) * 100
+      const prev = student.previousAttendance || attendanceData[student.studentId]?.previousAttendance
       
       return {
         'Student Name': student.studentName,
         'Roll Number': student.rollNumber,
         'Admission No': student.admissionNo,
+        'Prev Working Days': prev?.totalWorkingDays || 0,
+        'Prev Present Days': prev?.presentDays || 0,
+        'Prev Attendance %': prev?.totalWorkingDays > 0 ? `${prev.percentage.toFixed(1)}%` : '0%',
         'Working Days': workingDaysVal,
         'Present Days': presentDays,
         'Absent Days': attendanceData[student.studentId]?.absentDays || student.absentDays || 0,
@@ -583,6 +589,7 @@ const StaffAttendancePage = () => {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roll No</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Prev Attendance</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Working Days</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Present</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Absent</th>
@@ -598,6 +605,8 @@ const StaffAttendancePage = () => {
                     const percentage = (presentDays / workingDays) * 100
                     const statusColor = percentage >= 75 ? 'bg-emerald-50 text-emerald-700' : percentage >= 60 ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'
                     const statusText = percentage >= 75 ? 'Good' : percentage >= 60 ? 'Average' : 'Poor'
+                    const prevAtt = student.previousAttendance || attendanceData[student.studentId]?.previousAttendance
+                    const hasPrev = prevAtt && prevAtt.totalWorkingDays > 0
                     
                     return (
                       <tr key={student.studentId} className="hover:bg-gray-50/50 transition-colors">
@@ -607,6 +616,20 @@ const StaffAttendancePage = () => {
                           <div className="text-xs text-gray-500 mt-0.5">{student.admissionNo}</div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{student.rollNumber || '-'}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-center">
+                          {hasPrev ? (
+                            <div className="inline-flex flex-col items-center">
+                              <span className="text-xs font-semibold text-gray-800">
+                                {prevAtt.presentDays} / {prevAtt.totalWorkingDays}
+                              </span>
+                              <span className={`text-[11px] font-medium ${prevAtt.percentage >= 75 ? 'text-emerald-600' : prevAtt.percentage >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
+                                ({prevAtt.percentage.toFixed(1)}%)
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400 font-medium">—</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-gray-600">{workingDays}</td>
                         <td className="px-4 py-3 whitespace-nowrap text-center">
                           <span className="text-sm font-medium text-emerald-600">{presentDays}</span>
