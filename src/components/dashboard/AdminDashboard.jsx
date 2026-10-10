@@ -17,6 +17,7 @@ import {
 import { fetchAdminDashboard, updateStats, addActivity } from '../../store/slices/dashboardSlice'
 import useSocket from '../../hooks/useSocket'
 import LoadingSpinner from '../common/LoadingSpinner'
+import GlobalStudentSearch from '../common/GlobalStudentSearch'
 
 // Heroicons
 import {
@@ -936,6 +937,9 @@ const AdminDashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Global Student Search */}
+      <GlobalStudentSearch variant="card" />
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -36,6 +36,8 @@ const ExamList = () => {
   const [selectedYear, setSelectedYear] = useState('')
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [selectedExam, setSelectedExam] = useState(null)
+  const [forceDeleteConfirm, setForceDeleteConfirm] = useState(false)
+  const [deleteError, setDeleteError] = useState(null)
   const [showCloneModal, setShowCloneModal] = useState(false)
   const [cloneYear, setCloneYear] = useState('')
   const [searchInput, setSearchInput] = useState('')
@@ -103,13 +105,23 @@ const ExamList = () => {
   )
   const totalPages = Math.ceil(filteredExams.length / itemsPerPage)
 
-  const handleDelete = async () => {
+  const handleDelete = async (force = false) => {
     if (selectedExam) {
-      await dispatch(deleteExam(selectedExam._id))
-      setShowDeleteModal(false)
-      setSelectedExam(null)
-      setOpenMenuId(null)
-      dispatch(fetchExams({ academicYearId: selectedYear, limit: 100, search: debouncedSearch || undefined }))
+      const res = await dispatch(deleteExam({ id: selectedExam._id, force: force || forceDeleteConfirm }))
+      if (!res.error) {
+        setShowDeleteModal(false)
+        setSelectedExam(null)
+        setForceDeleteConfirm(false)
+        setDeleteError(null)
+        setOpenMenuId(null)
+        dispatch(fetchExams({ academicYearId: selectedYear, limit: 100, search: debouncedSearch || undefined }))
+      } else {
+        const errorData = res.payload
+        if (errorData?.hasMarks || errorData?.message?.toLowerCase().includes('marks')) {
+          setDeleteError(errorData?.message || 'Marks have already been entered for this exam.')
+          setForceDeleteConfirm(true)
+        }
+      }
     }
   }
 
@@ -510,25 +522,56 @@ const ExamList = () => {
       {/* Delete Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={() => { setShowDeleteModal(false); setSelectedExam(null) }} />
+          <div className="absolute inset-0 bg-black/40" onClick={() => { setShowDeleteModal(false); setSelectedExam(null); setForceDeleteConfirm(false); setDeleteError(null) }} />
           <div className="relative bg-white rounded-md shadow-xl max-w-md w-full mx-4 overflow-hidden">
             <div className="p-5">
               <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Exam</h3>
-              <p className="text-gray-600 mb-5">
-                Are you sure you want to delete "{selectedExam?.displayName || selectedExam?.name}"? This action cannot be undone.
+              <p className="text-gray-600 mb-3">
+                Are you sure you want to delete "{selectedExam?.displayName || selectedExam?.name}"?
               </p>
+
+              {deleteError && (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-800">
+                  <p className="font-semibold mb-1">Standard delete blocked:</p>
+                  <p>{deleteError}</p>
+                </div>
+              )}
+
+              <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-md">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={forceDeleteConfirm}
+                    onChange={(e) => setForceDeleteConfirm(e.target.checked)}
+                    className="mt-1 h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-red-700">
+                      Force delete (delete all marks too)
+                    </span>
+                    <p className="text-xs text-red-600 mt-0.5">
+                      Check this to permanently delete this exam and all associated student marks and results.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
               <div className="flex justify-end gap-3">
                 <button
-                  onClick={() => { setShowDeleteModal(false); setSelectedExam(null) }}
+                  onClick={() => { setShowDeleteModal(false); setSelectedExam(null); setForceDeleteConfirm(false); setDeleteError(null) }}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleDelete}
-                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+                  onClick={() => handleDelete(forceDeleteConfirm)}
+                  className={`px-4 py-2 text-sm font-medium text-white rounded-md transition-colors ${
+                    forceDeleteConfirm 
+                      ? 'bg-red-700 hover:bg-red-800 ring-2 ring-red-400' 
+                      : 'bg-red-600 hover:bg-red-700'
+                  }`}
                 >
-                  Delete
+                  {forceDeleteConfirm ? 'Force Delete Exam & Marks' : 'Delete'}
                 </button>
               </div>
             </div>

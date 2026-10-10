@@ -83,10 +83,12 @@ export const updateExam = createAsyncThunk(
 
 export const deleteExam = createAsyncThunk(
   'exams/delete',
-  async (id, { rejectWithValue }) => {
+  async (arg, { rejectWithValue }) => {
     try {
-      await examService.deleteExam(id)
-      toast.success('Exam deleted successfully')
+      const id = typeof arg === 'object' && arg !== null ? arg.id : arg
+      const force = typeof arg === 'object' && arg !== null ? !!arg.force : false
+      const res = await examService.deleteExam(id, force)
+      toast.success(res?.message || (force ? 'Exam and marks deleted successfully' : 'Exam deleted successfully'))
       return id
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to delete exam')

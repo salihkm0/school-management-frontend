@@ -28,6 +28,7 @@ import useSocket from '../../hooks/useSocket'
 import { fetchStaffDashboard, updateStats, addActivity } from '../../store/slices/dashboardSlice'
 import LoadingSpinner from '../common/LoadingSpinner'
 import QuickActions from './QuickActions'
+import GlobalStudentSearch from '../common/GlobalStudentSearch'
 
 // Stat Card Component
 const StatCard = ({ config, value, trend }) => {
@@ -299,6 +300,9 @@ const StaffDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Global Student Search */}
+      <GlobalStudentSearch variant="card" />
 
       {/* Class Assignments */}
       <div className="space-y-6">

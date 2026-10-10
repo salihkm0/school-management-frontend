@@ -22,8 +22,8 @@ const examService = {
     return response.data;
   },
 
-  deleteExam: async (id) => {
-    const response = await api.delete(`/exams/${id}`);
+  deleteExam: async (id, force = false) => {
+    const response = await api.delete(`/exams/${id}${force ? '?force=true' : ''}`);
     return response.data;
   },
 

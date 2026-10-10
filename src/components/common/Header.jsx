@@ -17,6 +17,7 @@ import { disconnectSocket } from '../../services/socketService'
 import useNotification from '../../hooks/useNotification'
 import { formatRelativeTime } from '../../utils/formatters'
 import { globalSearch } from '../../services/searchService'
+import GlobalStudentSearch from './GlobalStudentSearch'
 
 const Header = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
   const dispatch = useDispatch()
@@ -159,107 +160,13 @@ const Header = ({ toggleSidebar, isSidebarOpen, isMobile }) => {
           )}
           
           {/* Desktop Search - Hidden on mobile */}
-          {false && (
-          <div className="hidden md:flex items-center relative" ref={searchRef}>
-            <form onSubmit={handleSearch} className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search students, staff, classes..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onFocus={() => { if (searchTerm.trim()) setShowSearch(true) }}
-                className="w-56 lg:w-72 xl:w-80 pl-9 pr-4 py-1.5 bg-gray-50 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:bg-white transition-all"
-              />
-              {isSearching && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <div className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-                </div>
-              )}
-            </form>
-
-            {/* Search Dropdown */}
-            {showSearch && searchResults && !isMobile && (
-              <div className="absolute top-full left-0 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto">
-                {searchResults.students?.length === 0 && searchResults.staff?.length === 0 && searchResults.classes?.length === 0 ? (
-                  <div className="p-4 text-sm text-center text-gray-500">No results found</div>
-                ) : (
-                  <div className="py-2">
-                    {searchResults.students?.length > 0 && (
-                      <div className="mb-2">
-                        <div className="px-3 py-1 text-xs font-semibold text-gray-500 bg-gray-50">Students</div>
-                        {searchResults.students.map(student => (
-                          <Link 
-                            key={`student-${student._id}`} 
-                            to={`/students/profile/${student._id}`}
-                            className="block px-4 py-2 hover:bg-emerald-50 transition-colors"
-                            onClick={() => { setShowSearch(false); setSearchTerm(''); }}
-                          >
-                            <div className="flex items-center gap-2">
-                              {student.photoUrl ? (
-                                <img src={student.photoUrl} alt="" className="w-6 h-6 rounded-full object-cover" />
-                              ) : (
-                                <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs font-bold">
-                                  {getInitials(student.fullName)}
-                                </div>
-                              )}
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">{student.fullName}</div>
-                                <div className="text-xs text-gray-500">Ad No: {student.admissionNo} • Class: {student.className || 'N/A'}</div>
-                              </div>
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                    {searchResults.staff?.length > 0 && (
-                      <div className="mb-2">
-                        <div className="px-3 py-1 text-xs font-semibold text-gray-500 bg-gray-50">Staff</div>
-                        {searchResults.staff.map(staff => (
-                          <Link 
-                            key={`staff-${staff._id}`} 
-                            to={`/staff/profile/${staff._id}`}
-                            className="block px-4 py-2 hover:bg-emerald-50 transition-colors"
-                            onClick={() => { setShowSearch(false); setSearchTerm(''); }}
-                          >
-                            <div className="flex items-center gap-2">
-                              {staff.photoUrl ? (
-                                <img src={staff.photoUrl} alt="" className="w-6 h-6 rounded-full object-cover" />
-                              ) : (
-                                <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold">
-                                  {getInitials(staff.name)}
-                                </div>
-                              )}
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">{staff.name}</div>
-                                <div className="text-xs text-gray-500 capitalize">{staff.role} • {staff.staffCode}</div>
-                              </div>
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                    {searchResults.classes?.length > 0 && (
-                      <div>
-                        <div className="px-3 py-1 text-xs font-semibold text-gray-500 bg-gray-50">Classes</div>
-                        {searchResults.classes.map(cls => (
-                          <Link 
-                            key={`class-${cls._id}`} 
-                            to={`/classes/info/${cls._id}`}
-                            className="block px-4 py-2 hover:bg-emerald-50 transition-colors"
-                            onClick={() => { setShowSearch(false); setSearchTerm(''); }}
-                          >
-                            <div className="text-sm font-medium text-gray-900">{cls.displayName || `${cls.name} - ${cls.section}`}</div>
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+          <div className="hidden md:block">
+            <GlobalStudentSearch
+              variant="compact"
+              placeholder="Search student (name, reg no, adm no)..."
+              className="w-56 lg:w-72 xl:w-80"
+            />
           </div>
-          )}
         </div>
 
         {/* Right section - Actions */}
