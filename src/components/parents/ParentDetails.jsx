@@ -18,7 +18,7 @@ import {
   PencilIcon,
   EyeIcon
 } from '@heroicons/react/24/outline'
-import { fetchParentById, connectStudent, removeStudentConnection } from '../../store/slices/parentSlice'
+import { fetchParentById, connectStudent, removeStudentConnection, updateStudentRelation } from '../../store/slices/parentSlice'
 import { fetchStudents } from '../../store/slices/studentSlice'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
@@ -43,19 +43,18 @@ const ParentDetails = () => {
 
   const handleConnectStudent = async () => {
     if (!studentCode || !dateOfBirth) {
-      toast.error('Please enter student code and date of birth')
+      toast.error('Please enter admission number and date of birth')
       return
     }
     setIsConnecting(true)
     try {
       await dispatch(connectStudent({ parentId: id, studentCode, dateOfBirth, relation })).unwrap()
-      toast.success('Student connected successfully')
       setShowConnectModal(false)
       setStudentCode('')
       setDateOfBirth('')
       dispatch(fetchParentById(id))
     } catch (error) {
-      toast.error(error.message || 'Failed to connect student')
+      // Toast is already handled in slice
     } finally {
       setIsConnecting(false)
     }
@@ -63,11 +62,27 @@ const ParentDetails = () => {
 
   const handleRemoveStudent = async () => {
     if (selectedStudentCode) {
-      await dispatch(removeStudentConnection({ parentId: id, studentCode: selectedStudentCode }))
-      toast.success('Student connection removed')
-      setShowRemoveModal(false)
-      setSelectedStudentCode(null)
+      try {
+        await dispatch(removeStudentConnection({ parentId: id, studentCode: selectedStudentCode })).unwrap()
+        setShowRemoveModal(false)
+        setSelectedStudentCode(null)
+        dispatch(fetchParentById(id))
+      } catch (error) {
+        // Error toast is handled in parentSlice
+      }
+    }
+  }
+
+  const handleRelationChange = async (studentCodeToUpdate, newRelation) => {
+    try {
+      await dispatch(updateStudentRelation({
+        parentId: id,
+        studentCode: studentCodeToUpdate,
+        relation: newRelation
+      })).unwrap()
       dispatch(fetchParentById(id))
+    } catch (error) {
+      // Error toast handled in slice
     }
   }
 
@@ -188,25 +203,25 @@ const ParentDetails = () => {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <span className="font-mono text-xs font-semibold text-gray-800 bg-gray-100 px-2 py-0.5 rounded">
-                          {student.studentCode}
+                        <span className="font-mono text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-md">
+                          Adm No: {student.admissionNo || student.studentCode}
                         </span>
                         {student.studentFullName ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs bg-emerald-100 text-emerald-700 rounded-full">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs bg-emerald-100 text-emerald-700 rounded-full font-medium">
                             <CheckCircleIcon className="w-3 h-3" /> Verified
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded-full">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded-full font-medium">
                             <ClockIcon className="w-3 h-3" /> Pending
                           </span>
                         )}
                       </div>
                       
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-sm">
                         {student.studentFullName && (
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-gray-500">Student Name:</span> 
-                            <span className="text-gray-800">{student.studentFullName}</span>
+                            <span className="text-gray-900 font-medium">{student.studentFullName}</span>
                             {student.currentDetails?._id && (
                               <Link to={`/students/${student.currentDetails._id}`} className="inline-flex items-center gap-0.5 text-xs text-emerald-600 hover:text-emerald-700 font-medium ml-2">
                                 <EyeIcon className="w-3.5 h-3.5" />
@@ -215,11 +230,35 @@ const ParentDetails = () => {
                             )}
                           </div>
                         )}
-                        <div><span className="text-gray-500">Relation:</span> <span className="ml-1 text-gray-800 capitalize">{student.relation}</span></div>
-                        <div><span className="text-gray-500">Connected:</span> <span className="ml-1 text-gray-800">{new Date(student.connectedSince).toLocaleDateString()}</span></div>
+                        {student.className && (
+                          <div>
+                            <span className="text-gray-500">Class:</span>
+                            <span className="ml-1 text-gray-900 font-medium">{student.className}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-gray-500">Relation:</span>
+                          <select
+                            value={student.relation || 'father'}
+                            onChange={(e) => handleRelationChange(student.studentCode, e.target.value)}
+                            className="text-xs font-medium text-gray-800 bg-gray-50 border border-gray-300 rounded px-2 py-0.5 focus:bg-white focus:ring-1 focus:ring-emerald-500 focus:outline-none capitalize transition-colors"
+                          >
+                            <option value="father">Father</option>
+                            <option value="mother">Mother</option>
+                            <option value="guardian">Guardian</option>
+                          </select>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Connected:</span> 
+                          <span className="ml-1 text-gray-700">{new Date(student.connectedSince).toLocaleDateString()}</span>
+                        </div>
                       </div>
                     </div>
-                    <button onClick={() => { setSelectedStudentCode(student.studentCode); setShowRemoveModal(true); }} className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => { setSelectedStudentCode(student.studentCode); setShowRemoveModal(true); }} 
+                      title="Remove student connection"
+                      className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                    >
                       <TrashIcon className="w-4 h-4" />
                     </button>
                   </div>
@@ -247,11 +286,18 @@ const ParentDetails = () => {
             <div className="p-5 space-y-4">
               <div className="bg-blue-50 rounded-lg p-3">
                 <p className="text-sm font-medium text-blue-800">Student Information Required:</p>
-                <p className="text-xs text-blue-700 mt-1">Enter the student's unique code and date of birth as provided by the school.</p>
+                <p className="text-xs text-blue-700 mt-1">Enter the student's admission number and date of birth as provided by the school.</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Student Code *</label>
-                <input type="text" value={studentCode} onChange={(e) => setStudentCode(e.target.value.toUpperCase())} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="Enter student code" autoFocus />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Admission No *</label>
+                <input 
+                  type="text" 
+                  value={studentCode} 
+                  onChange={(e) => setStudentCode(e.target.value.trim())} 
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500" 
+                  placeholder="Enter admission number (e.g. 43640)" 
+                  autoFocus 
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>

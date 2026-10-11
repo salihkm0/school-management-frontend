@@ -44,7 +44,16 @@ const parentService = {
 
   removeStudentConnection: async (parentId, studentCode) => {
     const response = await api.delete(`/parents/student/${studentCode}`, {
-      data: { parentId }
+      data: { parentId },
+      params: { parentId }
+    })
+    return response.data
+  },
+
+  updateStudentRelation: async (parentId, studentCode, relation) => {
+    const response = await api.put(`/parents/${parentId}/student/${studentCode}/relation`, {
+      studentCode,
+      relation
     })
     return response.data
   },

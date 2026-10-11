@@ -94,6 +94,20 @@ export const removeStudentConnection = createAsyncThunk(
   }
 )
 
+export const updateStudentRelation = createAsyncThunk(
+  'parents/updateRelation',
+  async ({ parentId, studentCode, relation }, { rejectWithValue }) => {
+    try {
+      const response = await parentService.updateStudentRelation(parentId, studentCode, relation)
+      toast.success('Relationship updated successfully')
+      return { parentId, studentCode, relation, data: response.data }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update relationship')
+      return rejectWithValue(error.response?.data)
+    }
+  }
+)
+
 export const updateParent = createAsyncThunk(
   'parents/update',
   async ({ id, data }, { rejectWithValue }) => {
@@ -214,11 +228,33 @@ const parentSlice = createSlice({
       // Remove Student Connection
       .addCase(removeStudentConnection.fulfilled, (state, action) => {
         if (state.currentParent) {
-          state.currentParent.students = state.currentParent.students.filter(
-            s => s.studentCode !== action.payload
-          )
+          if (state.currentParent.students) {
+            state.currentParent.students = state.currentParent.students.filter(
+              s => s.studentCode !== action.payload
+            )
+          }
+          if (state.currentParent.connections) {
+            state.currentParent.connections = state.currentParent.connections.filter(
+              s => s.studentCode !== action.payload
+            )
+          }
         }
         state.myChildren = state.myChildren.filter(c => c.studentCode !== action.payload)
+      })
+
+      // Update Student Relation
+      .addCase(updateStudentRelation.fulfilled, (state, action) => {
+        const { studentCode, relation } = action.payload
+        if (state.currentParent) {
+          if (state.currentParent.students) {
+            const st = state.currentParent.students.find(s => s.studentCode === studentCode)
+            if (st) st.relation = relation
+          }
+          if (state.currentParent.connections) {
+            const conn = state.currentParent.connections.find(s => s.studentCode === studentCode)
+            if (conn) conn.relation = relation
+          }
+        }
       })
       
       // Update Parent

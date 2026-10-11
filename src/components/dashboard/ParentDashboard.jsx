@@ -105,7 +105,7 @@ const ParentDashboard = () => {
   const validateConnectForm = () => {
     const errors = {}
     if (!connectForm.studentCode.trim()) {
-      errors.studentCode = 'Student code is required'
+      errors.studentCode = 'Admission number is required'
     }
     if (!connectForm.dateOfBirth) {
       errors.dateOfBirth = 'Date of birth is required'
@@ -543,17 +543,17 @@ const ParentDashboard = () => {
             <div className="p-5 space-y-4">
               <div className="bg-blue-50 rounded-xl p-3">
                 <p className="text-sm font-medium text-blue-800">📌 Need help?</p>
-                <p className="text-xs text-blue-700 mt-1">Enter your child's register no and date of birth as provided by the school.</p>
+                <p className="text-xs text-blue-700 mt-1">Enter your child's admission no and date of birth as provided by the school.</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Register No *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Admission No *</label>
                 <input
                   type="text"
                   name="studentCode"
                   value={connectForm.studentCode}
                   onChange={handleConnectChange}
                   className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 ${formErrors.studentCode ? 'border-rose-500' : 'border-gray-200'}`}
-                  placeholder="e.g., 1808339938"
+                  placeholder="e.g., 43640"
                 />
                 {formErrors.studentCode && <p className="mt-1 text-xs text-rose-500">{formErrors.studentCode}</p>}
               </div>
