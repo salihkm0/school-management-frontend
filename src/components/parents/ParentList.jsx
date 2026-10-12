@@ -14,9 +14,10 @@ import {
   ChevronRightIcon,
   FunnelIcon,
   EllipsisVerticalIcon,
-  PencilIcon
+  PencilIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline'
-import { fetchParents, removeStudentConnection } from '../../store/slices/parentSlice'
+import { fetchParents, removeStudentConnection, deleteParent } from '../../store/slices/parentSlice'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
 import useDebounce from '../../hooks/useDebounce'
@@ -29,7 +30,30 @@ const ParentList = () => {
   const [showFilters, setShowFilters] = useState(false)
   const [openMenuId, setOpenMenuId] = useState(null)
   const [filterStatus, setFilterStatus] = useState('all')
+  const [parentToDelete, setParentToDelete] = useState(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const menuRef = useRef(null)
+
+  const handleDeleteParent = async () => {
+    if (!parentToDelete) return
+    setIsDeleting(true)
+    try {
+      await dispatch(deleteParent(parentToDelete._id)).unwrap()
+      setShowDeleteModal(false)
+      setParentToDelete(null)
+      dispatch(fetchParents({ 
+        search: debouncedSearch, 
+        limit: 20,
+        page: currentPage,
+        status: filterStatus === 'all' ? undefined : filterStatus
+      }))
+    } catch (error) {
+      // Toast already handled in slice
+    } finally {
+      setIsDeleting(false)
+    }
+  }
   
   const debouncedSearch = useDebounce(searchInput, 500)
 
@@ -233,7 +257,7 @@ const ParentList = () => {
                       </div>
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-right">
-                      {/* Desktop: Show eye and edit icons */}
+                      {/* Desktop: Show eye, edit, and delete icons */}
                       <div className="hidden sm:flex items-center justify-end gap-1">
                         <Link
                           to={`/parents/${parent._id}`}
@@ -249,6 +273,13 @@ const ParentList = () => {
                         >
                           <PencilIcon className="w-4 h-4" />
                         </Link>
+                        <button
+                          onClick={() => { setParentToDelete(parent); setShowDeleteModal(true); }}
+                          className="inline-flex p-1.5 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
+                          title="Delete Parent"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
                       </div>
                       
                       {/* Mobile: 3-dot menu */}
@@ -281,6 +312,17 @@ const ParentList = () => {
                               <PencilIcon className="w-4 h-4" />
                               <span>Edit Parent</span>
                             </Link>
+                            <button
+                              onClick={() => {
+                                setOpenMenuId(null)
+                                setParentToDelete(parent)
+                                setShowDeleteModal(true)
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 transition-colors text-left"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                              <span>Delete Parent</span>
+                            </button>
                           </div>
                         )}
                       </div>
@@ -341,6 +383,51 @@ const ParentList = () => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Delete Parent Confirmation Modal */}
+      {showDeleteModal && parentToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !isDeleting && setShowDeleteModal(false)} />
+          <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full mx-auto overflow-hidden">
+            <div className="p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center">
+                  <TrashIcon className="w-5 h-5 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Delete Parent</h3>
+                  <p className="text-sm text-gray-500">This action cannot be undone</p>
+                </div>
+              </div>
+              <p className="text-gray-600 text-sm mb-2">
+                Are you sure you want to delete <span className="font-semibold text-gray-900">{parentToDelete.fullName}</span>?
+              </p>
+              <p className="text-xs text-rose-600 bg-rose-50 p-2.5 rounded-lg mb-5">
+                This will permanently remove the parent profile and their login account. All connected student links will be disconnected.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button 
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => setShowDeleteModal(false)} 
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={handleDeleteParent} 
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 transition-colors disabled:opacity-50"
+                >
+                  {isDeleting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <TrashIcon className="w-4 h-4" />}
+                  <span>{isDeleting ? 'Deleting...' : 'Delete Parent'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

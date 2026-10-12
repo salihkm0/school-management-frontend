@@ -18,7 +18,7 @@ import {
   PencilIcon,
   EyeIcon
 } from '@heroicons/react/24/outline'
-import { fetchParentById, connectStudent, removeStudentConnection, updateStudentRelation } from '../../store/slices/parentSlice'
+import { fetchParentById, connectStudent, removeStudentConnection, updateStudentRelation, deleteParent } from '../../store/slices/parentSlice'
 import { fetchStudents } from '../../store/slices/studentSlice'
 import LoadingSpinner from '../common/LoadingSpinner'
 import toast from 'react-hot-toast'
@@ -30,6 +30,8 @@ const ParentDetails = () => {
   const { currentParent, isLoading } = useSelector((state) => state.parents)
   const [showConnectModal, setShowConnectModal] = useState(false)
   const [showRemoveModal, setShowRemoveModal] = useState(false)
+  const [showDeleteParentModal, setShowDeleteParentModal] = useState(false)
+  const [isDeletingParent, setIsDeletingParent] = useState(false)
   const [studentCode, setStudentCode] = useState('')
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [relation, setRelation] = useState('father')
@@ -86,6 +88,18 @@ const ParentDetails = () => {
     }
   }
 
+  const handleDeleteParent = async () => {
+    setIsDeletingParent(true)
+    try {
+      await dispatch(deleteParent(id)).unwrap()
+      navigate('/parents')
+    } catch (error) {
+      // Error toast handled in slice
+    } finally {
+      setIsDeletingParent(false)
+    }
+  }
+
   if (isLoading || !currentParent) return <LoadingSpinner />
 
   const students = currentParent.connections || []
@@ -109,7 +123,7 @@ const ParentDetails = () => {
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link to={`/parents/${id}/edit`} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-all">
             <PencilIcon className="w-4 h-4" />
             Edit Parent
@@ -117,6 +131,10 @@ const ParentDetails = () => {
           <button onClick={() => setShowConnectModal(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all">
             <PlusIcon className="w-4 h-4" />
             Connect Student
+          </button>
+          <button onClick={() => setShowDeleteParentModal(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-all">
+            <TrashIcon className="w-4 h-4" />
+            Delete Parent
           </button>
         </div>
       </div>
@@ -323,7 +341,7 @@ const ParentDetails = () => {
         </div>
       )}
 
-      {/* Remove Confirmation Modal */}
+      {/* Remove Connection Modal */}
       {showRemoveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowRemoveModal(false)} />
@@ -337,6 +355,51 @@ const ParentDetails = () => {
               <div className="flex justify-end gap-3">
                 <button onClick={() => setShowRemoveModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
                 <button onClick={handleRemoveStudent} className="px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700">Remove</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Parent Confirmation Modal */}
+      {showDeleteParentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !isDeletingParent && setShowDeleteParentModal(false)} />
+          <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full mx-auto overflow-hidden">
+            <div className="p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center">
+                  <TrashIcon className="w-5 h-5 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Delete Parent</h3>
+                  <p className="text-sm text-gray-500">This action cannot be undone</p>
+                </div>
+              </div>
+              <p className="text-gray-600 text-sm mb-2">
+                Are you sure you want to delete <span className="font-semibold text-gray-900">{currentParent.fullName}</span>?
+              </p>
+              <p className="text-xs text-rose-600 bg-rose-50 p-2.5 rounded-lg mb-5">
+                This will permanently remove the parent profile and their login account. All connected students will be unlinked.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button 
+                  type="button"
+                  disabled={isDeletingParent}
+                  onClick={() => setShowDeleteParentModal(false)} 
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button"
+                  disabled={isDeletingParent}
+                  onClick={handleDeleteParent} 
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 disabled:opacity-50"
+                >
+                  {isDeletingParent ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <TrashIcon className="w-4 h-4" />}
+                  <span>{isDeletingParent ? 'Deleting...' : 'Delete Parent'}</span>
+                </button>
               </div>
             </div>
           </div>

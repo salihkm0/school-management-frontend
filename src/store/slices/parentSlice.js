@@ -122,6 +122,20 @@ export const updateParent = createAsyncThunk(
   }
 )
 
+export const deleteParent = createAsyncThunk(
+  'parents/delete',
+  async (id, { rejectWithValue }) => {
+    try {
+      await parentService.deleteParent(id)
+      toast.success('Parent deleted successfully')
+      return id
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete parent')
+      return rejectWithValue(error.response?.data)
+    }
+  }
+)
+
 const initialState = {
   parents: [],
   currentParent: null,
@@ -270,6 +284,22 @@ const parentSlice = createSlice({
         }
       })
       .addCase(updateParent.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.payload?.message
+      })
+
+      // Delete Parent
+      .addCase(deleteParent.pending, (state) => {
+        state.isLoading = true
+      })
+      .addCase(deleteParent.fulfilled, (state, action) => {
+        state.isLoading = false
+        state.parents = state.parents.filter(p => p._id !== action.payload)
+        if (state.currentParent && state.currentParent._id === action.payload) {
+          state.currentParent = null
+        }
+      })
+      .addCase(deleteParent.rejected, (state, action) => {
         state.isLoading = false
         state.error = action.payload?.message
       })

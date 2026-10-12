@@ -33,6 +33,11 @@ const parentService = {
     return response.data
   },
 
+  deleteParent: async (id) => {
+    const response = await api.delete(`/parents/${id}`)
+    return response.data
+  },
+
   connectStudent: async (parentId, studentCode, dateOfBirth, relation) => {
     const response = await api.post(`/parents/connect-student/${parentId}`, {
       studentCode,
