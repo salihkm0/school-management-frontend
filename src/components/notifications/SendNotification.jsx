@@ -298,10 +298,13 @@ const SendNotification = () => {
                                   className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
                                 />
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-semibold text-gray-900 truncate">{p.name || 'Parent'}</p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-xs font-semibold text-gray-900 truncate">{p.name || 'Parent'}</p>
+                                    {p.phone && <span className="text-[10px] text-gray-400">({p.phone})</span>}
+                                  </div>
                                   {studentText && (
                                     <span className="inline-block mt-0.5 px-2 py-0.5 text-[10px] font-medium text-emerald-700 bg-emerald-100/70 rounded">
-                                      Student: {studentText}
+                                      Student: {studentText} {p.studentAdmissionNos?.length > 0 ? `(Adm: ${p.studentAdmissionNos.join(', ')})` : ''}
                                     </span>
                                   )}
                                 </div>
@@ -313,7 +316,7 @@ const SendNotification = () => {
                     </div>
                   ) : (
                     <div className="p-3 bg-emerald-50/60 rounded-lg border border-emerald-100 text-xs text-emerald-700">
-                      📢 Notification will be sent to all parents of students in this class ({classParents.length} parents).
+                      📢 Notification will be sent to all parents of students in this class ({classParents.length} {classParents.length === 1 ? 'parent' : 'parents'}).
                     </div>
                   )}
                 </>
