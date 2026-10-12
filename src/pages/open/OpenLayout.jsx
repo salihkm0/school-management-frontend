@@ -7,7 +7,8 @@ import {
   Menu,
   X,
   FileText,
-  Users
+  Users,
+  FileSpreadsheet
 } from 'lucide-react';
 const OpenLayout = () => {
   const dispatch = useDispatch();
@@ -20,6 +21,7 @@ const OpenLayout = () => {
   };
 
   const navItems = [
+    { name: 'Student Outsourcing', path: '/open/outsourcing', icon: FileSpreadsheet },
     { name: 'Mark Lists', path: '/open/marklist/2025-2026', icon: FileText },
     { name: 'Students', path: '/open/students/2025-2026', icon: Users },
   ];
