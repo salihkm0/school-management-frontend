@@ -24,6 +24,9 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     if (user.role === 'administration') {
       return <Navigate to="/administration" replace />
     }
+    if (user.role === 'outsource') {
+      return <Navigate to="/outsource" replace />
+    }
     // Redirect others to home
     return <Navigate to="/" replace />
   }

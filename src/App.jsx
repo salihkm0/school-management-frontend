@@ -62,6 +62,11 @@ import BroadcastCenter from './pages/administration/BroadcastCenter'
 import UserManagement from './pages/administration/UserManagement'
 import ActiveUsers from './pages/administration/ActiveUsers'
 
+// Outsource Portal
+import OutsourceLogin from './pages/outsource/OutsourceLogin'
+import OutsourceLayout from './pages/outsource/OutsourceLayout'
+import StudentOutsourcingView from './pages/open/StudentOutsourcingView'
+
 function App() {
   const dispatch = useDispatch()
   const { isLoading, isAuthenticated } = useSelector((state) => state.auth)
@@ -267,6 +272,26 @@ function App() {
             <OpenDashboardRouter />
           </ProtectedRoute>
         } />
+
+        {/* Student Outsourcing Portal */}
+        <Route path="/outsource/login" element={
+          <PublicRoute>
+            <OutsourceLogin />
+          </PublicRoute>
+        } />
+        <Route path="/outsourcing/login" element={
+          <PublicRoute>
+            <OutsourceLogin />
+          </PublicRoute>
+        } />
+        <Route path="/outsource" element={
+          <ProtectedRoute allowedRoles={['outsource', 'open', 'admin', 'administration']}>
+            <OutsourceLayout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<StudentOutsourcingView />} />
+        </Route>
+        <Route path="/outsourcing" element={<Navigate to="/outsource" replace />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
