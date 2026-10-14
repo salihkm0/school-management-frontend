@@ -56,6 +56,13 @@ const getPercentageColor = (pct) => {
   return 'text-rose-600 font-semibold';
 };
 
+const formatExamName = (name) => {
+  if (!name) return 'Exam';
+  return name
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
 const StudentOutsourcingView = () => {
   // State
   const [loading, setLoading] = useState(true);
@@ -280,7 +287,7 @@ const StudentOutsourcingView = () => {
 
       // Exam columns
       metadata.exams.forEach((ex) => {
-        const exName = ex.name || 'Exam';
+        const exName = formatExamName(ex.name);
         if (markMode === 'te') {
           headers.push(`${exName} TE Marks`, `${exName} TE Max`, `${exName} TE %`, `${exName} TE Grade`);
         } else if (markMode === 'total') {
@@ -816,8 +823,8 @@ const StudentOutsourcingView = () => {
                       key={ex._id}
                       className="py-2.5 px-3 text-center bg-slate-850 border-b border-r border-slate-800 min-w-[140px] max-w-[170px]"
                     >
-                      <div className="font-bold text-white normal-case text-xs truncate" title={ex.name}>
-                        {ex.name}
+                      <div className="font-bold text-white normal-case text-xs truncate" title={formatExamName(ex.name)}>
+                        {formatExamName(ex.name)}
                       </div>
                       <div className="text-[10px] text-slate-400 font-normal tracking-normal normal-case">
                         {markMode === 'te' ? 'TE • Grade' : markMode === 'total' ? 'Total • Grade' : 'TE | Total • %'}
@@ -1226,7 +1233,7 @@ const StudentOutsourcingView = () => {
                           : null;
                         return (
                           <tr key={ex._id} className="hover:bg-slate-50">
-                            <td className="py-2.5 px-3 font-semibold text-slate-900">{ex.name}</td>
+                            <td className="py-2.5 px-3 font-semibold text-slate-900">{formatExamName(ex.name)}</td>
                             <td className="py-2.5 px-3 text-center text-blue-700 font-bold">
                               {em?.teScore !== null && em?.teScore !== undefined ? em.teScore : '—'}
                             </td>
