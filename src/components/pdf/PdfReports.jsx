@@ -22,7 +22,7 @@ import { fetchAcademicYears } from '../../store/slices/academicYearSlice';
 import { fetchStudents } from '../../store/slices/studentSlice';
 import { fetchStaff } from '../../store/slices/staffSlice';
 import { fetchExams } from '../../store/slices/examSlice';
-import pdfService, { downloadPDF } from '../../services/pdfService';
+import pdfService, { downloadPDF, viewPDF } from '../../services/pdfService';
 import LoadingSpinner from '../common/LoadingSpinner';
 import toast from 'react-hot-toast';
 import AsyncSelect from 'react-select/async';
@@ -42,12 +42,23 @@ const ReportCard = ({ title, description, children }) => (
   </div>
 );
 
-const ActionButtons = ({ onDownload, downloadDisabled, isLoading }) => (
-  <div className="flex gap-2">
+const ActionButtons = ({ onDownload, onView, downloadDisabled, isLoading }) => (
+  <div className="flex items-center gap-2">
+    {onView && (
+      <button
+        onClick={onView}
+        disabled={downloadDisabled || isLoading}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm"
+        title="View PDF in new tab"
+      >
+        <EyeIcon className="w-4 h-4 text-gray-500" />
+        <span className="hidden sm:inline">View</span>
+      </button>
+    )}
     <button
       onClick={onDownload}
       disabled={downloadDisabled || isLoading}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-sm"
     >
       {isLoading ? (
         <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -132,6 +143,20 @@ const PdfReports = () => {
       toast.success('PDF downloaded successfully');
     } catch (error) {
       console.error('PDF download error:', error);
+      toast.error(error.message || errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleViewPDF = async (generator, params, errorMsg = 'Failed to view PDF') => {
+    setIsLoading(true);
+    try {
+      const pdfBlob = await generator(params);
+      viewPDF(pdfBlob);
+      toast.success('PDF opened in new tab');
+    } catch (error) {
+      console.error('PDF view error:', error);
       toast.error(error.message || errorMsg);
     } finally {
       setIsLoading(false);
@@ -825,8 +850,13 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onDownload={() => handleDownloadPDF(
+                onView={() => handleViewPDF(
                   async () => { return await pdfService.getClassPTAPDF(selectedClass, selectedAcademicYear); },
+                  {},
+                  'Failed to view Class PTA PDF'
+                )}
+                onDownload={() => handleDownloadPDF(
+                  async () => { return await pdfService.downloadClassPTAPDF(selectedClass, selectedAcademicYear); },
                   {},
                   selectedClass
                     ? `Class_PTA_${(classes.find(c => c._id === selectedClass)?.displayName || 'Class').replace(/\s+/g, '_')}_${getCurrentAcademicYear()}.pdf`

@@ -447,19 +447,50 @@ const pdfService = {
   },
 };
 
-// Helper function to download PDF
+// Helper function to download PDF safely without premature object URL revocation
 export const downloadPDF = (blob, filename) => {
-  const url = window.URL.createObjectURL(blob);
+  if (!blob) {
+    console.error('downloadPDF called with empty blob');
+    return;
+  }
+  const pdfBlob = blob instanceof Blob
+    ? (blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' }))
+    : new Blob([blob], { type: 'application/pdf' });
+
+  const url = window.URL.createObjectURL(pdfBlob);
   const link = document.createElement('a');
   link.href = url;
   link.download = filename || 'report.pdf';
+  link.style.display = 'none';
   document.body.appendChild(link);
   link.click();
-  document.body.removeChild(link);
-  setTimeout(() => window.URL.revokeObjectURL(url), 100);
+
+  // Keep the object URL alive for 60 seconds so large files (e.g. 8MB+ multi-class PDFs) have time to download
+  setTimeout(() => {
+    if (document.body.contains(link)) {
+      document.body.removeChild(link);
+    }
+    window.URL.revokeObjectURL(url);
+  }, 60000);
 };
 
+// Helper function to view PDF in a new tab
+export const viewPDF = (blob) => {
+  if (!blob) {
+    console.error('viewPDF called with empty blob');
+    return;
+  }
+  const pdfBlob = blob instanceof Blob
+    ? (blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' }))
+    : new Blob([blob], { type: 'application/pdf' });
 
+  const url = window.URL.createObjectURL(pdfBlob);
+  window.open(url, '_blank');
+
+  setTimeout(() => {
+    window.URL.revokeObjectURL(url);
+  }, 60000);
+};
 
 export { pdfService };
 export default pdfService;
