@@ -23,7 +23,11 @@ import {
   TrophyIcon,
   PrinterIcon,
   ArrowDownTrayIcon,
+  EyeIcon,
+  CheckBadgeIcon,
 } from "@heroicons/react/24/outline";
+import toast from "react-hot-toast";
+import pdfService, { downloadPDF } from "../../services/pdfService";
 import {
   fetchStudentById,
   clearCurrentStudent,
@@ -75,7 +79,10 @@ const StudentDetails = () => {
   const [loadingAcademic, setLoadingAcademic] = useState(false);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [selectedAcademicYearId, setSelectedAcademicYearId] = useState("");
-  const [selectedExamId, setSelectedExamId] = useState(null);
+  const [selectedExamId, setSelectedExamId] = useState("all");
+  const [downloadingExamId, setDownloadingExamId] = useState(null);
+  const [viewingExamId, setViewingExamId] = useState(null);
+  const [downloadingReportCardId, setDownloadingReportCardId] = useState(null);
 
   useEffect(() => {
     dispatch(fetchStudentById(id));
@@ -122,12 +129,82 @@ const StudentDetails = () => {
       const data = await studentService.getStudentMarks(id);
       setMarksData(data);
       if (data?.analytics?.examWise && Object.keys(data.analytics.examWise).length > 0) {
-        setSelectedExamId(Object.keys(data.analytics.examWise)[0]);
+        setSelectedExamId("all");
       }
     } catch (error) {
       console.error("Failed to load marks:", error);
     } finally {
       setLoadingMarks(false);
+    }
+  };
+
+  const handleDownloadExamMarklist = async (examId, examName) => {
+    try {
+      setDownloadingExamId(examId);
+      const blob = await pdfService.downloadMarklistPDF(id, examId);
+      downloadPDF(
+        blob,
+        `Marklist_${(currentStudent?.fullName || 'Student').replace(/\s+/g, '_')}_${(examName || 'Exam').replace(/\s+/g, '_')}.pdf`
+      );
+      toast.success(`${examName || 'Exam'} marklist downloaded`);
+    } catch (error) {
+      console.error('Failed to download marklist:', error);
+      toast.error('Failed to download marklist PDF');
+    } finally {
+      setDownloadingExamId(null);
+    }
+  };
+
+  const handleViewExamMarklist = async (examId) => {
+    try {
+      setViewingExamId(examId);
+      const blob = await pdfService.getMarklistPDF(id, examId);
+      const fileURL = URL.createObjectURL(blob);
+      window.open(fileURL, '_blank');
+    } catch (error) {
+      console.error('Failed to view marklist:', error);
+      toast.error('Failed to open marklist PDF');
+    } finally {
+      setViewingExamId(null);
+    }
+  };
+
+  const handleDownloadReportCard = async (examId, examName) => {
+    try {
+      setDownloadingReportCardId(examId);
+      const academicYearId = currentStudent?.academicYearId?._id || currentStudent?.academicYearId || selectedAcademicYearId;
+      const blob = await pdfService.downloadStudentReportCardPDF(id, examId, academicYearId);
+      downloadPDF(
+        blob,
+        `ReportCard_${(currentStudent?.fullName || 'Student').replace(/\s+/g, '_')}_${(examName || 'Exam').replace(/\s+/g, '_')}.pdf`
+      );
+      toast.success('Report card downloaded');
+    } catch (error) {
+      console.error('Failed to download report card:', error);
+      toast.error('Failed to download report card PDF');
+    } finally {
+      setDownloadingReportCardId(null);
+    }
+  };
+
+  const handlePrintAll = () => {
+    const examIds = marksData?.analytics?.examWise ? Object.keys(marksData.analytics.examWise) : [];
+    const examIdToPrint = (selectedExamId && selectedExamId !== 'all') ? selectedExamId : examIds[0];
+    if (examIdToPrint) {
+      handleViewExamMarklist(examIdToPrint);
+    } else {
+      window.print();
+    }
+  };
+
+  const handleExportAll = () => {
+    const examIds = marksData?.analytics?.examWise ? Object.keys(marksData.analytics.examWise) : [];
+    const examIdToExport = (selectedExamId && selectedExamId !== 'all') ? selectedExamId : examIds[0];
+    const examNameToExport = examIdToExport ? marksData.analytics.examWise[examIdToExport]?.examName : 'Marklist';
+    if (examIdToExport) {
+      handleDownloadExamMarklist(examIdToExport, examNameToExport);
+    } else {
+      toast.error('No exam marks available to export');
     }
   };
 
@@ -434,14 +511,22 @@ const StudentDetails = () => {
                       </div>
                     </div>
                     
-                    <div className="flex gap-3">
-                      <button className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
-                        <PrinterIcon className="w-4 h-4" />
-                        <span className="hidden sm:inline">Print</span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handlePrintAll}
+                        title="Print Marklist"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-emerald-700 hover:border-gray-300 transition-all shadow-sm"
+                      >
+                        <PrinterIcon className="w-4 h-4 text-emerald-600" />
+                        <span className="hidden sm:inline">Print Marklist</span>
                       </button>
-                      <button className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
+                      <button
+                        onClick={handleExportAll}
+                        title="Download Marklist PDF"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-all shadow-sm"
+                      >
                         <ArrowDownTrayIcon className="w-4 h-4" />
-                        <span className="hidden sm:inline">Export</span>
+                        <span className="hidden sm:inline">Export PDF</span>
                       </button>
                     </div>
                   </div>
@@ -472,13 +557,23 @@ const StudentDetails = () => {
               {totalExams > 0 && (
                 <div className="border-b border-gray-200">
                   <div className="flex flex-wrap gap-1 -mb-px">
+                    <button
+                      onClick={() => setSelectedExamId("all")}
+                      className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all ${
+                        selectedExamId === "all"
+                          ? 'bg-white text-emerald-600 border border-b-0 border-gray-200 font-semibold shadow-sm'
+                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      All Exams ({totalExams})
+                    </button>
                     {Object.entries(examWise).map(([examId, exam]) => (
                       <button
                         key={examId}
                         onClick={() => setSelectedExamId(examId)}
                         className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all ${
                           selectedExamId === examId
-                            ? 'bg-white text-emerald-600 border border-b-0 border-gray-200'
+                            ? 'bg-white text-emerald-600 border border-b-0 border-gray-200 font-semibold shadow-sm'
                             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                         }`}
                       >
@@ -489,90 +584,240 @@ const StudentDetails = () => {
                 </div>
               )}
 
-              {/* Selected Exam Content */}
-              {selectedExam && (
-                <div className="space-y-6">
-                  {/* Exam Header Card */}
-                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <div className="px-5 py-4 bg-gray-50/50 border-b border-gray-100">
-                      <h3 className="text-base font-semibold text-gray-900">{selectedExam.examName}</h3>
-                      <div className="flex flex-wrap gap-3 mt-1">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 capitalize">
-                          {selectedExam.examType}
-                        </span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 capitalize">
-                          {selectedExam.term} Term
-                        </span>
-                      </div>
-                    </div>
-                    <div className="p-5">
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="text-center">
-                          <p className="text-xs font-medium text-gray-500 uppercase">Obtained</p>
-                          <p className="text-xl font-bold text-gray-900 mt-1">{selectedExam.totalMarks}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-xs font-medium text-gray-500 uppercase">Maximum</p>
-                          <p className="text-xl font-bold text-gray-900 mt-1">{selectedExam.totalMaxMarks}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-xs font-medium text-gray-500 uppercase">Percentage</p>
-                          <p className="text-xl font-bold text-emerald-600 mt-1">
-                            {((selectedExam.totalMarks / selectedExam.totalMaxMarks) * 100).toFixed(1)}%
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+              {/* Exam Mark Lists */}
+              <div className="space-y-6">
+                {(selectedExamId === "all"
+                  ? Object.entries(examWise)
+                  : (selectedExamId && examWise[selectedExamId] ? [[selectedExamId, examWise[selectedExamId]]] : Object.entries(examWise))
+                ).map(([examId, exam]) => {
+                  const examPercentage = exam.totalMaxMarks > 0 
+                    ? ((exam.totalMarks / exam.totalMaxMarks) * 100).toFixed(1)
+                    : "0.0";
+                  const examGradeInfo = getOverallGradeInfo(parseFloat(examPercentage));
+                  const hasPractical = exam.subjects?.some(s => (s.practicalScore || 0) > 0);
+                  const totalTheory = exam.subjects?.reduce((sum, s) => sum + (s.theoryScore || 0), 0) || 0;
+                  const totalCE = exam.subjects?.reduce((sum, s) => sum + (s.ceScore || 0), 0) || 0;
+                  const totalPractical = exam.subjects?.reduce((sum, s) => sum + (s.practicalScore || 0), 0) || 0;
+                  const passedCount = exam.subjects?.filter(s => !s.isAbsent && (s.totalScore || 0) >= (s.passingMarks || 40)).length || 0;
+                  const allPassed = exam.subjects && exam.subjects.length > 0 && passedCount === exam.subjects.length;
 
-                  {/* Subjects Performance Table */}
-                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <div className="px-5 py-4 bg-gray-50/50 border-b border-gray-100">
-                      <h3 className="text-sm font-semibold text-gray-900">Subject-wise Performance</h3>
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-100 bg-gray-50/30">
-                            <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
-                            <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Theory</th>
-                            <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">CE</th>
-                            <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                            <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Max</th>
-                            <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">%</th>
-                            <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                          {selectedExam.subjects?.map((subject, idx) => {
-                            const totalMarks = (subject.theoryScore || 0) + (subject.ceScore || 0);
-                            const percentage = subject.maxMarks > 0 ? (totalMarks / subject.maxMarks) * 100 : 0;
-                            const gradeColor = percentage >= 90 ? 'text-emerald-600' : percentage >= 80 ? 'text-green-600' : percentage >= 70 ? 'text-blue-600' : percentage >= 60 ? 'text-cyan-600' : percentage >= 50 ? 'text-amber-600' : percentage >= 40 ? 'text-orange-600' : 'text-rose-600';
-                            
-                            return (
-                              <tr key={idx} className="hover:bg-gray-50/30 transition-colors">
-                                <td className="px-5 py-3 text-sm font-medium text-gray-900">{subject.subjectName}</td>
-                                <td className="px-5 py-3 text-sm text-center text-gray-600">{subject.theoryScore ?? '-'}</td>
-                                <td className="px-5 py-3 text-sm text-center text-purple-600 font-medium">{subject.ceScore ?? '-'}</td>
-                                <td className="px-5 py-3 text-sm text-center font-semibold text-gray-900">{totalMarks}</td>
-                                <td className="px-5 py-3 text-sm text-center text-gray-500">{subject.maxMarks}</td>
-                                <td className="px-5 py-3 text-sm text-center">
-                                  <span className={`font-medium ${gradeColor}`}>{percentage.toFixed(1)}%</span>
-                                </td>
-                                <td className="px-5 py-3 text-center">
-                                  <span className={`inline-flex items-center justify-center min-w-[48px] px-2 py-1 text-xs font-semibold rounded-md ${getGradeColor(subject.grade)}`}>
-                                    {subject.grade}
+                  return (
+                    <div key={examId} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                      {/* Exam Header */}
+                      <div className="px-5 py-4 bg-gradient-to-r from-gray-50 via-white to-gray-50 border-b border-gray-200">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center flex-shrink-0">
+                              <DocumentTextIcon className="w-5 h-5 text-emerald-600" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="text-base font-semibold text-gray-900">{exam.examName}</h3>
+                                {allPassed ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20">
+                                    <CheckCircleIcon className="w-3.5 h-3.5" />
+                                    Passed
                                   </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 ring-1 ring-amber-600/20">
+                                    {passedCount}/{exam.subjects?.length || 0} Passed
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-500">
+                                <span className="capitalize font-medium text-gray-600">{exam.examType || 'Term Exam'}</span>
+                                <span>•</span>
+                                <span className="capitalize">{exam.term} Term</span>
+                                <span>•</span>
+                                <span>{exam.subjects?.length || 0} Subjects</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Quick Stats & Action Buttons */}
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                            <div className="flex items-center gap-3 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
+                              <div className="text-right">
+                                <div className="text-[11px] text-gray-500">Total Marks</div>
+                                <div className="text-sm font-bold text-gray-900">
+                                  {exam.totalMarks} <span className="text-xs font-normal text-gray-400">/ {exam.totalMaxMarks}</span>
+                                </div>
+                              </div>
+                              <div className="h-6 w-px bg-gray-200" />
+                              <div className="text-right">
+                                <div className="text-[11px] text-gray-500">Percentage</div>
+                                <div className={`text-sm font-bold ${examGradeInfo.color}`}>
+                                  {examPercentage}%
+                                </div>
+                              </div>
+                              <span className={`inline-flex items-center justify-center min-w-[36px] px-2 py-0.5 text-xs font-bold rounded ${getGradeColor(examGradeInfo.grade)}`}>
+                                {examGradeInfo.grade}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => handleViewExamMarklist(examId)}
+                                disabled={viewingExamId === examId}
+                                title="View & Print Marklist PDF"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-emerald-700 hover:border-emerald-300 transition-all disabled:opacity-50"
+                              >
+                                {viewingExamId === examId ? (
+                                  <LoadingSpinner size="xs" />
+                                ) : (
+                                  <EyeIcon className="w-3.5 h-3.5 text-emerald-600" />
+                                )}
+                                <span>View PDF</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleDownloadExamMarklist(examId, exam.examName)}
+                                disabled={downloadingExamId === examId}
+                                title="Download Marklist PDF"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-all disabled:opacity-50"
+                              >
+                                {downloadingExamId === examId ? (
+                                  <LoadingSpinner size="xs" />
+                                ) : (
+                                  <ArrowDownTrayIcon className="w-3.5 h-3.5" />
+                                )}
+                                <span>Marklist</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleDownloadReportCard(examId, exam.examName)}
+                                disabled={downloadingReportCardId === examId}
+                                title="Download Official Report Card PDF"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all disabled:opacity-50"
+                              >
+                                {downloadingReportCardId === examId ? (
+                                  <LoadingSpinner size="xs" />
+                                ) : (
+                                  <DocumentTextIcon className="w-3.5 h-3.5" />
+                                )}
+                                <span>Report Card</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Mark List Table */}
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="bg-gray-50/80 border-b border-gray-200 text-[11px] font-semibold text-gray-600 uppercase tracking-wider">
+                              <th className="px-4 py-2.5 w-12 text-center">#</th>
+                              <th className="px-4 py-2.5">Subject</th>
+                              <th className="px-4 py-2.5 text-center">Theory (TE)</th>
+                              <th className="px-4 py-2.5 text-center">CE</th>
+                              {hasPractical && <th className="px-4 py-2.5 text-center">Practical</th>}
+                              <th className="px-4 py-2.5 text-center font-bold text-gray-800">Total Marks</th>
+                              <th className="px-4 py-2.5 text-center">Max Marks</th>
+                              <th className="px-4 py-2.5 text-center">%</th>
+                              <th className="px-4 py-2.5 text-center">Grade</th>
+                              <th className="px-4 py-2.5 text-center">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 text-sm">
+                            {exam.subjects?.map((subject, idx) => {
+                              const totalMarks = subject.totalScore !== undefined && subject.totalScore !== null
+                                ? subject.totalScore
+                                : ((subject.theoryScore || 0) + (subject.ceScore || 0) + (subject.practicalScore || 0));
+                              const pct = subject.maxMarks > 0 ? (totalMarks / subject.maxMarks) * 100 : 0;
+                              const isPassing = !subject.isAbsent && totalMarks >= (subject.passingMarks || 40);
+                              const pctColor = pct >= 80 ? 'text-emerald-600' : pct >= 60 ? 'text-blue-600' : pct >= 40 ? 'text-amber-600' : 'text-rose-600';
+
+                              return (
+                                <tr key={idx} className="hover:bg-gray-50/60 transition-colors">
+                                  <td className="px-4 py-3 text-xs text-center text-gray-400 font-medium">{idx + 1}</td>
+                                  <td className="px-4 py-3">
+                                    <div className="font-medium text-gray-900">{subject.subjectName}</div>
+                                    {subject.subjectCode && (
+                                      <div className="text-[11px] text-gray-400 font-mono">{subject.subjectCode}</div>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 text-center text-gray-700">
+                                    {subject.isAbsent ? (
+                                      <span className="text-xs text-rose-500 font-medium">AB</span>
+                                    ) : (
+                                      subject.theoryScore ?? '-'
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 text-center font-medium text-purple-700">
+                                    {subject.ceScore ?? '-'}
+                                  </td>
+                                  {hasPractical && (
+                                    <td className="px-4 py-3 text-center text-gray-600">
+                                      {subject.practicalScore || '-'}
+                                    </td>
+                                  )}
+                                  <td className="px-4 py-3 text-center font-bold text-gray-900">
+                                    {totalMarks}
+                                  </td>
+                                  <td className="px-4 py-3 text-center text-gray-500">
+                                    {subject.maxMarks}
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className={`font-semibold ${pctColor}`}>
+                                      {pct.toFixed(1)}%
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className={`inline-flex items-center justify-center min-w-[42px] px-2 py-0.5 text-xs font-bold rounded-md ${getGradeColor(subject.grade)}`}>
+                                      {subject.grade}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    {subject.isAbsent ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-rose-50 text-rose-700 ring-1 ring-rose-600/20">
+                                        Absent
+                                      </span>
+                                    ) : isPassing ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20">
+                                        Passed
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 ring-1 ring-amber-600/20">
+                                        Needs Impr.
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                          <tfoot className="bg-gray-50/70 border-t-2 border-gray-200 font-semibold text-xs text-gray-800">
+                            <tr>
+                              <td className="px-4 py-3 text-center text-gray-500 uppercase tracking-wider" colSpan={2}>
+                                Total ({exam.subjects?.length || 0} Subjects)
+                              </td>
+                              <td className="px-4 py-3 text-center text-gray-700">{totalTheory}</td>
+                              <td className="px-4 py-3 text-center text-purple-700">{totalCE}</td>
+                              {hasPractical && <td className="px-4 py-3 text-center text-gray-600">{totalPractical}</td>}
+                              <td className="px-4 py-3 text-center font-bold text-gray-900 text-sm">{exam.totalMarks}</td>
+                              <td className="px-4 py-3 text-center text-gray-600 text-sm">{exam.totalMaxMarks}</td>
+                              <td className="px-4 py-3 text-center text-emerald-600 font-bold">{examPercentage}%</td>
+                              <td className="px-4 py-3 text-center">
+                                <span className={`inline-flex items-center justify-center min-w-[42px] px-2 py-0.5 text-xs font-bold rounded-md ${getGradeColor(examGradeInfo.grade)}`}>
+                                  {examGradeInfo.grade}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {allPassed ? (
+                                  <span className="text-emerald-700 font-bold">Passed</span>
+                                ) : (
+                                  <span className="text-amber-700 font-medium">{passedCount}/{exam.subjects?.length || 0} Passed</span>
+                                )}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )}
+                  );
+                })}
+              </div>
 
               {/* Subject-wise Performance Summary */}
               {analytics.subjectWise && Object.keys(analytics.subjectWise).length > 0 && (

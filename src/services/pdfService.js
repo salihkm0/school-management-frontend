@@ -123,16 +123,16 @@ const pdfService = {
 
   // Class PTA
   getClassPTAPDF: async (classId = null, academicYearId = null) => {
-    let url = `/pdf/class-pta/view`;
-    if (classId) url += `/${classId}`;
+    const cId = (classId && classId !== '') ? classId : 'all';
+    let url = `/pdf/class-pta/view/${cId}`;
     if (academicYearId) url += `/${academicYearId}`;
     const response = await api.get(url, { responseType: 'blob' });
     return response.data;
   },
 
   downloadClassPTAPDF: async (classId = null, academicYearId = null) => {
-    let url = `/pdf/class-pta/download`;
-    if (classId) url += `/${classId}`;
+    const cId = (classId && classId !== '') ? classId : 'all';
+    let url = `/pdf/class-pta/download/${cId}`;
     if (academicYearId) url += `/${academicYearId}`;
     const response = await api.get(url, { responseType: 'blob' });
     return response.data;
@@ -219,6 +219,23 @@ const pdfService = {
     if (examId) url += `/${examId}`;
     const params = mode ? { mode } : {};
     const response = await api.get(url, { params, responseType: 'blob' });
+    return response.data;
+  },
+
+  // Student Report Card
+  getStudentReportCardPDF: async (studentId, examId = null, academicYearId = null, mode = 'total') => {
+    let url = `/pdf/report-cards/view/${studentId}`;
+    if (examId) url += `/${examId}`;
+    if (academicYearId) url += `/${academicYearId}`;
+    const response = await api.get(url, { params: { mode }, responseType: 'blob' });
+    return response.data;
+  },
+
+  downloadStudentReportCardPDF: async (studentId, examId = null, academicYearId = null, mode = 'total') => {
+    let url = `/pdf/report-cards/download/${studentId}`;
+    if (examId) url += `/${examId}`;
+    if (academicYearId) url += `/${academicYearId}`;
+    const response = await api.get(url, { params: { mode }, responseType: 'blob' });
     return response.data;
   },
 
@@ -444,4 +461,5 @@ export const downloadPDF = (blob, filename) => {
 
 
 
+export { pdfService };
 export default pdfService;

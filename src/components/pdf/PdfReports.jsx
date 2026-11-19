@@ -825,7 +825,14 @@ const PdfReports = () => {
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
               <ActionButtons
-                onDownload={() => handleDownloadPDF(async () => { return await pdfService.getClassPTAPDF(selectedClass, selectedAcademicYear); }, {}, `Class_PTA_${getCurrentAcademicYear()}.pdf`, '')}
+                onDownload={() => handleDownloadPDF(
+                  async () => { return await pdfService.getClassPTAPDF(selectedClass, selectedAcademicYear); },
+                  {},
+                  selectedClass
+                    ? `Class_PTA_${(classes.find(c => c._id === selectedClass)?.displayName || 'Class').replace(/\s+/g, '_')}_${getCurrentAcademicYear()}.pdf`
+                    : `Class_PTA_All_Classes_${getCurrentAcademicYear()}.pdf`,
+                  ''
+                )}
               />
             </div>
           </ReportCard>
