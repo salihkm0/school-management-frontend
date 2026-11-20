@@ -15,7 +15,8 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   DocumentTextIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  InformationCircleIcon
 } from '@heroicons/react/24/outline';
 import { fetchClasses } from '../../store/slices/classSlice';
 import { fetchAcademicYears } from '../../store/slices/academicYearSlice';
@@ -105,6 +106,53 @@ const PdfReports = () => {
   const [sportsCategory, setSportsCategory] = useState('auto');
   const [sportsGender, setSportsGender] = useState('all');
   const [sportsHouse, setSportsHouse] = useState('');
+
+  // Class PTA List specific states
+  const [ptaStandard, setPtaStandard] = useState('');
+  const [ptaClassId, setPtaClassId] = useState('');
+  const [showIndividualPtaClasses, setShowIndividualPtaClasses] = useState(false);
+  const [ptaActiveStandardTab, setPtaActiveStandardTab] = useState('');
+
+  // Extract distinct standards from loaded classes
+  const standardsList = React.useMemo(() => {
+    const stdSet = new Set();
+    classes.forEach(c => {
+      if (c.name) stdSet.add(String(c.name).trim());
+    });
+    return Array.from(stdSet).sort((a, b) => {
+      const na = parseInt(a, 10);
+      const nb = parseInt(b, 10);
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
+      return a.localeCompare(b, undefined, { numeric: true });
+    });
+  }, [classes]);
+
+  // Classes filtered by current PTA standard selection
+  const ptaFilteredClasses = React.useMemo(() => {
+    if (!ptaStandard) return classes;
+    return classes.filter(c => String(c.name).trim() === ptaStandard);
+  }, [classes, ptaStandard]);
+
+  const handlePtaDownload = async (targetIdOrStd, filename) => {
+    return handleDownloadPDF(
+      async () => {
+        return await pdfService.downloadClassPTAPDF(targetIdOrStd, selectedAcademicYear);
+      },
+      {},
+      filename,
+      'Failed to download Class PTA PDF'
+    );
+  };
+
+  const handlePtaView = async (targetIdOrStd) => {
+    return handleViewPDF(
+      async () => {
+        return await pdfService.getClassPTAPDF(targetIdOrStd, selectedAcademicYear);
+      },
+      {},
+      'Failed to view Class PTA PDF'
+    );
+  };
 
   useEffect(() => {
     dispatch(fetchClasses({ limit: 100 }));
@@ -835,35 +883,211 @@ const PdfReports = () => {
             </div>
           </ReportCard>
 
-          <ReportCard title="Class PTA List" description="Generate class PTA member list">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><label className="block text-xs font-medium text-gray-700 mb-1">Class</label>
-                <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg">
-                  <option value="">All Classes</option>{classes.map(c => (<option key={c._id} value={c._id}>{c.displayName || c.name}</option>))}
+          <ReportCard title="Class PTA List" description="Generate class PTA member list (by Standard, individual Class, or All Classes)">
+            {/* Helpful tip about huge data */}
+            <div className="bg-amber-50/80 border border-amber-200/80 rounded-lg p-2.5 mb-3 flex items-start gap-2">
+              <InformationCircleIcon className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-900 leading-relaxed">
+                <strong>Recommended:</strong> With 83 classes and 4,500+ students, generating all classes at once can time out on slow networks. Use <strong>Standard-wise (All 8th, All 9th, or All 10th)</strong> or download individual classes below for fast, reliable generation!
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Standard</label>
+                <select
+                  value={ptaStandard}
+                  onChange={(e) => {
+                    const std = e.target.value;
+                    setPtaStandard(std);
+                    setPtaClassId(''); // Reset specific division when standard changes
+                  }}
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
+                >
+                  <option value="">All Standards</option>
+                  {standardsList.map(std => {
+                    const count = classes.filter(c => String(c.name).trim() === std).length;
+                    return (
+                      <option key={std} value={std}>
+                        Standard {std} ({count} Classes)
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
-              <div><label className="block text-xs font-medium text-gray-700 mb-1">Academic Year</label>
-                <select value={selectedAcademicYear} onChange={(e) => setSelectedAcademicYear(e.target.value)} className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg">
-                  {academicYears.map(y => (<option key={y._id} value={y._id}>{y.name}</option>))}
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Division / Class</label>
+                <select
+                  value={ptaClassId}
+                  onChange={(e) => setPtaClassId(e.target.value)}
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
+                >
+                  <option value="">
+                    {ptaStandard ? `All Standard ${ptaStandard} Divisions` : 'All Classes'}
+                  </option>
+                  {ptaFilteredClasses.map(c => (
+                    <option key={c._id} value={c._id}>
+                      {c.displayName || `${c.name} ${c.section || ''}`.trim()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Academic Year</label>
+                <select
+                  value={selectedAcademicYear}
+                  onChange={(e) => setSelectedAcademicYear(e.target.value)}
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
+                >
+                  {academicYears.map(y => (
+                    <option key={y._id} value={y._id}>{y.name}</option>
+                  ))}
                 </select>
               </div>
             </div>
-            <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
+
+            {/* Quick Standard-wise Buttons Bar & Primary Action */}
+            <div className="mt-3.5 pt-3 border-t border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex items-center flex-wrap gap-2">
+                <span className="text-xs font-semibold text-gray-700">Quick Standard-Wise:</span>
+                {standardsList.map(std => {
+                  const stdClassesCount = classes.filter(c => String(c.name).trim() === std).length;
+                  const isCurrentStdSelected = ptaStandard === std && !ptaClassId;
+                  return (
+                    <div
+                      key={std}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
+                        isCurrentStdSelected
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                          : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span>Std {std} ({stdClassesCount})</span>
+                      <button
+                        type="button"
+                        onClick={() => handlePtaView(`std-${std}`)}
+                        className="text-gray-500 hover:text-emerald-700 p-0.5"
+                        title={`View All Standard ${std} PTA PDF`}
+                      >
+                        <EyeIcon className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handlePtaDownload(`std-${std}`, `Class_PTA_Standard_${std}_${getCurrentAcademicYear()}.pdf`)}
+                        className="text-gray-500 hover:text-emerald-700 p-0.5"
+                        title={`Download All Standard ${std} PTA PDF`}
+                      >
+                        <ArrowDownTrayIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Main View & Download for selected filter */}
               <ActionButtons
-                onView={() => handleViewPDF(
-                  async () => { return await pdfService.getClassPTAPDF(selectedClass, selectedAcademicYear); },
-                  {},
-                  'Failed to view Class PTA PDF'
-                )}
-                onDownload={() => handleDownloadPDF(
-                  async () => { return await pdfService.downloadClassPTAPDF(selectedClass, selectedAcademicYear); },
-                  {},
-                  selectedClass
-                    ? `Class_PTA_${(classes.find(c => c._id === selectedClass)?.displayName || 'Class').replace(/\s+/g, '_')}_${getCurrentAcademicYear()}.pdf`
-                    : `Class_PTA_All_Classes_${getCurrentAcademicYear()}.pdf`,
-                  ''
-                )}
+                onView={() => {
+                  const target = ptaClassId ? ptaClassId : (ptaStandard ? `std-${ptaStandard}` : 'all');
+                  handlePtaView(target);
+                }}
+                onDownload={() => {
+                  const target = ptaClassId ? ptaClassId : (ptaStandard ? `std-${ptaStandard}` : 'all');
+                  const filename = ptaClassId
+                    ? `Class_PTA_${(classes.find(c => c._id === ptaClassId)?.displayName || 'Class').replace(/\s+/g, '_')}_${getCurrentAcademicYear()}.pdf`
+                    : ptaStandard
+                    ? `Class_PTA_Standard_${ptaStandard}_${getCurrentAcademicYear()}.pdf`
+                    : `Class_PTA_All_Classes_${getCurrentAcademicYear()}.pdf`;
+                  handlePtaDownload(target, filename);
+                }}
               />
+            </div>
+
+            {/* Individual Classes Drawer / Grid */}
+            <div className="mt-3.5 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowIndividualPtaClasses(prev => !prev);
+                  if (!ptaActiveStandardTab && standardsList.length > 0) {
+                    setPtaActiveStandardTab(standardsList[0]);
+                  }
+                }}
+                className="w-full flex items-center justify-between text-xs font-semibold text-emerald-700 hover:text-emerald-800 py-1 transition-colors"
+              >
+                <span className="flex items-center gap-1.5">
+                  <span>{showIndividualPtaClasses ? '▼' : '▶'}</span>
+                  <span>Browse & Download Individual Classes Separately ({classes.length} Total Classes)</span>
+                </span>
+                <span className="text-[11px] font-normal text-gray-500">
+                  {showIndividualPtaClasses ? 'Click to collapse' : 'Click to see all individual classes (8 A, 8 B...)'}
+                </span>
+              </button>
+
+              {showIndividualPtaClasses && (
+                <div className="mt-2.5 p-3 bg-gray-50/70 border border-gray-200 rounded-lg space-y-3">
+                  {/* Standard Tabs */}
+                  <div className="flex gap-1.5 border-b border-gray-200 pb-2 overflow-x-auto">
+                    {standardsList.map(std => {
+                      const isActive = (ptaActiveStandardTab || standardsList[0]) === std;
+                      const count = classes.filter(c => String(c.name).trim() === std).length;
+                      return (
+                        <button
+                          key={std}
+                          type="button"
+                          onClick={() => setPtaActiveStandardTab(std)}
+                          className={`px-3 py-1 rounded text-xs font-semibold transition-colors flex-shrink-0 ${
+                            isActive
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+                          }`}
+                        >
+                          Standard {std} ({count} Classes)
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Class Chips for active tab */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-2 max-h-72 overflow-y-auto pr-1">
+                    {classes
+                      .filter(c => String(c.name).trim() === (ptaActiveStandardTab || standardsList[0]))
+                      .sort((a, b) => (a.section || '').localeCompare(b.section || ''))
+                      .map(cls => (
+                        <div
+                          key={cls._id}
+                          className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 shadow-xs hover:border-emerald-300 transition-colors"
+                        >
+                          <span className="text-xs font-bold text-gray-800">
+                            {cls.displayName || `${cls.name} ${cls.section || ''}`.trim()}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handlePtaView(cls._id)}
+                              className="text-gray-400 hover:text-emerald-700 p-0.5 rounded hover:bg-emerald-50 transition-colors"
+                              title={`View ${cls.displayName || cls.name} PTA PDF`}
+                            >
+                              <EyeIcon className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handlePtaDownload(
+                                cls._id,
+                                `Class_PTA_${(cls.displayName || cls.name).replace(/\s+/g, '_')}_${getCurrentAcademicYear()}.pdf`
+                              )}
+                              className="text-gray-400 hover:text-emerald-700 p-0.5 rounded hover:bg-emerald-50 transition-colors"
+                              title={`Download ${cls.displayName || cls.name} PTA PDF`}
+                            >
+                              <ArrowDownTrayIcon className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           </ReportCard>
 
